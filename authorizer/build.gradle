@@ -146,6 +146,9 @@ dependencies {
     implementation "androidx.camera:camera-view:$camerax_version"
     implementation 'com.google.zxing:core:3.5.4'
 
+    // Root shell for the one-time USB HID gadget preparation
+    implementation 'com.github.topjohnwu.libsu:core:6.0.0'
+
     // FIDO (WebAuthn/U2F) dependencies
     implementation 'co.nstant.in:cbor:0.9'
     implementation 'com.google.code.gson:gson:2.14.0'

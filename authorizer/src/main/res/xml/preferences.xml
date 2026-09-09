@@ -152,12 +152,27 @@
                 android:title="@string/autotype_lang"/>
 
             <!--suppress AndroidElementNotAllowed -->
+            <net.tjado.passwdsafe.view.LongEditTextPreference
+                android:name="usbHidDevice Pref"
+                android:defaultValue="/dev/hidg0"
+                android:key="usbHidDevicePref"
+                android:dialogTitle="@string/usb_hid_device"
+                android:title="@string/usb_hid_device"/>
+
+            <!--suppress AndroidElementNotAllowed -->
             <net.tjado.passwdsafe.view.LongCheckBoxPreference
-                android:name="usbNativeMode Pref"
-                android:defaultValue="false"
-                android:key="usbNativeModePref"
-                android:title="@string/usb_native_mode"
-                android:summary="@string/usb_native_mode_summary"/>
+                android:name="usbHidAutoSetup Pref"
+                android:defaultValue="true"
+                android:key="usbHidAutoSetupPref"
+                android:title="@string/usb_hid_auto_setup"
+                android:summary="@string/usb_hid_auto_setup_summary"/>
+
+            <!--suppress AndroidElementNotAllowed -->
+            <net.tjado.passwdsafe.view.LongPreference
+                android:name="usbHidPrepare Pref"
+                android:key="usbHidPreparePref"
+                android:title="@string/usb_hid_prepare"
+                android:summary="@string/usb_hid_prepare_summary"/>
 
         </PreferenceCategory>
     </PreferenceScreen>

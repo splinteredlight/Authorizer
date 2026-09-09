@@ -166,8 +166,11 @@ public class Preferences
     public static final String PREF_AUTOTYPE_LANG = "usbkbdLanguagePref";
     private static final OutputInterface.Language PREF_AUTOTYPE_LANG_DEF = OutputInterface.Language.en_US;
 
-    public static final String PREF_USB_NATIVE_MODE = "usbNativeModePref";
-    private static final boolean PREF_USB_NATIVE_MODE_DEF = false;
+    public static final String PREF_USB_HID_DEVICE = "usbHidDevicePref";
+    public static final String PREF_USB_HID_DEVICE_DEF = "/dev/hidg0";
+    public static final String PREF_USB_HID_AUTO_SETUP = "usbHidAutoSetupPref";
+    private static final boolean PREF_USB_HID_AUTO_SETUP_DEF = true;
+    public static final String PREF_USB_HID_PREPARE = "usbHidPreparePref";
 
     public static final String PREF_BLUETOOTH_ENABLED = "bluetoothEnabledPref";
     private static final boolean PREF_BLUETOOTH_ENABLED_DEF = true;
@@ -560,12 +563,24 @@ public class Preferences
     }
 
     /**
-     * Get whether to enable USB Keyboard Output
+     * Get the USB HID gadget character device used for auto-type
      */
-    public static boolean getUsbNativeEnabled(SharedPreferences prefs)
+    public static String getUsbHidDevicePath(SharedPreferences prefs)
     {
-        return prefs.getBoolean(PREF_USB_NATIVE_MODE,
-                                PREF_USB_NATIVE_MODE_DEF);
+        String path = prefs.getString(PREF_USB_HID_DEVICE,
+                                      PREF_USB_HID_DEVICE_DEF);
+        return ((path == null) || path.trim().isEmpty()) ?
+               PREF_USB_HID_DEVICE_DEF : path.trim();
+    }
+
+    /**
+     * Get whether to run the root HID setup automatically when the device
+     * is not writable
+     */
+    public static boolean getUsbHidAutoSetup(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_USB_HID_AUTO_SETUP,
+                                PREF_USB_HID_AUTO_SETUP_DEF);
     }
 
     /**

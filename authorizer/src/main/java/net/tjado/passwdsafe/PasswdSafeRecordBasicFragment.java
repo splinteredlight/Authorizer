@@ -10,6 +10,9 @@ package net.tjado.passwdsafe;
 
 
 import android.Manifest;
+import net.tjado.authorizer.hid.HidStatus;
+import net.tjado.authorizer.hid.HidNotReadyException;
+import net.tjado.authorizer.hid.HidGadgetSetup;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -77,7 +80,6 @@ import net.tjado.passwdsafe.view.CopyField;
 import net.tjado.passwdsafe.view.PasswdLocation;
 
 import net.tjado.authorizer.OutputInterface;
-import net.tjado.authorizer.OutputUsbKeyboardAsRoot;
 import net.tjado.authorizer.OutputBluetoothKeyboard;
 
 import org.pwsafe.lib.file.PwsRecord;
@@ -1234,6 +1236,44 @@ public class PasswdSafeRecordBasicFragment
     private void autotypeUsb(OutputInterface.Language lang,
                              Boolean sendUsername, Boolean sendPassword, Boolean sendOTP)
     {
+        Context ctx = requireContext();
+        SharedPreferences prefs = Preferences.getSharedPrefs(ctx);
+        String devicePath = Preferences.getUsbHidDevicePath(prefs);
+        HidStatus status = HidStatus.probe(devicePath);
+        if (!status.isReady() && Preferences.getUsbHidAutoSetup(prefs)) {
+            // One-time root setup (SELinux + node ownership), then type
+            Toast.makeText(ctx, R.string.autotype_usb_preparing,
+                           Toast.LENGTH_SHORT).show();
+            HidGadgetSetup.ensureReadyAsync(devicePath, new HidGadgetSetup.ReadyCallback()
+            {
+                @Override
+                public void onReady()
+                {
+                    if (isAdded()) {
+                        autotypeUsbNow(devicePath, lang, sendUsername,
+                                       sendPassword, sendOTP);
+                    }
+                }
+
+                @Override
+                public void onFailed(@NonNull String message)
+                {
+                    if (isAdded()) {
+                        PasswdSafeUtil.showErrorMsg(
+                                getString(R.string.autotype_usb_prepare_failed,
+                                          message),
+                                new ActContext(requireContext()));
+                    }
+                }
+            });
+            return;
+        }
+        autotypeUsbNow(devicePath, lang, sendUsername, sendPassword, sendOTP);
+    }
+
+    private void autotypeUsbNow(String devicePath, OutputInterface.Language lang,
+                                Boolean sendUsername, Boolean sendPassword, Boolean sendOTP)
+    {
         String username = getUsername();
         String password = getPassword();
         String otp = getOtp();
@@ -1241,8 +1281,7 @@ public class PasswdSafeRecordBasicFragment
         String quoteSubTab = Pattern.quote(SUB_TAB);
 
         try {
-            boolean nativeMode = Preferences.getUsbNativeEnabled(Preferences.getSharedPrefs(getContext()));
-            OutputInterface ct = nativeMode ? new OutputUsbKeyboard(lang) : new OutputUsbKeyboardAsRoot(lang);
+            OutputInterface ct = new OutputUsbKeyboard(devicePath, lang);
             boolean otpTokenGenerated = false;
 
             if(sendOTP && otp != null ) {
@@ -1336,10 +1375,12 @@ public class PasswdSafeRecordBasicFragment
 
             ct.destruct();
 
-        } catch (SecurityException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(R.string.autotype_usb_root_denied), new ActContext(requireContext()));
-        } catch (FileNotFoundException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(R.string.autotype_usb_hidg_not_found), new ActContext(requireContext()));
+        } catch (HidNotReadyException e) {
+            int res = (e.getReason() == HidNotReadyException.Reason.NOT_FOUND) ?
+                      R.string.autotype_usb_hidg_not_found :
+                      R.string.autotype_usb_hidg_no_access;
+            PasswdSafeUtil.showErrorMsg(getString(res, e.getDevicePath()),
+                                        new ActContext(requireContext()));
         } catch (Exception e) {
             PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
             PasswdSafeUtil.showErrorMsg(String.format("PasswdSafeRecordBasicFragment Exception: %s", e.getLocalizedMessage()), new ActContext(requireContext()));

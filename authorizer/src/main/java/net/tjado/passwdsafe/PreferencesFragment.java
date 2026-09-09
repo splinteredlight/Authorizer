@@ -8,6 +8,8 @@
 package net.tjado.passwdsafe;
 
 import android.app.Activity;
+import net.tjado.authorizer.hid.HidStatus;
+import net.tjado.authorizer.hid.HidGadgetSetup;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -537,6 +539,8 @@ public class PreferencesFragment extends PreferenceFragmentCompat
         private final ListPreference itsPasswdExpiryNotifPref;
         private final EditTextPreference itsPasswdDefaultSymsPref;
         private ListPreference itsAutoTypeLangPref;
+        private EditTextPreference itsUsbHidDevicePref;
+        private Preference itsUsbHidPreparePref;
 
         /**
          * Constructor
@@ -593,6 +597,43 @@ public class PreferencesFragment extends PreferenceFragmentCompat
             List<String> myOptions = Arrays.asList((getResources().getStringArray(R.array.autotype_lang_values)));
             int value = myOptions.indexOf(pref.name());
             itsAutoTypeLangPref.setSummary(getResources().getStringArray(R.array.autotype_lang_titles)[value]);
+
+            itsUsbHidDevicePref = requirePreference(Preferences.PREF_USB_HID_DEVICE);
+            itsUsbHidPreparePref = requirePreference(Preferences.PREF_USB_HID_PREPARE);
+            itsUsbHidPreparePref.setOnPreferenceClickListener(clicked -> {
+                prepareUsbHidDevice(prefs);
+                return true;
+            });
+            updateUsbHidSummary(prefs);
+        }
+
+        /** Show the device path and whether it is currently usable */
+        private void updateUsbHidSummary(SharedPreferences prefs)
+        {
+            String path = Preferences.getUsbHidDevicePath(prefs);
+            HidStatus st = HidStatus.probe(path);
+            int res = st.isReady() ? R.string.usb_hid_status_ready :
+                      st.exists ? R.string.usb_hid_status_no_access :
+                      R.string.usb_hid_status_missing;
+            itsUsbHidDevicePref.setSummary(getString(res, path));
+        }
+
+        /** Run the root setup and report the result */
+        private void prepareUsbHidDevice(SharedPreferences prefs)
+        {
+            String path = Preferences.getUsbHidDevicePath(prefs);
+            itsUsbHidPreparePref.setEnabled(false);
+            itsUsbHidPreparePref.setSummary(R.string.autotype_usb_preparing);
+            HidGadgetSetup.prepareAsync(path, result -> {
+                if (!isAdded()) {
+                    return;
+                }
+                itsUsbHidPreparePref.setEnabled(true);
+                itsUsbHidPreparePref.setSummary(
+                        result.success ? result.message :
+                        (result.message + "\n" + TextUtils.join("\n", result.log)));
+                updateUsbHidSummary(prefs);
+            });
         }
 
         @Override
@@ -630,6 +671,10 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                 }
                 case Preferences.PREF_AUTOTYPE_LANG: {
                     updateAutoTypeLang = true;
+                    break;
+                }
+                case Preferences.PREF_USB_HID_DEVICE: {
+                    updateUsbHidSummary(prefs);
                     break;
                 }
                 }

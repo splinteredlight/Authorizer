@@ -8,6 +8,9 @@
 package net.tjado.passwdsafe;
 
 import android.Manifest;
+import net.tjado.authorizer.hid.HidStatus;
+import net.tjado.authorizer.hid.HidNotReadyException;
+import net.tjado.authorizer.hid.HidGadgetSetup;
 import androidx.core.graphics.Insets;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.ViewCompat;
@@ -58,7 +61,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
 
 import net.tjado.authorizer.OutputInterface;
-import net.tjado.authorizer.OutputUsbKeyboardAsRoot;
+import net.tjado.authorizer.OutputUsbKeyboard;
 import net.tjado.passwdsafe.db.BackupFile;
 import net.tjado.passwdsafe.db.PasswdSafeDb;
 import net.tjado.passwdsafe.db.RecentFilesDao;
@@ -1345,8 +1348,34 @@ public class PasswdSafe extends AppCompatActivity
             return null;
         });
 
+        SharedPreferences prefs = Preferences.getSharedPrefs(this);
+        String devicePath = Preferences.getUsbHidDevicePath(prefs);
+        OutputInterface.Language lang = Preferences.getAutoTypeLanguagePref(prefs);
+        if (!HidStatus.probe(devicePath).isReady() &&
+            Preferences.getUsbHidAutoSetup(prefs)) {
+            Toast.makeText(this, R.string.autotype_usb_preparing,
+                           Toast.LENGTH_SHORT).show();
+            HidGadgetSetup.ensureReadyAsync(devicePath, new HidGadgetSetup.ReadyCallback()
+            {
+                @Override
+                public void onReady()
+                {
+                    sendCredentialOverUsbByRecordLocation(recUuid);
+                }
+
+                @Override
+                public void onFailed(@NonNull String message)
+                {
+                    PasswdSafeUtil.showErrorMsg(
+                            getString(R.string.autotype_usb_prepare_failed, message),
+                            new ActContext(PasswdSafe.this));
+                }
+            });
+            return;
+        }
+
         try {
-            OutputInterface ct = new OutputUsbKeyboardAsRoot(OutputInterface.Language.AppleMac_de_DE);
+            OutputInterface ct = new OutputUsbKeyboard(devicePath, lang);
 
             String SUB_OTP = getResources().getString(R.string.SUB_OTP);
             String SUB_TAB = getResources().getString(R.string.SUB_TAB);
@@ -1381,11 +1410,12 @@ public class PasswdSafe extends AppCompatActivity
                             new ActContext(this));
                 }
             }
-        } catch (SecurityException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(
-                    R.string.autotype_usb_root_denied), new ActContext(this));
-        } catch (FileNotFoundException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(R.string.autotype_usb_hidg_not_found), new ActContext(this));
+        } catch (HidNotReadyException e) {
+            int res = (e.getReason() == HidNotReadyException.Reason.NOT_FOUND) ?
+                      R.string.autotype_usb_hidg_not_found :
+                      R.string.autotype_usb_hidg_no_access;
+            PasswdSafeUtil.showErrorMsg(getString(res, e.getDevicePath()),
+                                        new ActContext(this));
         } catch (Exception e) {
             PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
             PasswdSafeUtil.showErrorMsg(String.format("PasswdSafeRecordBasicFragment Exception: %s", e.getLocalizedMessage()) ,new ActContext(this));

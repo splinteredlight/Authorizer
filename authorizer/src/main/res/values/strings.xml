@@ -746,9 +746,12 @@
     <string name="autotype_bt_enable">Enable Auto-Type over Bluetooth</string>
     <string name="autotype_bt_enable_summary">Android Pie (28) or higher required.</string>
 
-    <string name="autotype_usb_root_denied">root access denied. Could not auto-type over USB as this requires root access!</string>
+    <string name="autotype_usb_root_denied">Root access denied. Preparing the USB HID device requires root (Magisk or KernelSU).</string>
 
-    <string name="autotype_usb_hidg_not_found">No USB auto-type possible: USB HID device file (/dev/hidg0) not found! It can be activated by using "USB Gadget Tool" (root access required).</string>
+    <string name="autotype_usb_hidg_not_found">No USB auto-type possible: USB HID device %1$s not found. Enable "Prepare USB HID device automatically" or run it from the settings (root required).</string>
+    <string name="autotype_usb_hidg_no_access">USB HID device %1$s exists but cannot be written from the app. Run "Prepare USB HID device" in the settings (root required).</string>
+    <string name="autotype_usb_preparing">Preparing USB HID device (root)…</string>
+    <string name="autotype_usb_prepare_failed">USB HID setup failed: %1$s</string>
 
     <string name="use_treeview_list">Use tree list</string>
     <string name="entry">entry</string>
@@ -805,8 +808,14 @@
     <string name="about_app">About Authorizer</string>
     <string name="show_license">Show license</string>
     <string name="hide_license">Hide license</string>
-    <string name="usb_native_mode">USB Auto-Type Native Mode</string>
-    <string name="usb_native_mode_summary">Advanced users: USB gadget access without root</string>
+    <string name="usb_hid_device">USB HID device</string>
+    <string name="usb_hid_auto_setup">Prepare USB HID device automatically</string>
+    <string name="usb_hid_auto_setup_summary">When the device cannot be written, patch SELinux and node ownership with root before typing</string>
+    <string name="usb_hid_prepare">Prepare USB HID device now</string>
+    <string name="usb_hid_prepare_summary">Creates the configfs HID keyboard function if missing, patches SELinux (magiskpolicy/ksud) and gives this app access to the device node. Root required.</string>
+    <string name="usb_hid_status_ready">%1$s: ready</string>
+    <string name="usb_hid_status_no_access">%1$s: exists, no access</string>
+    <string name="usb_hid_status_missing">%1$s: not found</string>
     <string name="writeable_summary">Allow to write to the current open file</string>
 
     <string name="bluetooth">Bluetooth</string>
