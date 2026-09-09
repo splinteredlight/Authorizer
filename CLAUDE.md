@@ -1,0 +1,114 @@
+# CLAUDE.md
+
+Guidance for working in this repository. Read this before touching code.
+
+## What this is
+
+Authorizer is a fork of Jeff Harris's PasswdSafe for Android with Tjado Mäcke's
+auto-type layer: a Password Safe (`.psafe3`) manager that acts as a USB or
+Bluetooth HID keyboard and types credentials into a connected computer.
+This fork (`splinteredlight/Authorizer`, branch `modernize-2026`) modernised it
+for Android 17 and replaced the custom-kernel HID assumption with configfs +
+runtime SELinux patching. Upstream is `tejado/Authorizer`.
+
+Licensing: PasswdSafe code is Artistic License 2.0, Authorizer additions are
+GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
+
+## Build
+
+- Run Gradle with JDK 21: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`.
+- Gradle 9.7.1, AGP 9.4.0, `compileSdk 37` (`compileSdkMinor 2`),
+  `targetSdk 37`, `minSdk 26`. Java 17 source level, no Kotlin sources.
+- SDK at `~/Android/Sdk` (`local.properties` is gitignored).
+- `./gradlew :authorizer:assembleDebug` for a quick compile.
+- **Always build and test the release too**: `./gradlew :authorizer:assembleRelease`.
+  R8 runs in full mode and has already broken code that was fine in debug
+  (`Class.getPackage()` returning null). Anything reflective needs a keep rule
+  in `authorizer/proguard-rules.pro` or a literal.
+- `./gradlew :authorizer:lintDebug` must report 0 errors. SARIF output is
+  disabled because Lint 9.4 crashes writing it.
+- Signing: `sign/sign.gradle` + `sign/keystore.jks` (gitignored). Debug and
+  release share the key so `adb install -r` replaces either in place.
+
+## Things AGP 9 changed that bite here
+
+- Resource ids are not constants: no `switch` on `R.id.*`, use `if`.
+- Jetifier is gone: no pre-AndroidX dependencies. Iconics 5 is used because
+  record icons are stored by font name inside the psafe3 file.
+- `android.nonTransitiveRClass=false` and `nonFinalResIds=false` are still
+  set in `gradle.properties`; migrating them is a separate job.
+- AndroidTreeView (`atv`) excludes `com.android.support` transitively.
+
+## Layout
+
+- `authorizer/src/main/java/org/pwsafe/lib/` — Password Safe V3 file format,
+  crypto (Twofish, iterated SHA-256 KDF, HMAC). Do not change on-disk format.
+- `net/tjado/passwdsafe/` — UI (PasswdSafe activity, fragments, preferences).
+- `net/tjado/authorizer/` — keyboard layouts (`UsbHidKbd_*`), `OutputUsbKeyboard`
+  (writes 8-byte boot-keyboard reports to `/dev/hidgN` as the app's own UID),
+  `OutputBluetoothKeyboard`.
+- `net/tjado/authorizer/hid/` — `HidGadgetSetup` (root, one-shot, via libsu),
+  `HidStatus` (non-root probe), `HidNotReadyException`.
+- `net/tjado/webauthn/` — FIDO2/U2F authenticator over Bluetooth HID.
+- `doc/MODERNIZATION_ASSESSMENT.md` — the 2026 audit and plan.
+- `doc/HID_SETUP.md` — how the HID path works, manual test, troubleshooting.
+- `doc/magisk/service.sh` — Magisk module script that re-applies HID access at boot.
+
+## HID design rules
+
+- Root is used only in `HidGadgetSetup.prepare()`. Never spawn `su` on the
+  typing path, and never put a secret in a shell command line.
+- Setup picks a `hid.*` function with `protocol 1` and `report_length 8`, or
+  creates `hid.authorizer`. Other tools' functions (e.g. android-hid-client's
+  report-ID keyboard on `hidg0`) are never modified. The node is resolved from
+  the function's `dev` attribute and persisted in `usbHidDevicePref`.
+- SELinux rule: `allow <own domain> device chr_file { getattr open read write ioctl }`
+  via `magiskpolicy --live` or `ksud sepolicy patch`. The domain and MLS
+  categories are read from `/proc/self/attr/current`, never hard-coded.
+- Reports are 8 bytes, no report ID. A release report follows every press in
+  a `finally` block so a key can't stay held on the host.
+- If libsu returns a non-root shell, close it before returning, or every
+  later attempt fails until the process restarts.
+- In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
+  explicitly: Magisk's busybox `stat` has no `%C`.
+
+## Security rules
+
+- New files use `PwsFileHeaderV3.DEFAULT_ITER` (262144) iterations. Do not lower.
+- Biometric saved-password keys: AES-GCM, `setInvalidatedByBiometricEnrollment(true)`,
+  StrongBox with TEE fallback. Legacy CBC keys are detected via `KeyInfo` and
+  still decrypt; keep that path until users have re-saved.
+- FIDO client PIN reference is an AndroidKeyStore HMAC, compared with
+  `MessageDigest.isEqual`. Never store a plain hash of the PIN.
+- Never log typed characters, HID reports, usernames, or passwords, even
+  behind `BuildConfig.DEBUG`.
+- Clipboard copies of secrets must set `EXTRA_IS_SENSITIVE`.
+
+## Testing on the device
+
+Target hardware: Pixel 9 Pro XL ("komodo"), Android 17, Magisk, SELinux
+enforcing. `adb` and root shell work; the phone locks after 30 s so UI
+automation needs it unlocked.
+
+```sh
+adb install -r authorizer/build/outputs/apk/release/authorizer-release.apk
+adb shell su -c 'ls -lZ /dev/hidg*'                                     # app-owned node with categories
+adb shell su -c 'cat /data/adb/modules/authorizer-hid/last-run.log'     # boot module result
+adb logcat -s HidGadgetSetup OutputUsbKeyboard AndroidRuntime:E
+```
+
+For a keystroke test without the app, build 8-byte reports on the PC,
+base64 them, and write with `dd bs=8` on the device (see `doc/HID_SETUP.md`);
+Android's `printf` has no `\x` and nested quoting mangles octal.
+
+Launch the activity with the full launcher intent, or it finishes immediately:
+`am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n net.tjado.passwdsafe/.PasswdSafe`.
+
+## Conventions
+
+- Small, single-purpose commits with a body that explains why. End commit
+  messages with the `Claude-Session:` line when working in a Claude session.
+- Explain each significant change so the maintainer can follow it without
+  the conversation history.
+- Ask before destructive or irreversible actions (uninstalling the app wipes
+  its data and changes its uid; `setenforce`; touching the Magisk database).
