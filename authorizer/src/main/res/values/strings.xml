@@ -416,6 +416,16 @@
 
     <string name="release_notes">
         \n
+        &lt;b&gt;0.6.0&lt;/b&gt;\n
+        - Android 17 (API 37) target, minimum Android 8.0\n
+        - USB Auto-Type writes directly to /dev/hidg0 on stock kernels; root is only used once to prepare the device (configfs HID function, SELinux via magiskpolicy/ksud). No custom kernel or gadget app needed\n
+        - Passwords are no longer passed through a root shell\n
+        - New files use 262144 key-stretching iterations (was 2048)\n
+        - Biometric saved passwords use AES-GCM, StrongBox when available, and are invalidated by new biometric enrolments\n
+        - FIDO client PIN reference is protected by an Android Keystore HMAC key\n
+        - OTP QR scanning moved to CameraX\n
+        - Updated all libraries (BouncyCastle, Yubikit 3, AndroidX)
+        \n\n
         &lt;b&gt;0.5.0&lt;/b&gt;\n
         - New feature: FIDO U2F and FIDO2 WebAuthn\n
         - New feature: Predefined usernames / emails with placeholders\n
