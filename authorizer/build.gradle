@@ -58,20 +58,12 @@ android {
             proguardFiles += 'proguard-rules-debug.pro'
             testProguardFiles += getDefaultProguardFile(
                     'proguard-android-optimize.txt')
-
-            ndk {
-                debugSymbolLevel "FULL"
-            }
         }
         release {
             minifyEnabled true
             proguardFiles += getDefaultProguardFile(
                     'proguard-android-optimize.txt')
             proguardFiles += 'proguard-rules.pro'
-
-            ndk {
-                debugSymbolLevel "FULL"
-            }
         }
     }
     compileOptions {
@@ -80,13 +72,6 @@ android {
     }
     productFlavors {
     }
-    externalNativeBuild {
-        cmake {
-            path 'src/main/cpp/CMakeLists.txt'
-        }
-    }
-    ndkVersion = '21.3.6528147'
-
     packagingOptions {
         jniLibs {
             useLegacyPackaging false

@@ -7,80 +7,49 @@
  */
 package org.pwsafe.lib.crypto;
 
-import android.os.Build;
 import androidx.annotation.NonNull;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Locale;
 
 /**
- * SHA256 implementation. Currently uses default digester provider or native
- * code underneath.
+ * SHA-256 implementation backed by the platform's MessageDigest provider
+ * (Conscrypt/BoringSSL on Android), which is hardware accelerated and faster
+ * than the former bundled native loop.
  *
  * @author Glen Smith
  * @author Jeff Harris
  */
-public class SHA256Pws {
-
-    private static final boolean IS_CHROME;
-    static {
-        String brand = Build.BRAND.toLowerCase(Locale.getDefault());
-        IS_CHROME = (brand.contains("chromium"));
-    }
-
+public class SHA256Pws
+{
     /**
      * Hash the incoming bytes iter+1 times
      */
     public static byte[] digestN(byte[] p, int iter)
     {
-        if (IS_CHROME) {
-            return digestNJava(p, iter);
-        } else {
-            return digestNNative(p, iter);
+        MessageDigest digest = getSha();
+        byte[] output = digest.digest(p);
+        for (int i = 0; i < iter; ++i) {
+            output = digest.digest(output);
         }
+        return output;
     }
 
     /**
      * Hash the incoming bytes
      */
-    public static byte[] digest(byte[] incoming) {
-
+    public static byte[] digest(byte[] incoming)
+    {
         return getSha().digest(incoming);
     }
 
-    /**
-     * Hash the incoming bytes iter+1 times using the Java provider
-     */
-    public static byte[] digestNJava(byte[] p, int iter)
-    {
-        MessageDigest digest = getSha();
-        byte[] output = digest.digest(p);
-
-        for (int i = 0; i < iter; ++i) {
-            output = digest.digest(output);
-        }
-
-        return output;
-    }
-
-    /**
-     * Hash the incoming bytes iter+1 times using native code
-     */
-    public static native byte[] digestNNative(byte[] p, int iter);
-
-    /**
-     * Get the default provider's SHA-256 digester
-     */
     @NonNull
     private static MessageDigest getSha()
     {
         try {
             return MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            //noinspection ConstantConditions
-            return null;
+            throw new IllegalStateException("SHA-256 not available", e);
         }
     }
 }

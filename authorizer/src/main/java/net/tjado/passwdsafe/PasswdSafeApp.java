@@ -61,10 +61,6 @@ public final class PasswdSafeApp extends Application
 
     private static final String TAG = "PasswdSafeApp";
 
-    static {
-        System.loadLibrary("PasswdSafe");
-    }
-
     /* (non-Javadoc)
      * @see android.app.Application#onCreate()
      */
