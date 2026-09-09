@@ -29,8 +29,7 @@ import java.util.Objects;
  */
 public class PwsFileFactory
 {
-    private static final Log LOG = Log.getInstance(Objects.requireNonNull(
-            PwsFileFactory.class.getPackage()).getName());
+    private static final Log LOG = Log.getInstance("org.pwsafe.lib.file");
 
     private static final int MAX_HEADER_LEN = PwsFile.STUFF_LENGTH +
                                               PwsFile.HASH_LENGTH;

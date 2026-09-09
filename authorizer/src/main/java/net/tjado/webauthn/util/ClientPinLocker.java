@@ -226,7 +226,6 @@ public class ClientPinLocker {
          * Also at the end removing the key from the keyStore if possible
          */
         locker.edit().clear().commit();
-        this.getClass().getPackage();
 
         String lockerUri = getLockerUri();
 
