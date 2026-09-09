@@ -68,12 +68,6 @@ public class LauncherFileShortcuts extends AppCompatActivity
     }
 
     @Override
-    public void onBackPressed()
-    {
-        super.onBackPressed();
-    }
-
-    @Override
     public void openFile(Uri uri, String fileName)
     {
         if (itsIsDefaultFile || (uri != null)) {

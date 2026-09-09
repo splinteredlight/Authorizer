@@ -58,12 +58,21 @@ public class PwsFileHeaderV3 implements Serializable
 
 
     /**
+     * Key-stretching iterations for newly created files (and for files
+     * whose password is changed, which creates a new header). The format
+     * minimum, 2048, gives ~1 ms of work on current phones; 2^18 keeps a
+     * desktop pwsafe open well under a second while making offline
+     * brute force of the file ~128x more expensive.
+     */
+    public static final int DEFAULT_ITER = 262144;
+
+    /**
      * Creates an empty file header.
      */
     PwsFileHeaderV3()
     {
         tag = PwsFileV3.ID_STRING;
-        iter = 2048;
+        iter = DEFAULT_ITER;
         Util.newRandBytes(salt);
         Util.newRandBytes(IV);
     }

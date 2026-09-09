@@ -1,6 +1,12 @@
 package net.tjado.webauthn.util;
 
 import android.content.Context;
+import android.security.keystore.KeyProperties;
+import android.security.keystore.KeyGenParameterSpec;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.Mac;
+import java.security.GeneralSecurityException;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.os.Build;
@@ -41,6 +47,9 @@ public class ClientPinLocker {
     private static final String CLIENT_PIN_FIELD_PIN_SHA256_VALUE = "";
 
     private static final int PIN_TOKEN_LENGTH = 16;
+    /** Prefs field holding HMAC-SHA256(pinHash) under a Keystore key */
+    private static final String CLIENT_PIN_FIELD_PIN_HMAC = "PIN-HMAC";
+    private static final String PIN_HMAC_ALIAS_SUFFIX = "_pinhmac";
 
     private SharedPreferences locker;
     private String clientId;
@@ -88,41 +97,101 @@ public class ClientPinLocker {
         return this;
     }
 
+    /**
+     * Store the PIN reference. The CTAP client sends SHA-256(PIN) truncated
+     * to 16 bytes, which for a short numeric PIN is trivially brute-forced
+     * offline if stored as-is. It is therefore stored as HMAC-SHA256 under a
+     * non-exportable AndroidKeyStore key, so the reference is useless
+     * without this device's keystore.
+     */
     public boolean lockPin(@NonNull byte[] pin) {
-        String pinString = Utils.bytesToHexString(pin);
         try {
             refreshToken();
         } catch (VirgilException e) {
             Log.w(TAG, "Failed to refresh token on this occasion!");
         }
+        byte[] mac;
+        try {
+            mac = pinHmac(pin);
+        } catch (GeneralSecurityException | IOException e) {
+            Log.e(TAG, "Cannot compute PIN HMAC", e);
+            return false;
+        }
         return locker.edit()
-                .putString(CLIENT_PIN_FIELD_PIN_SHA256, pinString)
+                .putString(CLIENT_PIN_FIELD_PIN_HMAC, Utils.bytesToHexString(mac))
+                .remove(CLIENT_PIN_FIELD_PIN_SHA256)
                 .commit();
     }
 
     public boolean isPinMatch(@NonNull byte[] pinTry) {
-        String pinTryString = Utils.bytesToHexString(pinTry);
+        String macReference = locker.getString(CLIENT_PIN_FIELD_PIN_HMAC, "");
+        if (!macReference.isEmpty()) {
+            try {
+                byte[] expected = hexStringToBytes(macReference);
+                return (expected != null) &&
+                       MessageDigest.isEqual(expected, pinHmac(pinTry));
+            } catch (GeneralSecurityException | IOException e) {
+                Log.e(TAG, "Cannot compute PIN HMAC", e);
+                return false;
+            }
+        }
+        // Legacy plain SHA-256 reference (pre-0.6.0): verify once, then upgrade
         String pinReference = locker.getString(CLIENT_PIN_FIELD_PIN_SHA256,
                 CLIENT_PIN_FIELD_PIN_SHA256_VALUE);
-
         if (pinReference.equals(CLIENT_PIN_FIELD_PIN_SHA256_VALUE)) return false;
-
-        return pinReference.equals(pinTryString);
+        byte[] legacy = hexStringToBytes(pinReference);
+        if ((legacy != null) && MessageDigest.isEqual(legacy, pinTry)) {
+            lockPin(pinTry);
+            return true;
+        }
+        return false;
     }
 
     public boolean isPinSet() {
-        String pinReference = locker.getString(CLIENT_PIN_FIELD_PIN_SHA256,
-                CLIENT_PIN_FIELD_PIN_SHA256_VALUE);
-
-        return !pinReference.equals(CLIENT_PIN_FIELD_PIN_SHA256_VALUE);
+        return !locker.getString(CLIENT_PIN_FIELD_PIN_HMAC, "").isEmpty() ||
+               !locker.getString(CLIENT_PIN_FIELD_PIN_SHA256,
+                       CLIENT_PIN_FIELD_PIN_SHA256_VALUE)
+                       .equals(CLIENT_PIN_FIELD_PIN_SHA256_VALUE);
     }
 
     public boolean resetPinLocker() {
+        try {
+            KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+            ks.load(null);
+            ks.deleteEntry(pinHmacAlias());
+        } catch (GeneralSecurityException | IOException e) {
+            Log.w(TAG, "Cannot delete PIN HMAC key", e);
+        }
         return locker.edit()
                 .putLong(CLIENT_PIN_FIELD_PIN_RETRIES, CLIENT_PIN_FIELD_PIN_RETRIES_VALUE)
                 .putString(CLIENT_PIN_FIELD_PIN_TOKEN, CLIENT_PIN_FIELD_PIN_TOKEN_VALUE)
-                .putString(CLIENT_PIN_FIELD_PIN_SHA256, CLIENT_PIN_FIELD_PIN_SHA256_VALUE)
+                .remove(CLIENT_PIN_FIELD_PIN_SHA256)
+                .remove(CLIENT_PIN_FIELD_PIN_HMAC)
                 .commit();
+    }
+
+    private String pinHmacAlias() {
+        return cpkAlias + PIN_HMAC_ALIAS_SUFFIX;
+    }
+
+    /** HMAC-SHA256 of the PIN hash under a Keystore key, created on demand */
+    private byte[] pinHmac(@NonNull byte[] pin)
+            throws GeneralSecurityException, IOException {
+        KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+        ks.load(null);
+        SecretKey key = (SecretKey) ks.getKey(pinHmacAlias(), null);
+        if (key == null) {
+            KeyGenerator kg = KeyGenerator.getInstance(
+                    KeyProperties.KEY_ALGORITHM_HMAC_SHA256, KEYSTORE_TYPE);
+            kg.init(new KeyGenParameterSpec.Builder(
+                    pinHmacAlias(),
+                    KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
+                    .build());
+            key = kg.generateKey();
+        }
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(key);
+        return mac.doFinal(pin);
     }
 
     @NotNull
@@ -180,6 +249,7 @@ public class ClientPinLocker {
         }
 
         keyStore.deleteEntry(cpkAlias);
+        keyStore.deleteEntry(pinHmacAlias());
     }
 
     public void decrementPinRetries() throws VirgilException {

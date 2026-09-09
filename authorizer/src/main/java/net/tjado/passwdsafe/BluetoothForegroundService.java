@@ -423,7 +423,6 @@ public class BluetoothForegroundService extends Service {
 
                 PasswdSafe.mTransactionManager.handleReport(data, (rawReports) -> {
                     for (byte[] report : rawReports) {
-                        PasswdSafeUtil.dbginfo(TAG, "Send report: " + Utils.bytesToHexString(report));
                         inputHost.sendReport(device, reportId, report);
                     }
                 });
