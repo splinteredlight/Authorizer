@@ -5,9 +5,16 @@ APP=net.tjado.passwdsafe
 DEV=/dev/hidg0          # overridden below from the function's dev attribute
 G=/config/usb_gadget/g1
 
-# Wait for the package manager and the gadget to be up
-until pm path "$APP" >/dev/null 2>&1; do sleep 2; done
+LOG=/data/adb/modules/authorizer-hid/last-run.log
+exec >"$LOG" 2>&1
+echo "start $(date)"
+
+# Wait for the gadget, and for the user's credential-encrypted storage to be
+# unlocked: /data/data/<app> is unreadable before the first unlock, and we
+# need its uid and SELinux categories.
 until [ -f "$G/UDC" ]; do sleep 2; done
+until stat -c %u "/data/data/$APP" >/dev/null 2>&1; do sleep 5; done
+echo "app data visible $(date)"
 
 # 1. Boot keyboard function (protocol 1, report_length 8); create if none
 HAVE=""
@@ -37,8 +44,11 @@ CTX=$(stat -c %C "/data/data/$APP")           # u:object_r:app_data_file:s0:cN,c
 CATS=${CTX##*:s0}; CATS=${CATS#:}
 magiskpolicy --live "allow untrusted_app device chr_file { getattr open read write ioctl }"
 
-# 3. Node ownership
-[ -c "$DEV" ] || sleep 3
+# 3. Node ownership (the node appears a moment after the UDC re-binds)
+for i in 1 2 3 4 5 6 7 8 9 10; do [ -c "$DEV" ] && break; sleep 1; done
+[ -c "$DEV" ] || { echo "no $DEV after gadget setup"; exit 1; }
 chown "$UID_:$UID_" "$DEV"
 chmod 600 "$DEV"
 chcon "u:object_r:device:s0${CATS:+:$CATS}" "$DEV"
+ls -lZ "$DEV"
+echo "done $(date)"
