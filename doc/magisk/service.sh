@@ -39,8 +39,8 @@ MINOR=$(cat "$HAVE/dev" | cut -d: -f2)
 [ -n "$MINOR" ] && DEV="/dev/hidg$MINOR"
 
 # 2. SELinux: allow the app's domain to use device chr_files
-UID_=$(stat -c %u "/data/data/$APP")
-CTX=$(stat -c %C "/data/data/$APP")           # u:object_r:app_data_file:s0:cN,cM
+UID_=$(/system/bin/stat -c %u "/data/data/$APP")
+CTX=$(/system/bin/stat -c %C "/data/data/$APP")           # u:object_r:app_data_file:s0:cN,cM
 CATS=${CTX##*:s0}; CATS=${CATS#:}
 magiskpolicy --live "allow untrusted_app device chr_file { getattr open read write ioctl }"
 
@@ -49,6 +49,6 @@ for i in 1 2 3 4 5 6 7 8 9 10; do [ -c "$DEV" ] && break; sleep 1; done
 [ -c "$DEV" ] || { echo "no $DEV after gadget setup"; exit 1; }
 chown "$UID_:$UID_" "$DEV"
 chmod 600 "$DEV"
-chcon "u:object_r:device:s0${CATS:+:$CATS}" "$DEV"
+/system/bin/chcon "u:object_r:device:s0${CATS:+:$CATS}" "$DEV"
 ls -lZ "$DEV"
 echo "done $(date)"
