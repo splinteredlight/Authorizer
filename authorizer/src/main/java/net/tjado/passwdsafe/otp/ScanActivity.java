@@ -2,10 +2,8 @@
  * FreeOTP
  *
  * Authors: Nathaniel McCallum <npmccallum@redhat.com>
- * Authors: Siemens AG <max.wittig@siemens.com>
  *
  * Copyright (C) 2013  Nathaniel McCallum, Red Hat
- * Copyright (C) 2017  Max Wittig, Siemens AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,150 +16,189 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * CameraX port (c) 2026 Authorizer contributors, GPL-3.0.
  */
-
 package net.tjado.passwdsafe.otp;
 
+import android.Manifest;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageView;
+import android.widget.TextView;
+
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
+import androidx.camera.core.Preview;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
+
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.Result;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.QRCodeReader;
 
 import net.tjado.passwdsafe.R;
+import net.tjado.passwdsafe.lib.PasswdSafeUtil;
 
-import io.fotoapparat.Fotoapparat;
-import io.fotoapparat.parameter.ScaleType;
-import io.fotoapparat.parameter.selector.FocusModeSelectors;
-import io.fotoapparat.view.CameraView;
+import java.nio.ByteBuffer;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.fotoapparat.parameter.selector.FocusModeSelectors.autoFocus;
-import static io.fotoapparat.parameter.selector.FocusModeSelectors.fixed;
-import static io.fotoapparat.parameter.selector.LensPositionSelectors.back;
-import static io.fotoapparat.parameter.selector.Selectors.firstAvailable;
-import static io.fotoapparat.parameter.selector.SizeSelectors.biggestSize;
-
-public class ScanActivity extends Activity
+/**
+ * Scan an otpauth:// QR code with the camera. Returns the decoded URI in the
+ * "uri" result extra.
+ */
+public class ScanActivity extends ComponentActivity
 {
-    private Fotoapparat fotoapparat;
-    private static ScanBroadcastReceiver receiver;
+    private static final String TAG = "ScanActivity";
 
-    public class ScanBroadcastReceiver extends BroadcastReceiver
+    private PreviewView itsPreview;
+    private TextView itsErrorText;
+    private ExecutorService itsAnalysisExecutor;
+    private ProcessCameraProvider itsCameraProvider;
+    private final AtomicBoolean itsDecoded = new AtomicBoolean(false);
+
+    private final ActivityResultLauncher<String> itsCameraPermission =
+            registerForActivityResult(
+                    new ActivityResultContracts.RequestPermission(),
+                    granted -> {
+                        if (granted) {
+                            startCamera();
+                        } else {
+                            showError();
+                        }
+                    });
+
+    public static boolean hasCamera(Context context)
     {
-        public static final String ACTION = "org.fedorahosted.freeotp.ACTION_CODE_SCANNED";
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String text = intent.getStringExtra("scanResult");
-            addTokenAndFinish(text);
-        }
-    }
-
-    public static boolean hasCamera(Context context) {
         PackageManager pm = context.getPackageManager();
-        return pm.hasSystemFeature(PackageManager.FEATURE_CAMERA);
+        return pm.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
     }
 
-    private void addTokenAndFinish(String uri) {
-        Token token = null;
-        try {
-            token = new Token(uri);
-        } catch (Token.TokenUriInvalidException e) {
-            e.printStackTrace();
+    @Override
+    protected void onCreate(Bundle savedInstanceState)
+    {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_otp_scan);
+        itsPreview = findViewById(R.id.camera_view);
+        itsErrorText = findViewById(R.id.textview);
+        itsAnalysisExecutor = Executors.newSingleThreadExecutor();
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED) {
+            startCamera();
+        } else {
+            itsCameraPermission.launch(Manifest.permission.CAMERA);
         }
+    }
 
-        //do not receive any more broadcasts
-        this.unregisterReceiver(receiver);
+    @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        if (itsAnalysisExecutor != null) {
+            itsAnalysisExecutor.shutdown();
+        }
+    }
 
+    private void startCamera()
+    {
+        var providerFuture = ProcessCameraProvider.getInstance(this);
+        providerFuture.addListener(() -> {
+            try {
+                itsCameraProvider = providerFuture.get();
+                bindCamera();
+            } catch (Exception e) {
+                PasswdSafeUtil.dbginfo(TAG, e, "camera provider");
+                showError();
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void bindCamera()
+    {
+        Preview preview = new Preview.Builder().build();
+        preview.setSurfaceProvider(itsPreview.getSurfaceProvider());
+
+        ImageAnalysis analysis = new ImageAnalysis.Builder()
+                .setBackpressureStrategy(
+                        ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build();
+        analysis.setAnalyzer(itsAnalysisExecutor, this::analyze);
+
+        try {
+            itsCameraProvider.unbindAll();
+            itsCameraProvider.bindToLifecycle(
+                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis);
+        } catch (Exception e) {
+            PasswdSafeUtil.dbginfo(TAG, e, "camera bind");
+            showError();
+        }
+    }
+
+    /** Decode a QR code from the luminance (Y) plane of a camera frame */
+    private void analyze(@NonNull ImageProxy image)
+    {
+        try {
+            if (itsDecoded.get()) {
+                return;
+            }
+            ImageProxy.PlaneProxy yPlane = image.getPlanes()[0];
+            ByteBuffer buf = yPlane.getBuffer();
+            byte[] data = new byte[buf.remaining()];
+            buf.get(data);
+            int rowStride = yPlane.getRowStride();
+            int height = image.getHeight();
+            int width = image.getWidth();
+
+            PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(
+                    data, rowStride, height, 0, 0, width, height, false);
+            Map<DecodeHintType, Object> hints = new EnumMap<>(DecodeHintType.class);
+            hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+            Result result = new QRCodeReader().decode(
+                    new BinaryBitmap(new HybridBinarizer(source)), hints);
+            if ((result != null) && itsDecoded.compareAndSet(false, true)) {
+                String text = result.getText();
+                runOnUiThread(() -> onCodeScanned(text));
+            }
+        } catch (NotFoundException e) {
+            // no code in this frame
+        } catch (Exception e) {
+            PasswdSafeUtil.dbginfo(TAG, e, "decode");
+        } finally {
+            image.close();
+        }
+    }
+
+    private void onCodeScanned(String uri)
+    {
+        if (itsCameraProvider != null) {
+            itsCameraProvider.unbindAll();
+        }
         Intent resultIntent = new Intent();
         resultIntent.putExtra("uri", uri);
         setResult(Activity.RESULT_OK, resultIntent);
         finish();
-/*
-        //check if token already exists
-        if (new TokenPersistence(ScanActivity.this).tokenExists(token)) {
-            finish();
-            return;
-        }
-
-        TokenPersistence.saveAsync(ScanActivity.this, token);
-        if (token == null || token.getImage() == null) {
-            finish();
-            return;
-        }
-
-        final ImageView image = (ImageView) findViewById(R.id.image);
-        Picasso.with(ScanActivity.this)
-                .load(token.getImage())
-                .placeholder(R.drawable.scan)
-                .into(image, new Callback() {
-                    @Override
-                    public void onSuccess() {
-                        findViewById(R.id.progress).setVisibility(View.INVISIBLE);
-                        image.setAlpha(0.9f);
-                        image.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                finish();
-                            }
-                        }, 2000);
-                    }
-
-                    @Override
-                    public void onError() {
-                        finish();
-                    }
-                });*/
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        try {
-            this.unregisterReceiver(receiver);
-        }
-        catch (IllegalArgumentException e) {
-            // catch exception, when trying to unregister receiver again
-            // there seems to be no way to check, if receiver if registered
-        }
-    }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        receiver = new ScanBroadcastReceiver();
-        this.registerReceiver(receiver, new IntentFilter(ScanBroadcastReceiver.ACTION));
-        setContentView(R.layout.activity_otp_scan);
-        CameraView cameraView = findViewById(R.id.camera_view);
-
-        fotoapparat = Fotoapparat
-                .with(this)
-                .into(cameraView)
-                .previewScaleType(ScaleType.CENTER_CROP)
-                .photoSize(biggestSize())
-                .lensPosition(back())
-                .focusMode(firstAvailable(
-                        FocusModeSelectors.continuousFocus(),
-                        autoFocus(),
-                        fixed()
-                ))
-                .frameProcessor(new ScanFrameProcessor(this))
-                .build();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        fotoapparat.start();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        fotoapparat.stop();
+    private void showError()
+    {
+        itsErrorText.setVisibility(View.VISIBLE);
     }
 }

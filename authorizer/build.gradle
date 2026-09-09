@@ -31,7 +31,7 @@ android {
     defaultConfig {
         applicationId 'net.tjado.passwdsafe'
         minSdk 26
-        targetSdk 34
+        targetSdk 37
         versionCode 500
         versionName '0.5.0'
 
@@ -138,7 +138,12 @@ dependencies {
     implementation 'com.mikepenz:devicon-typeface:5.1.0@aar'
     implementation 'org.bouncycastle:bcprov-jdk18on:1.85'
     implementation 'org.bouncycastle:bcpg-jdk18on:1.85'
-    implementation 'io.fotoapparat.fotoapparat:library:1.4.1'
+    // CameraX for OTP QR scanning (replaces the abandoned Fotoapparat)
+    def camerax_version = "1.6.2"
+    implementation "androidx.camera:camera-core:$camerax_version"
+    implementation "androidx.camera:camera-camera2:$camerax_version"
+    implementation "androidx.camera:camera-lifecycle:$camerax_version"
+    implementation "androidx.camera:camera-view:$camerax_version"
     implementation 'com.google.zxing:core:3.5.4'
 
     // FIDO (WebAuthn/U2F) dependencies

@@ -8,6 +8,9 @@
 package net.tjado.passwdsafe;
 
 import android.Manifest;
+import androidx.core.graphics.Insets;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.ViewCompat;
 import android.annotation.SuppressLint;
 import android.app.SearchManager;
 import android.bluetooth.BluetoothAdapter;
@@ -391,6 +394,7 @@ public class PasswdSafe extends AppCompatActivity
 
         setContentView(R.layout.activity_passwdsafe);
         itsIsTwoPane = (findViewById(R.id.two_pane) != null);
+        applyEdgeToEdgeInsets(findViewById(R.id.drawer_layout));
 
         itsContent = findViewById(R.id.content);
         itsNoPermGroup = findViewById(R.id.no_permission_group);
@@ -398,8 +402,8 @@ public class PasswdSafe extends AppCompatActivity
         itsPermissionMgr = new DynamicPermissionMgr(
                 this, REQUEST_STORAGE_PERM, REQUEST_APP_SETTINGS,
                 BuildConfig.APPLICATION_ID, R.id.reload, R.id.app_settings);
-        itsPermissionMgr.addPerm(Manifest.permission.WRITE_EXTERNAL_STORAGE, true);
-        itsPermissionMgr.addPerm(Manifest.permission.WRITE_EXTERNAL_STORAGE, true);
+        // Storage permissions are gone under scoped storage (API 30+); files
+        // are opened through the Storage Access Framework instead.
         itsPermissionMgr.addPerm(DynamicPermissionMgr.PERM_POST_NOTIFICATIONS, false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             itsPermissionMgr.addPerm(Manifest.permission.BLUETOOTH_SCAN, true);
@@ -630,7 +634,8 @@ public class PasswdSafe extends AppCompatActivity
         }
 
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-        registerReceiver(btStatusBroadcastReceiver, btStatusIntentFilter);
+        ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
+                                       ContextCompat.RECEIVER_NOT_EXPORTED);
 
         checkBluetoothState(null);
     }
@@ -1025,6 +1030,26 @@ public class PasswdSafe extends AppCompatActivity
     {
         invalidateOptionsMenu();
         return true;
+    }
+
+    /**
+     * Pad the root view by the system bar insets. Apps targeting API 35+
+     * are always edge-to-edge; the AppCompat action bar consumes the top
+     * inset itself, so this mostly keeps the bottom panels above the
+     * navigation bar.
+     */
+    private static void applyEdgeToEdgeInsets(View root)
+    {
+        if (root == null) {
+            return;
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() |
+                    WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     /**

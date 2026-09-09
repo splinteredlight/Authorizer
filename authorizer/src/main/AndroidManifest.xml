@@ -15,11 +15,8 @@
         android:name="net.tjado.passwdsafe.client.provider.permission.ACCESS"
         android:protectionLevel="signature"/>
 
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <!--Before Android 12-->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -30,13 +27,12 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
 
-    <!--suppress DeprecatedClassUsageInspection -->
-    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="net.tjado.passwdsafe.client.provider.permission.ACCESS"/>
     <uses-permission android:name="android.permission.NFC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
 
     <uses-feature
         android:name="android.hardware.nfc"
@@ -44,9 +40,9 @@
     <uses-feature
         android:name="android.hardware.usb.host"
         android:required="false"/>
-
-    <uses-sdk xmlns:tools="http://schemas.android.com/tools"
-        tools:overrideLibrary="android.support.v14.preference" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false"/>
 
     <queries>
         <provider android:authorities="net.tjado.passwdsafe.file" />
@@ -60,10 +56,6 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/PwsAppTheme">
-        <meta-data
-            android:name="com.sec.android.support.multiwindow"
-            android:value="true"/>
-
         <!-- Single UI-activity -->
         <activity
             android:name=".PasswdSafe"
@@ -76,7 +68,6 @@
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
-                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER"/>
             </intent-filter>
 
             <!-- View files -->
@@ -110,77 +101,6 @@
             <intent-filter>
                 <action android:name="net.tjado.passwdsafe.action.NEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-
-            <!-- Local files (legacy) -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-
-                <data android:host="*" android:scheme="file"/>
-                <!-- Handle some number of '.'s in the path -->
-                <data android:pathPattern=".*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\..*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.ibak"/>
-                <data android:mimeType="*/*"/>
-                <data android:mimeType="application/octet-stream"/>
-                <data android:mimeType="application/x-ibak"/>
-                <data android:mimeType="application/x-psafe"/>
-                <data android:mimeType="application/x-psafe3"/>
-                <data android:mimeType="application/application/octet-string"/>
-                <data android:mimeType="application/application/x-ibak"/>
-                <data android:mimeType="application/application/x-psafe"/>
-                <data android:mimeType="application/application/x-psafe3"/>
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-
-                <data android:host="*" android:scheme="file"/>
-                <!-- Handle some number of '.'s in the path -->
-                <data android:pathPattern=".*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.dat"/>
-                <data android:mimeType="application/x-ns-proxy-autoconfig"/>
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-
-                <data android:host="*" android:scheme="file"/>
-                <!-- Handle some number of '.'s in the path -->
-                <data android:pathPattern=".*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.psafe3"/>
-                <data android:pathPattern=".*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.dat"/>
-                <data android:pathPattern=".*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\..*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.ibak"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.ibak"/>
             </intent-filter>
 
             <!-- Content providers - e.g. opening from other apps -->
@@ -308,6 +228,7 @@
         </service>
         <service
             android:name=".BluetoothForegroundService"
+            android:foregroundServiceType="connectedDevice"
             android:exported="false">
         </service>
     </application>

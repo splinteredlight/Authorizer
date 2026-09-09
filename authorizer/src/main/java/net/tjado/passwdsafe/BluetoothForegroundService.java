@@ -1,6 +1,9 @@
 package net.tjado.passwdsafe;
 
 import android.annotation.SuppressLint;
+import androidx.core.content.ContextCompat;
+import android.content.pm.ServiceInfo;
+import androidx.core.app.ServiceCompat;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -103,7 +106,8 @@ public class BluetoothForegroundService extends Service {
         // A service needs to manage its own lifecycle - if Bluetooth gets deactivated the service
         // needs to terminate itself. It can't be done by the activity as it might be not running.
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-        registerReceiver(btStatusBroadcastReceiver, btStatusIntentFilter);
+        ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
+                                       ContextCompat.RECEIVER_NOT_EXPORTED);
 
         PasswdSafeUtil.dbginfo(TAG,"Executing onStartCommand - " + intent);
         createNotificationChannel();
@@ -165,7 +169,9 @@ public class BluetoothForegroundService extends Service {
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .setOngoing(true);
 
-        startForeground(MAIN_NOTIFICATION_ID, serviceNotificationBuilder.build());
+        ServiceCompat.startForeground(
+                this, MAIN_NOTIFICATION_ID, serviceNotificationBuilder.build(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
     }
 
     private void endBroadcast() {
