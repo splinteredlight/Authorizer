@@ -371,23 +371,22 @@ public class PasswdSafeListFragmentTree extends ListFragment
             return super.onContextItemSelected(item);
         }
 
-        switch (item.getItemId()) {
-        case R.id.menu_copy_password:
-        case R.id.menu_copy_user: {
-                AdapterView.AdapterContextMenuInfo info =
+        int itemId = item.getItemId();
+        if ((itemId == R.id.menu_copy_password) ||
+            (itemId == R.id.menu_copy_user)) {
+            AdapterView.AdapterContextMenuInfo info =
                     (AdapterView.AdapterContextMenuInfo)item.getMenuInfo();
             final PasswdRecordListData listItem =
                     itsAdapter.getItem(info.position);
             if (listItem.itsIsRecord) {
                 itsSelectedRecord = listItem.itsUuid;
                 itsListener.copyField(
-                        (item.getItemId() == R.id.menu_copy_password) ?
+                        (itemId == R.id.menu_copy_password) ?
                         CopyField.PASSWORD : CopyField.USER_NAME,
                         listItem.itsUuid);
             }
 
             return true;
-        }
         }
         return super.onContextItemSelected(item);
     }

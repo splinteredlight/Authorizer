@@ -1231,25 +1231,19 @@ public class PasswdSafeEditRecordFragment
      */
     private void initProtViews(View v)
     {
-        switch (v.getId()) {
-        case R.id.password_current_input:
-        case R.id.password_current: {
-            break;
-        }
-        case R.id.expire_date_date:
-        case R.id.expire_date_time:
-        case R.id.link_ref:
-        case R.id.password_generate: {
+        // Resource ids are not compile-time constants under AGP 9, so no switch
+        int id = v.getId();
+        if ((id == R.id.password_current_input) ||
+            (id == R.id.password_current)) {
+            // not protected
+        } else if ((id == R.id.expire_date_date) ||
+                   (id == R.id.expire_date_time) ||
+                   (id == R.id.link_ref) ||
+                   (id == R.id.password_generate)) {
             itsProtectViews.add(v);
-            break;
-        }
-        default: {
-            if ((v instanceof Spinner) || (v instanceof TextInputLayout) ||
-                (v instanceof EditText) || (v instanceof Button)) {
-                itsProtectViews.add(v);
-            }
-            break;
-        }
+        } else if ((v instanceof Spinner) || (v instanceof TextInputLayout) ||
+                   (v instanceof EditText) || (v instanceof Button)) {
+            itsProtectViews.add(v);
         }
 
         if (v instanceof ViewGroup) {

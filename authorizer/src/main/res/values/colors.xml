@@ -34,4 +34,9 @@
     <color name="text_color_green_light">#FF99CC00</color>
     <color name="text_color_green_dark">#FF669900</color>
 
+    <!-- Material palette values formerly provided by the removed
+         com.mikepenz:materialize library -->
+    <color name="md_grey_100">#FFF5F5F5</color>
+    <color name="md_grey_700">#FF616161</color>
+    <color name="md_white_1000">#FFFFFFFF</color>
 </resources>

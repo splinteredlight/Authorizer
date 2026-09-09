@@ -19,7 +19,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.mikepenz.iconics.Iconics;
-import com.mikepenz.material_design_iconic_typeface_library.MaterialDesignIconic;
+import com.mikepenz.iconics.typeface.library.devicon.DevIcon;
+import com.mikepenz.iconics.typeface.library.materialdesigniconic.MaterialDesignIconic;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -97,7 +98,8 @@ public final class PasswdSafeApp extends Application
         }
         Preferences.upgrade(prefs, this);
 
-        Iconics.registerFont(new MaterialDesignIconic());
+        Iconics.registerFont(MaterialDesignIconic.INSTANCE);
+        Iconics.registerFont(DevIcon.INSTANCE);
 
         initPrefs(prefs);
 

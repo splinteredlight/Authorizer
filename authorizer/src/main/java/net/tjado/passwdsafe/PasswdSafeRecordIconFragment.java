@@ -26,7 +26,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.MotionEvent;
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -38,20 +37,15 @@ import net.tjado.passwdsafe.lib.ObjectHolder;
 import net.tjado.passwdsafe.lib.PasswdSafeUtil;
 import net.tjado.passwdsafe.util.Pair;
 import net.tjado.passwdsafe.view.PasswdLocation;
-import net.tjado.passwdsafe.view.PasswdRecordIconItem;
+import net.tjado.passwdsafe.view.PasswdRecordIconAdapter;
 import net.tjado.passwdsafe.view.GridAutofitLayoutManager;
 
 import org.pwsafe.lib.file.PwsRecord;
 
-import com.mikepenz.fastadapter.FastAdapter;
-import com.mikepenz.fastadapter.IAdapter;
-import com.mikepenz.fastadapter.adapters.FastItemAdapter;
 import com.mikepenz.iconics.Iconics;
 import com.mikepenz.iconics.typeface.ITypeface;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,9 +56,9 @@ public class PasswdSafeRecordIconFragment
         extends AbstractPasswdSafeRecordFragment
 {
 
-    private ArrayList<PasswdRecordIconItem> icons = new ArrayList<>();
-    private HashMap<String, PasswdRecordIconItem> iconsMap = new HashMap<>();
-    private FastItemAdapter<PasswdRecordIconItem> mAdapter;
+    private final ArrayList<String> icons = new ArrayList<>();
+    private PasswdRecordIconAdapter mAdapter;
+    private RecyclerView itsRecyclerView;
 
     private SearchView itsSearchView;
 
@@ -146,39 +140,42 @@ public class PasswdSafeRecordIconFragment
         final float scale = getResources().getDisplayMetrics().density;
         final int spaceWidth = (int) (56.0f * scale + 0.5f);
 
-        RecyclerView recyclerView = view.findViewById(R.id.list);
-        recyclerView.setLayoutManager(new GridAutofitLayoutManager(getActivity(), spaceWidth));
-        //animator not yet working
-        recyclerView.setItemAnimator(new DefaultItemAnimator());
-        mAdapter = new FastItemAdapter<>();
-        configAdapter();
-        recyclerView.setAdapter(mAdapter);
+        itsRecyclerView = view.findViewById(R.id.list);
+        itsRecyclerView.setLayoutManager(
+                new GridAutofitLayoutManager(getActivity(), spaceWidth));
+        itsRecyclerView.setItemAnimator(new DefaultItemAnimator());
 
-        // sort them... I want to have the devicon set before material design set
-        final List<ITypeface> mFonts = new ArrayList<>(Iconics.getRegisteredFonts(getActivity()));
-        Collections.sort(mFonts, (object1, object2) -> object1.getFontName().compareTo(object2.getFontName()));
+        // Sort the fonts so the icon sets appear in a stable order
+        final List<ITypeface> fonts =
+                new ArrayList<>(Iconics.getRegisteredFonts(requireContext()));
+        Collections.sort(fonts, (o1, o2) -> o1.getFontName().compareTo(o2.getFontName()));
+        icons.clear();
+        for (ITypeface typeface : fonts) {
+            PasswdSafeUtil.dbginfo(TAG, "Font: " + typeface.getFontName());
+            icons.addAll(typeface.getIcons());
+        }
 
-        for (ITypeface iTypeface : mFonts) {
-            PasswdSafeUtil.dbginfo(TAG, "Font: " + iTypeface.getFontName() );
-
-            if (iTypeface.getIcons() != null) {
-                for (String icon : iTypeface.getIcons()) {
-                    PasswdRecordIconItem iconItem = new PasswdRecordIconItem(icon);
-                    icons.add(iconItem);
-                    iconsMap.put(icon, iconItem);
-                }
-                mAdapter.set(icons);
+        mAdapter = new PasswdRecordIconAdapter(icons, icon -> {
+            if (itsSearchView.hasFocus()) {
+                itsSearchView.clearFocus();
             }
-        }
-
-        try {
-            recyclerView.scrollToPosition( mAdapter.getPosition(iconsMap.get(currentIcon)) );
-        } catch (Exception e) {
-            PasswdSafeUtil.dbginfo(TAG, "can't scroll...");
-        }
-
+            saveIconChange(icon);
+            refreshIconHighlight(icon);
+        });
+        itsRecyclerView.setAdapter(mAdapter);
+        scrollToIcon(currentIcon);
     }
 
+    private void scrollToIcon(String icon)
+    {
+        if ((itsRecyclerView == null) || (mAdapter == null)) {
+            return;
+        }
+        int pos = mAdapter.positionOf(icon);
+        if (pos >= 0) {
+            itsRecyclerView.scrollToPosition(pos);
+        }
+    }
 
     @Override
     protected void doOnCreateOptionsMenu(Menu menu, MenuInflater inflater)
@@ -196,119 +193,21 @@ public class PasswdSafeRecordIconFragment
     protected void doRefresh(@NonNull RecordInfo info)
     {
         PasswdSafeUtil.dbginfo(TAG, "doRefresh");
-
-        if( currentIcon == null ) {
+        if (currentIcon == null) {
             currentIcon = info.itsFileData.getIcon(info.itsRec);
-
-            PasswdRecordIconItem newIconItem = iconsMap.get(currentIcon);
-            if( newIconItem != null ) {
-                newIconItem.setHighlight();
-
-                RecyclerView recyclerView = (RecyclerView) getView().findViewById(R.id.list);
-                if( recyclerView != null && mAdapter != null ) {
-                    recyclerView.scrollToPosition(mAdapter.getPosition(newIconItem));
-                }
+            if (mAdapter != null) {
+                mAdapter.setSelectedIcon(currentIcon);
+                scrollToIcon(currentIcon);
             }
-
         }
     }
 
-    protected synchronized void refreshIconHighlight(String newIcon) {
-
-        if( currentIcon != null && ! currentIcon.equals(newIcon) ) {
-            PasswdRecordIconItem currentIconItem = iconsMap.get(currentIcon);
-            if( currentIconItem != null ) {
-                currentIconItem.unsetHighlight();
-            }
-        }
-
-        PasswdRecordIconItem newIconItem = iconsMap.get(newIcon);
-        if( newIconItem != null ) {
-            newIconItem.setHighlight();
-        }
-
-        currentIcon = newIcon;
-    }
-
-    private void configAdapter()
+    private synchronized void refreshIconHighlight(String newIcon)
     {
-        //our popup on touch
-        mAdapter.withOnTouchListener(new FastAdapter.OnTouchListener<PasswdRecordIconItem>()
-        {
-            @Override
-            public boolean onTouch(View v, MotionEvent motionEvent,
-                                   IAdapter<PasswdRecordIconItem> adapter, PasswdRecordIconItem item,
-                                   int position)
-            {
-                if( itsSearchView.hasFocus() ) {
-                    itsSearchView.clearFocus();
-                }
-
-                // thanks to http://stackoverflow.com/a/29933115
-                switch (motionEvent.getAction()) {
-                    case MotionEvent.ACTION_DOWN: {
-                        pressStartTime = System.currentTimeMillis();
-                        pressedX = motionEvent.getX();
-                        pressedY = motionEvent.getY();
-                        stayedWithinClickDistance = true;
-                        break;
-                    }
-                    case MotionEvent.ACTION_MOVE: {
-                        if (stayedWithinClickDistance && distance(pressedX, pressedY, motionEvent.getX(), motionEvent.getY()) > MAX_CLICK_DISTANCE) {
-                            stayedWithinClickDistance = false;
-                        }
-                        break;
-                    }
-                    case MotionEvent.ACTION_UP: {
-                        long pressDuration = System.currentTimeMillis() - pressStartTime;
-                        if (pressDuration < MAX_CLICK_DURATION && stayedWithinClickDistance) {
-
-                            saveIconChange(item.getIcon());
-                            refreshIconHighlight(item.getIcon());
-                        }
-                    }
-                }
-                return true;
-            }
-
-            private float distance(float x1, float y1, float x2, float y2) {
-                float dx = x1 - x2;
-                float dy = y1 - y2;
-                float distanceInPx = (float) Math.sqrt(dx * dx + dy * dy);
-                return pxToDp(distanceInPx);
-            }
-
-            private float pxToDp(float px) {
-                return px / getResources().getDisplayMetrics().density;
-            }
-        });
-
-        mAdapter.withOnBindViewHolderListener(
-                new FastAdapter.OnBindViewHolderListener()
-                {
-                    @Override
-                    public void onBindViewHolder(
-                            RecyclerView.ViewHolder viewHolder, int position,
-                            List payloads)
-                    {
-                        PasswdRecordIconItem.ViewHolder holder = (PasswdRecordIconItem.ViewHolder)viewHolder;
-
-                        viewHolder.itemView.setSelected(selectedPos == position);
-
-                        //as we overwrite the default listener
-                        mAdapter.getItem(position).bindView(holder, payloads);
-                    }
-
-                    @Override
-                    public void unBindViewHolder(
-                            RecyclerView.ViewHolder viewHolder, int position)
-                    {
-                        PasswdRecordIconItem item = mAdapter.getItem(position);
-                        if (item != null) {
-                            item.unbindView((PasswdRecordIconItem.ViewHolder)viewHolder);
-                        }
-                    }
-                });
+        currentIcon = newIcon;
+        if (mAdapter != null) {
+            mAdapter.setSelectedIcon(newIcon);
+        }
     }
 
     void saveIconChange(final String itemValue) {
@@ -354,23 +253,10 @@ public class PasswdSafeRecordIconFragment
         getListener().finishEditRecord(rc.get().first, rc.get().second, false);
     }
 
-    void onSearch(String s) {
-
+    void onSearch(String s)
+    {
         if (mAdapter != null) {
-            if (TextUtils.isEmpty(s)) {
-                mAdapter.clear();
-                mAdapter.setNewList(icons);
-            } else {
-                AbstractList<PasswdRecordIconItem> tmpList = new ArrayList<>();
-                for (PasswdRecordIconItem icon : icons) {
-                    if (icon.getIcon().toLowerCase().contains(s.toLowerCase())) {
-                        tmpList.add(icon);
-                    }
-                }
-                mAdapter.setNewList(tmpList);
-            }
+            mAdapter.setFilter(s);
         }
     }
-
 }
-

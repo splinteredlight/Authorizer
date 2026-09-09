@@ -86,17 +86,10 @@ public class AddActivity extends Activity
 
     @Override
     public void onClick(View view) {
-        switch (view.getId()) {
-        //case R.id.image:
-        //    startActivityForResult(new Intent(Intent.ACTION_PICK,
-        //                                      android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI), 0);
-        //    break;
-
-        case R.id.cancel:
+        int viewId = view.getId();
+        if (viewId == R.id.cancel) {
             finish();
-            break;
-
-        case R.id.add:
+        } else if (viewId == R.id.add) {
             // Get the fields
             String issuer = "";
             String label = "";
@@ -135,7 +128,6 @@ public class AddActivity extends Activity
             resultIntent.putExtra("uri", uri);
             setResult(Activity.RESULT_OK, resultIntent);
             finish();
-            break;
         }
     }
 
