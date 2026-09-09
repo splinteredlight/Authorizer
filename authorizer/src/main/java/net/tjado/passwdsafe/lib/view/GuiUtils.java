@@ -348,10 +348,6 @@ public final class GuiUtils
     public static NotificationCompat.Builder createNotificationBuilder(
             Context ctx)
     {
-        if (ApiCompat.SDK_VERSION >= ApiCompat.SDK_OREO) {
-            return GuiUtilsOreo.createNotificationBuilder(ctx);
-        }
-        //noinspection deprecation
-        return new NotificationCompat.Builder(ctx);
+        return GuiUtilsOreo.createNotificationBuilder(ctx);
     }
 }

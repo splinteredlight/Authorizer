@@ -2786,8 +2786,7 @@ public class PasswdSafe extends AppCompatActivity
                 act.editFinished(itsSaveInfo);
             } else if (error != null) {
                 String msg = error.toString();
-                if ((error instanceof IOException) &&
-                    (ApiCompat.SDK_VERSION >= ApiCompat.SDK_KITKAT)) {
+                if (error instanceof IOException) {
                     msg = act.getString(R.string.kitkat_sdcard_warning, msg);
                 }
                 PasswdSafeUtil.showFatalMsg(error, msg, act);

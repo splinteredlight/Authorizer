@@ -94,6 +94,12 @@ android {
     testOptions {
         animationsDisabled true
     }
+    lint {
+        // Lint 9.4's SARIF writer crashes (ArrayIndexOutOfBounds in
+        // SarifReporter.computeContext) on this tree; the html/xml/txt
+        // reports are enough.
+        sarifReport false
+    }
 }
 
 if (project.file('../sign/sign.gradle').exists()) {

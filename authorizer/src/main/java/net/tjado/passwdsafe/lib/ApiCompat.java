@@ -8,6 +8,12 @@
 package net.tjado.passwdsafe.lib;
 
 import android.app.NotificationManager;
+import java.util.ArrayList;
+import android.provider.DocumentsContract;
+import android.os.PersistableBundle;
+import android.content.UriPermission;
+import android.content.ClipDescription;
+import android.app.PendingIntent;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
@@ -23,7 +29,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -32,10 +37,7 @@ import java.util.List;
  */
 public final class ApiCompat
 {
-    public static final int SDK_KITKAT = 19;
-    private static final int SDK_M = 23;
-    private static final int SDK_N = 24;
-    public static final int SDK_OREO = 26;
+    // minSdk is 26 (Oreo); constants below that are gone with their shims.
     private static final int SDK_P = 28;
     public static final int SDK_Q = 29;
     private static final int SDK_TIRAMISU = 33;
@@ -60,11 +62,7 @@ public final class ApiCompat
     @SuppressWarnings("SameParameterValue")
     public static File[] getExternalFilesDirs(Context ctx, String type)
     {
-        if (SDK_VERSION >= SDK_KITKAT) {
-            return ApiCompatKitkat.getExternalFilesDirs(ctx, type);
-        } else {
-            return new File[] {ctx.getExternalFilesDir(type)};
-        }
+        return ctx.getExternalFilesDirs(type);
     }
 
 
@@ -77,13 +75,6 @@ public final class ApiCompat
     }
 
 
-    /**
-     * Is the write external storage permission supported
-     */
-    public static boolean supportsWriteExternalStoragePermission()
-    {
-        return SDK_VERSION < SDK_TIRAMISU;
-    }
 
 
     /**
@@ -108,11 +99,7 @@ public final class ApiCompat
     public static boolean areNotificationsEnabled(
             @NonNull NotificationManager notifyMgr)
     {
-        if (SDK_VERSION >= SDK_N) {
-            return ApiCompatN.areNotificationsEnabled(notifyMgr);
-        } else {
-            return true;
-        }
+        return notifyMgr.areNotificationsEnabled();
     }
 
 
@@ -121,8 +108,10 @@ public final class ApiCompat
                                                     Uri uri,
                                                     int flags)
     {
-        if (SDK_VERSION >= SDK_KITKAT) {
-            ApiCompatKitkat.takePersistableUriPermission(cr, uri, flags);
+        try {
+            cr.takePersistableUriPermission(uri, flags);
+        } catch (SecurityException e) {
+            PasswdSafeUtil.dbginfo("ApiCompat", e, "takePersistableUriPermission");
         }
     }
 
@@ -133,8 +122,10 @@ public final class ApiCompat
                                                        Uri uri,
                                                        int flags)
     {
-        if (SDK_VERSION >= SDK_KITKAT) {
-            ApiCompatKitkat.releasePersistableUriPermission(cr, uri, flags);
+        try {
+            cr.releasePersistableUriPermission(uri, flags);
+        } catch (SecurityException e) {
+            PasswdSafeUtil.dbginfo("ApiCompat", e, "releasePersistableUriPermission");
         }
     }
 
@@ -142,26 +133,27 @@ public final class ApiCompat
     /** API compatible call for ContentResolver.getPersistedUriPermissions */
     public static List<Uri> getPersistedUriPermissions(ContentResolver cr)
     {
-        if (SDK_VERSION >= SDK_KITKAT) {
-            return ApiCompatKitkat.getPersistedUriPermissions(cr);
+        List<UriPermission> perms = cr.getPersistedUriPermissions();
+        List<Uri> uris = new ArrayList<>(perms.size());
+        for (UriPermission perm : perms) {
+            uris.add(perm.getUri());
         }
-        return Collections.emptyList();
+        return uris;
     }
 
 
-    /** Can the account manager get an auth token with showing a dialog */
-    public static boolean canAccountMgrGetAuthTokenWithDialog()
-    {
-        return SDK_VERSION < SDK_KITKAT;
-    }
 
 
     /** API compatible call for DocumentsContract.deleteDocument */
     public static boolean documentsContractDeleteDocument(ContentResolver cr,
                                                           Uri uri)
     {
-        return (SDK_VERSION >= SDK_KITKAT) &&
-               ApiCompatKitkat.documentsContractDeleteDocument(cr, uri);
+        try {
+            return DocumentsContract.deleteDocument(cr, uri);
+        } catch (Exception e) {
+            PasswdSafeUtil.dbginfo("ApiCompat", e, "deleteDocument");
+            return false;
+        }
     }
 
     /**
@@ -214,9 +206,7 @@ public final class ApiCompat
             InputMethodManager imm,
             IBinder imeToken)
     {
-        return (SDK_VERSION >= SDK_KITKAT) &&
-               ApiCompatKitkat.shouldOfferSwitchingToNextInputMethod(imm,
-                                                                     imeToken);
+        return imm.shouldOfferSwitchingToNextInputMethod(imeToken);
     }
 
     /**
@@ -228,9 +218,7 @@ public final class ApiCompat
                                                   IBinder imeToken,
                                                   boolean onlyCurrentIme)
     {
-        return (SDK_VERSION >= SDK_KITKAT) &&
-               ApiCompatKitkat.switchToNextInputMethod(imm, imeToken,
-                                                       onlyCurrentIme);
+        return imm.switchToNextInputMethod(imeToken, onlyCurrentIme);
     }
 
     /**
@@ -239,8 +227,7 @@ public final class ApiCompat
     public static boolean hasVibrator(Context ctx)
     {
         Vibrator vib = (Vibrator)ctx.getSystemService(Context.VIBRATOR_SERVICE);
-        return (vib != null) &&
-               ((SDK_VERSION < SDK_KITKAT) || ApiCompatKitkat.hasVibrator(vib));
+        return (vib != null) && vib.hasVibrator();
     }
 
     /**
@@ -248,8 +235,7 @@ public final class ApiCompat
      */
     public static int getPendingIntentImmutableFlag()
     {
-        return (SDK_VERSION < SDK_M) ?
-                0 : ApiCompatM.PENDING_INTENT_FLAG_IMMUTABLE;
+        return PendingIntent.FLAG_IMMUTABLE;
     }
 
     /**
@@ -264,8 +250,10 @@ public final class ApiCompat
                 ctx.getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipMgr != null) {
             ClipData clip = ClipData.newPlainText(null, str);
-            if (sensitive && (SDK_VERSION >= SDK_N)) {
-                ApiCompatN.setClipboardSensitive(clip);
+            if (sensitive) {
+                PersistableBundle extras = new PersistableBundle();
+                extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
+                clip.getDescription().setExtras(extras);
             }
             clipMgr.setPrimaryClip(clip);
         }
