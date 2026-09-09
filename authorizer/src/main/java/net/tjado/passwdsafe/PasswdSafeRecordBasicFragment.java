@@ -1241,10 +1241,13 @@ public class PasswdSafeRecordBasicFragment
             HidGadgetSetup.ensureReadyAsync(devicePath, new HidGadgetSetup.ReadyCallback()
             {
                 @Override
-                public void onReady()
+                public void onReady(@NonNull String readyPath)
                 {
                     if (isAdded()) {
-                        autotypeUsbNow(devicePath, lang, sendUsername,
+                        if (!readyPath.equals(devicePath)) {
+                            Preferences.setUsbHidDevicePath(prefs, readyPath);
+                        }
+                        autotypeUsbNow(readyPath, lang, sendUsername,
                                        sendPassword, sendOTP);
                     }
                 }

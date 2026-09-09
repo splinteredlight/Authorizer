@@ -1382,8 +1382,11 @@ public class PasswdSafe extends AppCompatActivity
             HidGadgetSetup.ensureReadyAsync(devicePath, new HidGadgetSetup.ReadyCallback()
             {
                 @Override
-                public void onReady()
+                public void onReady(@NonNull String readyPath)
                 {
+                    if (!readyPath.equals(devicePath)) {
+                        Preferences.setUsbHidDevicePath(prefs, readyPath);
+                    }
                     sendCredentialOverUsbByRecordLocation(recUuid);
                 }
 

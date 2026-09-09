@@ -573,6 +573,12 @@ public class Preferences
                PREF_USB_HID_DEVICE_DEF : path.trim();
     }
 
+    /** Persist the USB HID device path resolved by the root setup */
+    public static void setUsbHidDevicePath(SharedPreferences prefs, String path)
+    {
+        prefs.edit().putString(PREF_USB_HID_DEVICE, path).apply();
+    }
+
     /**
      * Get whether to run the root HID setup automatically when the device
      * is not writable

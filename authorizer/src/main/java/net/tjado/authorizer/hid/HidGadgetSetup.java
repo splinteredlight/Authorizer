@@ -39,10 +39,12 @@ import java.util.concurrent.Executors;
  *
  * What it does (all steps are idempotent):
  * <ol>
- * <li>If the gadget has no hid.* function, create one with the standard
- *     8-byte boot keyboard report descriptor, link it into the first config
- *     and re-bind the UDC. (Skipped when hid.* already exists, e.g. when it
- *     was created by hand or by another tool.)</li>
+ * <li>Find a hid.* function that is a boot keyboard with 8-byte reports
+ *     (protocol 1, report_length 8). Other tools' functions, e.g.
+ *     android-hid-client's report-ID keyboard, are left alone. If none
+ *     exists, create hid.authorizer with the standard boot keyboard
+ *     descriptor, link it into the first config and re-bind the UDC. The
+ *     /dev/hidgN node is resolved from the function's "dev" attribute.</li>
  * <li>Live-patch SELinux so this app's domain may open/read/write chr_file
  *     nodes of type "device" (magiskpolicy --live, or ksud on KernelSU).
  *     The patch lasts until reboot; see doc/HID_SETUP.md for a Magisk
@@ -59,7 +61,7 @@ public final class HidGadgetSetup
 
     public static final String DEFAULT_DEVICE = "/dev/hidg0";
     private static final String CONFIGFS = "/config/usb_gadget";
-    private static final String FUNCTION_NAME = "hid.usb0";
+    private static final String FUNCTION_NAME = "hid.authorizer";
 
     /**
      * USB HID boot-protocol keyboard report descriptor, 63 bytes, no report
@@ -84,9 +86,9 @@ public final class HidGadgetSetup
 
     static {
         Shell.enableVerboseLogging = net.tjado.passwdsafe.BuildConfig.DEBUG;
-        Shell.setDefaultBuilder(Shell.Builder.create()
-                                             .setFlags(Shell.FLAG_MOUNT_MASTER)
-                                             .setTimeout(20));
+        // No mount-master: configfs and /dev are in the global namespace, and
+        // the flag makes libsu issue two su requests (Magisk prompts twice).
+        Shell.setDefaultBuilder(Shell.Builder.create().setTimeout(30));
     }
 
     /** Outcome of a preparation run */
@@ -95,20 +97,33 @@ public final class HidGadgetSetup
         public final boolean success;
         public final String message;
         public final List<String> log;
+        /** The node that was prepared (may differ from the requested one) */
+        public final String devicePath;
 
         Result(boolean success, String message, List<String> log)
+        {
+            this(success, message, log, null);
+        }
+
+        Result(boolean success, String message, List<String> log,
+               String devicePath)
         {
             this.success = success;
             this.message = message;
             this.log = log;
+            this.devicePath = devicePath;
         }
     }
 
     /** Callback for {@link #ensureReadyAsync} */
     public interface ReadyCallback
     {
-        /** Called on the main thread when the device is writable */
-        void onReady();
+        /**
+         * Called on the main thread when the device is writable.
+         * @param devicePath the node to use; callers should persist it if
+         *                   it differs from their preference
+         */
+        void onReady(@NonNull String devicePath);
 
         /** Called on the main thread when it could not be made writable */
         void onFailed(@NonNull String message);
@@ -142,14 +157,14 @@ public final class HidGadgetSetup
                                         @NonNull ReadyCallback cb)
     {
         if (HidStatus.probe(devicePath).isReady()) {
-            cb.onReady();
+            cb.onReady(devicePath);
             return;
         }
         itsExecutor.execute(() -> {
             Result res = prepare(devicePath);
             itsMainHandler.post(() -> {
                 if (res.success) {
-                    cb.onReady();
+                    cb.onReady(res.devicePath);
                 } else {
                     cb.onFailed(res.message);
                 }
@@ -172,13 +187,23 @@ public final class HidGadgetSetup
      */
     @WorkerThread
     @NonNull
-    public static Result prepare(@NonNull String devicePath)
+    public static Result prepare(@NonNull String requestedPath)
     {
         List<String> log = new ArrayList<>();
+        String devicePath = requestedPath;
         try {
             Shell shell = Shell.getShell();
             if (!shell.isRoot()) {
-                return new Result(false, "Root access denied", log);
+                // libsu caches the shell it got; a rejected or unanswered
+                // Magisk prompt leaves a non-root shell cached, which would
+                // make every later attempt fail until the process restarts.
+                try {
+                    shell.close();
+                } catch (IOException ignored) {
+                }
+                return new Result(false,
+                                  "Root access denied. Grant Authorizer in Magisk/KernelSU and try again",
+                                  log);
             }
 
             String ctx = readOwnSelinuxContext();
@@ -209,11 +234,21 @@ public final class HidGadgetSetup
                                   " (is CONFIG_USB_CONFIGFS_F_HID enabled?)",
                                   log);
             }
-            if (!hasHidFunction(gadget, log)) {
+            String fnDev = findBootKeyboardFunction(gadget, log);
+            if (fnDev == null) {
                 Result r = createHidFunction(gadget, log);
                 if (!r.success) {
                     return r;
                 }
+                fnDev = findBootKeyboardFunction(gadget, log);
+            }
+            String resolved = resolveDeviceNode(fnDev, log);
+            if (resolved != null) {
+                if (!resolved.equals(devicePath)) {
+                    log.add("boot keyboard function is " + resolved +
+                            " (preference was " + devicePath + ")");
+                }
+                devicePath = resolved;
             }
             if (!Shell.cmd("[ -c '" + devicePath + "' ]").exec().isSuccess()) {
                 return new Result(false, devicePath +
@@ -249,7 +284,8 @@ public final class HidGadgetSetup
                                          " is still not writable after setup (check dmesg for avc denials)",
                                   log);
             }
-            return new Result(true, "USB HID device ready: " + devicePath, log);
+            return new Result(true, "USB HID device ready: " + devicePath, log,
+                              devicePath);
         } catch (Exception e) {
             Utilities.dbginfo(TAG, "prepare failed: " + e);
             log.add("exception: " + e);
@@ -283,20 +319,55 @@ public final class HidGadgetSetup
         return null;
     }
 
-    private static boolean hasHidFunction(String gadget, List<String> log)
+    /**
+     * Find a hid.* function that is a boot keyboard with 8-byte reports.
+     * @return the function's "dev" attribute (major:minor), or null
+     */
+    @Nullable
+    private static String findBootKeyboardFunction(String gadget,
+                                                   List<String> log)
     {
-        Shell.Result r = Shell.cmd("ls '" + gadget + "/functions'").exec();
-        for (String f : r.getOut()) {
-            if (f.trim().startsWith("hid.")) {
-                log.add("existing function: " + f.trim());
-                return true;
+        Shell.Result r = Shell.cmd(
+                "for f in '" + gadget + "'/functions/hid.*; do " +
+                "[ -d \"$f\" ] || continue; " +
+                "echo \"$(basename $f) $(cat $f/protocol) $(cat $f/report_length) $(cat $f/dev 2>/dev/null)\"; done").exec();
+        for (String line : r.getOut()) {
+            String[] cols = line.trim().split("\\s+");
+            if (cols.length < 3) {
+                continue;
+            }
+            log.add("function " + line.trim());
+            if ("1".equals(cols[1]) && "8".equals(cols[2])) {
+                return (cols.length >= 4) ? cols[3] : "";
             }
         }
-        return false;
+        return null;
+    }
+
+    /** Map a function's major:minor to /dev/hidgN */
+    @Nullable
+    private static String resolveDeviceNode(@Nullable String majorMinor,
+                                            List<String> log)
+    {
+        if ((majorMinor == null) || !majorMinor.contains(":")) {
+            return null;
+        }
+        Shell.Result r = Shell.cmd(
+                "for d in /dev/hidg*; do " +
+                "[ \"$(stat -c '%t:%T' $d)\" = \"$(printf '%x:%x' " +
+                majorMinor.replace(":", " ") + ")\" ] && echo $d; done").exec();
+        for (String line : r.getOut()) {
+            String d = line.trim();
+            if (d.startsWith("/dev/hidg")) {
+                log.add("node for " + majorMinor + ": " + d);
+                return d;
+            }
+        }
+        return null;
     }
 
     /**
-     * Create hid.usb0 (boot keyboard) and link it into the first config.
+     * Create hid.authorizer (boot keyboard) and link it into the first config.
      * The UDC is unbound while the link is added, which briefly resets the
      * USB connection to the host (adb reconnects).
      */

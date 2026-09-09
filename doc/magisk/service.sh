@@ -2,16 +2,21 @@
 # Magisk module service.sh: re-apply Authorizer's USB HID access at boot.
 # Runs as root late in boot. Adjust APP and DEV as needed.
 APP=net.tjado.passwdsafe
-DEV=/dev/hidg0
+DEV=/dev/hidg0          # overridden below from the function's dev attribute
 G=/config/usb_gadget/g1
 
 # Wait for the package manager and the gadget to be up
 until pm path "$APP" >/dev/null 2>&1; do sleep 2; done
 until [ -f "$G/UDC" ]; do sleep 2; done
 
-# 1. HID keyboard function (only if none exists)
-if ! ls "$G/functions" 2>/dev/null | grep -q '^hid\.'; then
-  F="$G/functions/hid.usb0"
+# 1. Boot keyboard function (protocol 1, report_length 8); create if none
+HAVE=""
+for f in "$G"/functions/hid.*; do
+  [ -d "$f" ] || continue
+  [ "$(cat $f/protocol)" = 1 ] && [ "$(cat $f/report_length)" = 8 ] && HAVE="$f" && break
+done
+if [ -z "$HAVE" ]; then
+  F="$G/functions/hid.authorizer"
   CFG=$(ls -d "$G"/configs/* | head -n 1)
   UDC=$(cat "$G/UDC"); [ -n "$UDC" ] || UDC=$(ls /sys/class/udc | head -n 1)
   mkdir -p "$F"
@@ -20,7 +25,11 @@ if ! ls "$G/functions" 2>/dev/null | grep -q '^hid\.'; then
   echo '' > "$G/UDC"
   ln -s "$F" "$CFG/" 2>/dev/null
   echo "$UDC" > "$G/UDC"
+  HAVE="$F"
 fi
+# resolve /dev/hidgN from the function's major:minor
+MINOR=$(cat "$HAVE/dev" | cut -d: -f2)
+[ -n "$MINOR" ] && DEV="/dev/hidg$MINOR"
 
 # 2. SELinux: allow the app's domain to use device chr_files
 UID_=$(stat -c %u "/data/data/$APP")

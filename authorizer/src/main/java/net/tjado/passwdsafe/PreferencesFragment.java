@@ -629,6 +629,11 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                     return;
                 }
                 itsUsbHidPreparePref.setEnabled(true);
+                if (result.success && (result.devicePath != null) &&
+                    !result.devicePath.equals(path)) {
+                    Preferences.setUsbHidDevicePath(prefs, result.devicePath);
+                    itsUsbHidDevicePref.setText(result.devicePath);
+                }
                 itsUsbHidPreparePref.setSummary(
                         result.success ? result.message :
                         (result.message + "\n" + TextUtils.join("\n", result.log)));
