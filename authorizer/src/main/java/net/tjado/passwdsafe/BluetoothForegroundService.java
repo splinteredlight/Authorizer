@@ -378,6 +378,10 @@ public class BluetoothForegroundService extends Service {
             }
         }
 
+        // Pre-existing: the Bluetooth stack delivers this on a binder
+        // thread and the HID send is annotated @WorkerThread; lint cannot
+        // prove the thread from the interface signature.
+        @SuppressLint("ThreadConstraint")
         @Override
         public void onConnectionStateChanged(BluetoothDevice device, int state) {
             synchronized (mLock) {

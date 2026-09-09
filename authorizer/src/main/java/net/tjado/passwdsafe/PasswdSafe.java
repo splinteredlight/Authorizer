@@ -8,6 +8,7 @@
 package net.tjado.passwdsafe;
 
 import android.Manifest;
+import androidx.activity.OnBackPressedCallback;
 import net.tjado.authorizer.hid.HidStatus;
 import net.tjado.authorizer.hid.HidNotReadyException;
 import net.tjado.authorizer.hid.HidGadgetSetup;
@@ -388,6 +389,15 @@ public class PasswdSafe extends AppCompatActivity
     {
         PasswdSafeApp.setupTheme(this);
         super.onCreate(savedInstanceState);
+        itsBackCallback = new OnBackPressedCallback(true)
+        {
+            @Override
+            public void handleOnBackPressed()
+            {
+                handleBack();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, itsBackCallback);
 
         itsIsDisplayListTreeView = PasswdSafeApp.getDisplayTreeView(this);
 
@@ -850,7 +860,7 @@ public class PasswdSafe extends AppCompatActivity
                 changeOpenView(new PasswdLocation(), OpenViewChange.VIEW);
                 return true;
             }
-            onBackPressed();
+            handleBack();
             return true;
         } else if (itemId == R.id.menu_add) {
             editRecord(itsLocation.selectRecord(null));
@@ -926,8 +936,22 @@ public class PasswdSafe extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onBackPressed()
+    private OnBackPressedCallback itsBackCallback;
+
+    /** Run the system default back behaviour (pop fragment or finish) */
+    private void defaultBack()
+    {
+        itsBackCallback.setEnabled(false);
+        getOnBackPressedDispatcher().onBackPressed();
+        itsBackCallback.setEnabled(true);
+    }
+
+    /**
+     * Back navigation. Registered with the OnBackPressedDispatcher because
+     * Activity.onBackPressed() is not called for predictive back gestures
+     * on API 33+.
+     */
+    private void handleBack()
     {
         if (itsCurrViewMode == ViewMode.VIEW_LIST) {
             if (itsIsConfirmBackClosed) {
@@ -949,7 +973,7 @@ public class PasswdSafe extends AppCompatActivity
         }*/
 
         checkNavigation(false, () -> {
-                super.onBackPressed();
+                defaultBack();
 
                 Fragment frag = this.getSupportFragmentManager().findFragmentById(R.id.content);
                 if(frag instanceof StorageFileListFragment) {
