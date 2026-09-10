@@ -76,6 +76,9 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   is sent before the first key. Typing goes through `UsbAutoType` on its
   worker thread, never on the main thread (writes block while the host is
   not polling).
+- After re-binding the UDC in setup, wait for `/sys/class/udc/<udc>/state`
+  to read `configured` (plus a settle delay) before reporting ready; the host
+  re-enumerates and early reports are lost.
 - If libsu returns a non-root shell, close it before returning, or every
   later attempt fails until the process restarts.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`

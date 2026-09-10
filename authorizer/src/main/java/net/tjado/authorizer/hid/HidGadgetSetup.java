@@ -62,6 +62,10 @@ public final class HidGadgetSetup
     public static final String DEFAULT_DEVICE = "/dev/hidg0";
     private static final String CONFIGFS = "/config/usb_gadget";
     private static final String FUNCTION_NAME = "hid.authorizer";
+    /** How long to wait for the host to configure the re-bound gadget */
+    private static final int UDC_CONFIGURED_WAIT_TENTHS = 100; // 10 s
+    /** Extra time for the host's HID driver to attach after configuration */
+    private static final String HOST_SETTLE_SECONDS = "1.5";
 
     /**
      * USB HID boot-protocol keyboard report descriptor, 63 bytes, no report
@@ -369,7 +373,9 @@ public final class HidGadgetSetup
     /**
      * Create hid.authorizer (boot keyboard) and link it into the first config.
      * The UDC is unbound while the link is added, which briefly resets the
-     * USB connection to the host (adb reconnects).
+     * USB connection to the host (adb reconnects). Returns only once the
+     * host has configured the gadget again (or after a timeout), so that a
+     * caller may start typing immediately.
      */
     private static Result createHidFunction(String gadget, List<String> log)
     {
@@ -390,7 +396,17 @@ public final class HidGadgetSetup
                 "echo '" + KEYBOARD_REPORT_DESC_B64 + "' | base64 -d > \"$F/report_desc\"",
                 "echo '' > \"$G/UDC\" || true",
                 "[ -e \"$CFG/" + FUNCTION_NAME + "\" ] || ln -s \"$F\" \"$CFG/\"",
-                "echo \"$UDC\" > \"$G/UDC\"").exec();
+                "echo \"$UDC\" > \"$G/UDC\"",
+                // The host now re-enumerates the whole gadget. Reports written
+                // before it has configured the device fail with ESHUTDOWN, and
+                // ones written while its HID driver is still attaching are
+                // silently lost. Wait for SET_CONFIGURATION, then give the
+                // host a moment to bind its keyboard driver.
+                "i=0; while [ $i -lt " + UDC_CONFIGURED_WAIT_TENTHS + " ]; do " +
+                "[ \"$(cat /sys/class/udc/$UDC/state 2>/dev/null)\" = configured ] && break; " +
+                "sleep 0.1; i=$((i+1)); done",
+                "echo \"udc state after re-bind: $(cat /sys/class/udc/$UDC/state 2>/dev/null) (${i}00 ms)\"",
+                "sleep " + HOST_SETTLE_SECONDS).exec();
         logResult("create hid function", r, log);
         if (!r.isSuccess()) {
             return new Result(false, "Could not create HID function in " +

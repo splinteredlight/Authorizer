@@ -24,7 +24,10 @@ auto-type when *Prepare USB HID device automatically* is on) runs, as root:
    `hid.authorizer` with protocol 1, subclass 1, `report_length 8` and the
    standard 63-byte boot keyboard descriptor, symlink it into the first config
    (`configs/b.1`) and re-bind the UDC. Re-binding drops the USB link for a
-   second (adb reconnects). The matching `/dev/hidgN` is resolved from the
+   second (adb reconnects); the script then waits for the host to configure
+   the gadget again (`/sys/class/udc/<udc>/state` = `configured`, up to 10 s)
+   plus 1.5 s for the host's keyboard driver to attach, because reports sent
+   earlier are rejected (ESHUTDOWN) or silently lost. The matching `/dev/hidgN` is resolved from the
    function's `dev` attribute (major:minor) and stored in the *USB HID device*
    preference, so the default `/dev/hidg0` is only a starting point.
 
