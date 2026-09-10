@@ -9,6 +9,10 @@ own UID. Root is used once, to prepare that node.
 Tested target: Pixel 9 Pro XL ("komodo"), Android 17, Magisk, SELinux enforcing,
 stock kernel with `CONFIG_USB_CONFIGFS_F_HID=y`.
 
+No root? The Bluetooth auto-type path needs none, and
+`hardware/pico-bt-bridge/` turns it into a USB keyboard on any PC with a
+Raspberry Pi Pico W. See that directory's README.
+
 ## What "Prepare USB HID device" does
 
 Settings → Auto-Type → *Prepare USB HID device now* (or automatically on first

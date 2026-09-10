@@ -53,6 +53,9 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
 - `doc/MODERNIZATION_ASSESSMENT.md` — the 2026 audit and plan.
 - `doc/HID_SETUP.md` — how the HID path works, manual test, troubleshooting.
 - `doc/magisk/service.sh` — Magisk module script that re-applies HID access at boot.
+- `hardware/pico-bt-bridge/` — Raspberry Pi Pico W firmware that turns the
+  phone's Bluetooth auto-type into a USB keyboard on any PC (works with an
+  unrooted phone). Separate toolchain, see below.
 
 ## HID design rules
 
@@ -71,6 +74,30 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   later attempt fails until the process restarts.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
   explicitly: Magisk's busybox `stat` has no `%C`.
+
+## Pico Bluetooth bridge (`hardware/pico-bt-bridge/`)
+
+Start with its `README.md`; it has the step-by-step for flashing and testing
+and a list of what is still unverified on hardware.
+
+- Toolchain: `~/.local/bin/arduino-cli` with core `rp2040:rp2040` 6.1.0
+  (Earle Philhower). Build with `firmware/build.sh`, flash with `flash.sh`
+  (hold BOOTSEL while plugging in). Board option `ipbtstack=ipv4btcble` is
+  required or there is no Bluetooth stack; USB stack stays `picosdk`.
+- The Pico is the Bluetooth *host*: discoverable, accepts the phone's incoming
+  HID connection, and the app pairs to it via Bluetooth → Start Device Scan →
+  Pair as Keyboard. Do not make it scan for the phone; the app only auto-types
+  to devices it paired itself (`BluetoothDeviceListing.HID_KEYBOARD_HOST`).
+- Bluetooth Classic only: `BluetoothHidDevice` is BR/EDR, and Android reserves
+  the BLE HID service, so BLE-only chips (ESP32-S3, C3, C6) cannot be used.
+- Forward the 8-byte report unchanged; never map through ASCII (loses layouts).
+- Never `#include "tusb.h"` in the `.ino`: it clashes with BTstack's
+  `hid_report_type_t`. USB code lives in `usb_kbd.cpp`.
+- Same logging rule as the app: no usage codes or text on serial. The
+  `DEBUG_REPORTS` flag exists for the bench only and must stay `false` in
+  committed code.
+- Prebuilt UF2s are committed under `firmware/prebuilt/` with `SHA256SUMS`;
+  refresh both when the sketch changes.
 
 ## Security rules
 
