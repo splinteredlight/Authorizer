@@ -168,6 +168,16 @@
                 android:summary="@string/usb_hid_auto_setup_summary"/>
 
             <!--suppress AndroidElementNotAllowed -->
+            <net.tjado.passwdsafe.view.LongListPreference
+                android:name="usbHidKeyDelay Pref"
+                android:defaultValue="10"
+                android:key="usbHidKeyDelayPref"
+                android:entries="@array/usb_hid_key_delay_titles"
+                android:entryValues="@array/usb_hid_key_delay_values"
+                android:dialogTitle="@string/usb_hid_key_delay"
+                android:title="@string/usb_hid_key_delay"/>
+
+            <!--suppress AndroidElementNotAllowed -->
             <net.tjado.passwdsafe.view.LongPreference
                 android:name="usbHidPrepare Pref"
                 android:key="usbHidPreparePref"

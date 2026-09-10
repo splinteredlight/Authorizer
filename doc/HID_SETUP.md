@@ -73,6 +73,23 @@ adb logcat -s HidGadgetSetup OutputUsbKeyboard      # debug builds only
 Unexpected `avc: denied` lines in `dmesg` name the exact permission that is
 missing; add it to the rule in `HidGadgetSetup.prepare()`.
 
+## Typing speed and key timing
+
+A `write()` to `/dev/hidgN` returns only when the host has fetched the report,
+so writing reports back to back delivers one per USB poll (1 ms). No physical
+keyboard produces press/release pairs at that rate, and Windows, KVM switches,
+docks and remote-desktop stacks (RDP, Citrix, VMware) drop or merge keys when
+fed that fast. `OutputUsbKeyboard` therefore holds every key for the *USB
+typing delay* (Settings → Auto-Type, default 10 ms) and pauses as long again
+after the release. It also sends one all-keys-up report before the first key
+so that a key the host still considers held from an interrupted run (a stuck
+Shift types everything in upper case) is released, and a host that had the
+link in selective suspend has resumed before the first real key.
+
+Typing runs on a dedicated worker thread (`UsbAutoType`), never on the main
+thread: a write blocks for as long as the host is not polling, which used to
+freeze the UI and could ANR when the cable was pulled mid-string.
+
 ## Surviving a reboot
 
 The live policy patch and node ownership reset at boot. A minimal Magisk
@@ -91,4 +108,7 @@ by hand; the script does that too.
 | Host types garbage / nothing, node is hidg0 | hidg0 belongs to another tool's report-ID keyboard | Let *Prepare* pick/create the 8-byte function; check the path shown in Settings |
 | Host sees nothing, no errors | Wrong function linked into the active config, or `report_length` ≠ 8 | `ls -l configs/b.1/`, `cat functions/hid.authorizer/report_length` |
 | Characters wrong on the host | Keyboard layout | Settings → Auto-Type → language, or long-press an auto-type button |
+| Characters missing or doubled, especially through a KVM, dock or remote desktop | Host cannot keep up with the key rate | Settings → Auto-Type → *USB typing delay*: try 20 ms, then 50 ms |
+| Everything typed in upper case once | Host still had Shift held from an interrupted earlier run, or Caps Lock was on | Fixed by the all-keys-up report sent before each run; otherwise check the Caps Lock LED on the host |
+| "Could not send keystrokes over USB: ... ESHUTDOWN" | Host has not configured the gadget (no PC attached, or it is still enumerating after *Prepare* re-bound the UDC) | Wait a second and tap again |
 | Prepare hangs | Magisk prompt waiting | Grant root in the Magisk dialog; 20 s timeout applies |

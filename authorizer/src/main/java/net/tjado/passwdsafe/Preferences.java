@@ -26,6 +26,7 @@ import net.tjado.passwdsafe.pref.RecordSortOrderPref;
 import net.tjado.passwdsafe.pref.ThemePref;;
 
 import net.tjado.authorizer.OutputInterface;
+import net.tjado.authorizer.OutputUsbKeyboard;
 
 import org.pwsafe.lib.file.PwsFile;
 
@@ -171,6 +172,9 @@ public class Preferences
     public static final String PREF_USB_HID_AUTO_SETUP = "usbHidAutoSetupPref";
     private static final boolean PREF_USB_HID_AUTO_SETUP_DEF = true;
     public static final String PREF_USB_HID_PREPARE = "usbHidPreparePref";
+    public static final String PREF_USB_HID_KEY_DELAY = "usbHidKeyDelayPref";
+    private static final String PREF_USB_HID_KEY_DELAY_DEF =
+            String.valueOf(OutputUsbKeyboard.DEFAULT_KEY_DELAY_MS);
 
     public static final String PREF_BLUETOOTH_ENABLED = "bluetoothEnabledPref";
     private static final boolean PREF_BLUETOOTH_ENABLED_DEF = true;
@@ -587,6 +591,21 @@ public class Preferences
     {
         return prefs.getBoolean(PREF_USB_HID_AUTO_SETUP,
                                 PREF_USB_HID_AUTO_SETUP_DEF);
+    }
+
+    /**
+     * Get how long each USB auto-type key is held and how long to pause
+     * after it, in milliseconds. 0 sends reports back to back.
+     */
+    public static int getUsbHidKeyDelayMs(SharedPreferences prefs)
+    {
+        String val = prefs.getString(PREF_USB_HID_KEY_DELAY,
+                                     PREF_USB_HID_KEY_DELAY_DEF);
+        try {
+            return Math.max(0, Integer.parseInt(val.trim()));
+        } catch (NumberFormatException | NullPointerException e) {
+            return OutputUsbKeyboard.DEFAULT_KEY_DELAY_MS;
+        }
     }
 
     /**

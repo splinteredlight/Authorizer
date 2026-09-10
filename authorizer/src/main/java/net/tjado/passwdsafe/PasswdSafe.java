@@ -10,7 +10,6 @@ package net.tjado.passwdsafe;
 import android.Manifest;
 import androidx.activity.OnBackPressedCallback;
 import net.tjado.authorizer.hid.HidStatus;
-import net.tjado.authorizer.hid.HidNotReadyException;
 import net.tjado.authorizer.hid.HidGadgetSetup;
 import androidx.core.graphics.Insets;
 import androidx.core.view.WindowInsetsCompat;
@@ -62,7 +61,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
 
 import net.tjado.authorizer.OutputInterface;
-import net.tjado.authorizer.OutputUsbKeyboard;
+import net.tjado.authorizer.UsbAutoType;
 import net.tjado.passwdsafe.db.BackupFile;
 import net.tjado.passwdsafe.db.PasswdSafeDb;
 import net.tjado.passwdsafe.db.RecentFilesDao;
@@ -98,11 +97,9 @@ import org.pwsafe.lib.file.PwsRecord;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Date;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * The main PasswdSafe activity for showing a password file
@@ -1401,52 +1398,32 @@ public class PasswdSafe extends AppCompatActivity
             return;
         }
 
-        try {
-            OutputInterface ct = new OutputUsbKeyboard(devicePath, lang);
+        if (password == null) {
+            return;
+        }
+        String SUB_OTP = getResources().getString(R.string.SUB_OTP);
+        String SUB_TAB = getResources().getString(R.string.SUB_TAB);
+        String SUB_RETURN = getResources().getString(R.string.SUB_RETURN);
 
-            String SUB_OTP = getResources().getString(R.string.SUB_OTP);
-            String SUB_TAB = getResources().getString(R.string.SUB_TAB);
-            String SUB_RETURN = getResources().getString(R.string.SUB_RETURN);
-            String quoteSubReturn = Pattern.quote(SUB_RETURN);
-            String quoteSubTab = Pattern.quote(SUB_TAB);
+        if (password.contains(SUB_OTP)) {
+            PasswdSafeUtil.showErrorMsg(
+                    "Password Quick Auto-Type not possible as it contains an OTP!",
+                    new ActContext(this));
+            return;
+        }
 
-            if (password.contains(SUB_OTP)) {
-                PasswdSafeUtil.showErrorMsg(
-                        "Password Quick Auto-Type not possible as it contains an OTP!",
-                        new ActContext(this));
+        UsbAutoType.Sequence seq =
+                new UsbAutoType.Sequence(SUB_RETURN, SUB_TAB).addField(password);
+        UsbAutoType.run(devicePath, lang, Preferences.getUsbHidKeyDelayMs(prefs),
+                        seq, (error, lostChars) -> {
+            if (isFinishing() || isDestroyed()) {
                 return;
             }
-
-            String[] passwordArray = password.split(String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))", quoteSubReturn, quoteSubTab));
-            PasswdSafeUtil.dbginfo(TAG, "Password Substitution Array: %s".format(Arrays.toString(passwordArray)));
-
-            int ret = 0;
-            for (String str : passwordArray){
-
-                if (str.equals(SUB_RETURN)) {
-                    ct.sendReturn();
-                } else if (str.equals(SUB_TAB)) {
-                    ct.sendTabulator();
-                } else {
-                    ret = ct.sendText(str);
-                }
-
-                if (ret == 1) {
-                    PasswdSafeUtil.showErrorMsg(
-                            "Lost characters in output due to missing mapping!",
-                            new ActContext(this));
-                }
+            String msg = UsbAutoType.errorMessage(this, error, lostChars);
+            if (msg != null) {
+                PasswdSafeUtil.showErrorMsg(msg, new ActContext(this));
             }
-        } catch (HidNotReadyException e) {
-            int res = (e.getReason() == HidNotReadyException.Reason.NOT_FOUND) ?
-                      R.string.autotype_usb_hidg_not_found :
-                      R.string.autotype_usb_hidg_no_access;
-            PasswdSafeUtil.showErrorMsg(getString(res, e.getDevicePath()),
-                                        new ActContext(this));
-        } catch (Exception e) {
-            PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
-            PasswdSafeUtil.showErrorMsg(String.format("PasswdSafeRecordBasicFragment Exception: %s", e.getLocalizedMessage()) ,new ActContext(this));
-        }
+        });
     }
 
     @Override

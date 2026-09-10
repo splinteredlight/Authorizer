@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.NoSuchElementException;
 
 /**
@@ -24,26 +25,63 @@ import java.util.NoSuchElementException;
  * to the gadget character device (/dev/hidgN) as the app's own UID.
  * No root is involved on this path; see {@link HidGadgetSetup} for the
  * one-time preparation of the node.
+ *
+ * <p>Timing: a write to /dev/hidgN only returns once the host has fetched
+ * the report, so back-to-back writes deliver one report per USB poll
+ * (1 ms). Real keyboards never do that, and Windows, KVM switches and
+ * remote-desktop stacks drop or merge keys at that rate. Every press is
+ * therefore held for {@code keyDelayMs} and followed by an equally long
+ * pause after the release. Callers must not use this class on the main
+ * thread: a write blocks for as long as the host is not polling.
  */
 public class OutputUsbKeyboard implements OutputInterface
 {
     private static final String TAG = "OutputUsbKeyboard";
 
+    /** Default hold time of a key and pause after it, in milliseconds */
+    public static final int DEFAULT_KEY_DELAY_MS = 10;
+
+    /**
+     * Pause after the initial all-keys-up report. Gives a host that was in
+     * USB selective suspend time to resume before the first real key.
+     */
+    private static final int SYNC_SETTLE_MS = 50;
+
     private final String devicePath;
+    private final int keyDelayMs;
     private FileOutputStream device;
     private UsbHidKbd kbdKeyInterpreter;
 
     public OutputUsbKeyboard(OutputInterface.Language lang)
-            throws HidNotReadyException
+            throws IOException
     {
-        this(HidGadgetSetup.DEFAULT_DEVICE, lang);
+        this(HidGadgetSetup.DEFAULT_DEVICE, lang, DEFAULT_KEY_DELAY_MS);
     }
 
     public OutputUsbKeyboard(@NonNull String devicePath,
                              OutputInterface.Language lang)
-            throws HidNotReadyException
+            throws IOException
+    {
+        this(devicePath, lang, DEFAULT_KEY_DELAY_MS);
+    }
+
+    /**
+     * Open the gadget node and send one all-keys-up report.
+     *
+     * @param keyDelayMs how long each key is held and how long to pause
+     *                   after releasing it; 0 disables all pacing
+     * @throws HidNotReadyException if the node is missing or not writable
+     * @throws IOException if the first report cannot be sent, typically
+     *                     because the phone is not connected to a host
+     *                     (ESHUTDOWN)
+     */
+    public OutputUsbKeyboard(@NonNull String devicePath,
+                             OutputInterface.Language lang,
+                             int keyDelayMs)
+            throws IOException
     {
         this.devicePath = devicePath;
+        this.keyDelayMs = Math.max(0, keyDelayMs);
         if (!new File(devicePath).exists()) {
             throw new HidNotReadyException(
                     HidNotReadyException.Reason.NOT_FOUND, devicePath,
@@ -58,6 +96,38 @@ public class OutputUsbKeyboard implements OutputInterface
                     HidNotReadyException.Reason.NO_PERMISSION, devicePath,
                     "No permission to write " + devicePath + ": " +
                     e.getMessage());
+        }
+        try {
+            sync();
+        } catch (IOException e) {
+            destruct();
+            throw e;
+        }
+    }
+
+    /**
+     * Send an all-keys-up report and let the host settle. This clears any
+     * key the host still considers held from an earlier, interrupted run
+     * (a stuck Shift types everything in upper case) and, if the USB link
+     * was suspended, wakes it so the first real key is not the one that
+     * gets lost during resume.
+     */
+    private void sync() throws IOException
+    {
+        device.write(kbdKeyInterpreter.getScancode(null));
+        pause(Math.max(SYNC_SETTLE_MS, keyDelayMs));
+    }
+
+    private static void pause(int ms) throws IOException
+    {
+        if (ms <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedIOException("auto-type interrupted");
         }
     }
 
@@ -89,17 +159,19 @@ public class OutputUsbKeyboard implements OutputInterface
     }
 
     /**
-     * Write one report followed by the all-zero release report. The release
-     * is sent even if the press fails, so a key can never stay held on the
-     * host.
+     * Write one report, hold it, then write the all-zero release report and
+     * pause again. The release is sent even if the press or the hold fails,
+     * so a key can never stay held on the host.
      */
     private void writeReport(byte[] report) throws IOException
     {
         try {
             device.write(report);
+            pause(keyDelayMs);
         } finally {
             device.write(kbdKeyInterpreter.getScancode(null));
         }
+        pause(keyDelayMs);
     }
 
     public int sendText(String output) throws IOException
@@ -152,5 +224,10 @@ public class OutputUsbKeyboard implements OutputInterface
     public String getDevicePath()
     {
         return devicePath;
+    }
+
+    public int getKeyDelayMs()
+    {
+        return keyDelayMs;
     }
 }

@@ -762,6 +762,8 @@
     <string name="autotype_usb_hidg_no_access">USB HID device %1$s exists but cannot be written from the app. Run "Prepare USB HID device" in the settings (root required).</string>
     <string name="autotype_usb_preparing">Preparing USB HID device (root)…</string>
     <string name="autotype_usb_prepare_failed">USB HID setup failed: %1$s</string>
+    <string name="autotype_usb_write_failed">Could not send keystrokes over USB: %1$s. Is the phone connected to a computer, and has it finished detecting the keyboard?</string>
+    <string name="autotype_lost_chars">Lost characters in output due to missing mapping in the selected keyboard layout!</string>
 
     <string name="use_treeview_list">Use tree list</string>
     <string name="entry">entry</string>
@@ -823,6 +825,24 @@
     <string name="usb_hid_auto_setup_summary">When the device cannot be written, patch SELinux and node ownership with root before typing</string>
     <string name="usb_hid_prepare">Prepare USB HID device now</string>
     <string name="usb_hid_prepare_summary">Creates the configfs HID keyboard function if missing, patches SELinux (magiskpolicy/ksud) and gives this app access to the device node. Root required.</string>
+    <string name="usb_hid_key_delay">USB typing delay</string>
+    <string name="usb_hid_key_delay_summary">%1$s. How long each key is held and the pause after it. Increase it if the computer drops or garbles characters (KVM switches and remote desktops often need 20–50 ms).</string>
+    <string-array name="usb_hid_key_delay_titles">
+        <item>None (one report per USB poll)</item>
+        <item>5 ms</item>
+        <item>10 ms (default)</item>
+        <item>20 ms</item>
+        <item>50 ms</item>
+        <item>100 ms</item>
+    </string-array>
+    <string-array name="usb_hid_key_delay_values" translatable="false">
+        <item>0</item>
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
     <string name="usb_hid_status_ready">%1$s: ready</string>
     <string name="usb_hid_status_no_access">%1$s: exists, no access</string>
     <string name="usb_hid_status_missing">%1$s: not found</string>

@@ -540,6 +540,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat
         private final EditTextPreference itsPasswdDefaultSymsPref;
         private ListPreference itsAutoTypeLangPref;
         private EditTextPreference itsUsbHidDevicePref;
+        private ListPreference itsUsbHidKeyDelayPref;
         private Preference itsUsbHidPreparePref;
 
         /**
@@ -599,12 +600,25 @@ public class PreferencesFragment extends PreferenceFragmentCompat
             itsAutoTypeLangPref.setSummary(getResources().getStringArray(R.array.autotype_lang_titles)[value]);
 
             itsUsbHidDevicePref = requirePreference(Preferences.PREF_USB_HID_DEVICE);
+            itsUsbHidKeyDelayPref = requirePreference(Preferences.PREF_USB_HID_KEY_DELAY);
+            updateUsbHidKeyDelaySummary();
             itsUsbHidPreparePref = requirePreference(Preferences.PREF_USB_HID_PREPARE);
             itsUsbHidPreparePref.setOnPreferenceClickListener(clicked -> {
                 prepareUsbHidDevice(prefs);
                 return true;
             });
             updateUsbHidSummary(prefs);
+        }
+
+        /** Show the selected key delay with its explanation */
+        private void updateUsbHidKeyDelaySummary()
+        {
+            CharSequence entry = itsUsbHidKeyDelayPref.getEntry();
+            if (entry == null) {
+                entry = getString(R.string.usb_hid_key_delay);
+            }
+            itsUsbHidKeyDelayPref.setSummary(
+                    getString(R.string.usb_hid_key_delay_summary, entry));
         }
 
         /** Show the device path and whether it is currently usable */
@@ -680,6 +694,10 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                 }
                 case Preferences.PREF_USB_HID_DEVICE: {
                     updateUsbHidSummary(prefs);
+                    break;
+                }
+                case Preferences.PREF_USB_HID_KEY_DELAY: {
+                    updateUsbHidKeyDelaySummary();
                     break;
                 }
                 }

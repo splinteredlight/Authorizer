@@ -11,7 +11,6 @@ package net.tjado.passwdsafe;
 
 import android.Manifest;
 import net.tjado.authorizer.hid.HidStatus;
-import net.tjado.authorizer.hid.HidNotReadyException;
 import net.tjado.authorizer.hid.HidGadgetSetup;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -55,7 +54,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.textfield.TextInputLayout;
 
-import net.tjado.authorizer.OutputUsbKeyboard;
+import net.tjado.authorizer.UsbAutoType;
 import net.tjado.authorizer.Utilities;
 import net.tjado.bluetooth.BluetoothDeviceListing;
 import net.tjado.bluetooth.BluetoothDeviceWrapper;
@@ -1268,119 +1267,75 @@ public class PasswdSafeRecordBasicFragment
         autotypeUsbNow(devicePath, lang, sendUsername, sendPassword, sendOTP);
     }
 
+    /**
+     * Build the keystroke sequence from the record and the view state (main
+     * thread), then type it on the USB worker. Errors come back on the main
+     * thread once typing has finished.
+     */
     private void autotypeUsbNow(String devicePath, OutputInterface.Language lang,
                                 Boolean sendUsername, Boolean sendPassword, Boolean sendOTP)
     {
         String username = getUsername();
         String password = getPassword();
         String otp = getOtp();
-        String quoteSubReturn = Pattern.quote(SUB_RETURN);
-        String quoteSubTab = Pattern.quote(SUB_TAB);
+        boolean otpTokenGenerated = false;
 
-        try {
-            OutputInterface ct = new OutputUsbKeyboard(devicePath, lang);
-            boolean otpTokenGenerated = false;
+        UsbAutoType.Sequence seq = new UsbAutoType.Sequence(SUB_RETURN, SUB_TAB);
 
-            if(sendOTP && otp != null ) {
-                generateOtpToken();
-                otpTokenGenerated = true;
-
-                int ret = 0;
-                ret = ct.sendText(itsOtp.getCurrentCode());
-
-                if (ret == 1) {
-                    PasswdSafeUtil.showErrorMsg(
-                            "Unvalid OTP token generated!",
-                            new ActContext(getContext()));
-                }
-            }
-
-            if(sendUsername && username != null ) {
-                if (username.contains(SUB_OTP)){
-                    generateOtpToken();
-                    otpTokenGenerated = true;
-
-                    username = username.replace(SUB_OTP, itsOtp.getCurrentCode());
-                }
-
-                String[] usernameArray = username.split(String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))", quoteSubReturn, quoteSubTab));
-
-                int ret = 0;
-                for (String str : usernameArray){
-
-                    if (str.equals(SUB_RETURN)) {
-                        ct.sendReturn();
-                    } else if (str.equals(SUB_TAB)) {
-                        ct.sendTabulator();
-                    } else {
-                        ret = ct.sendText(str);
-                    }
-
-                    if (ret == 1) {
-                        PasswdSafeUtil.showErrorMsg(
-                                "Lost characters in output due to missing mapping!",
-                                new ActContext(getContext()));
-                    }
-                }
-            }
-
-            if( sendUsername && sendPassword )
-            {
-                int checkedId = itsAutoTypeDelimiter.getCheckedRadioButtonId();
-                if (checkedId == R.id.autotype_delimiter_return) {
-                    ct.sendReturn();
-                } else if (checkedId == R.id.autotype_delimiter_tab) {
-                    ct.sendTabulator();
-                }
-            }
-
-            if( sendPassword && password != null ) {
-                if (password.contains(SUB_OTP)){
-                    if (!otpTokenGenerated) {
-                        generateOtpToken();
-                    }
-
-                    password = password.replace(SUB_OTP, itsOtp.getCurrentCode());
-                }
-
-                String[] passwordArray = password.split(String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))", quoteSubReturn, quoteSubTab));
-
-                int ret = 0;
-                for (String str : passwordArray){
-
-                    if (str.equals(SUB_RETURN)) {
-                        ct.sendReturn();
-                    } else if (str.equals(SUB_TAB)) {
-                        ct.sendTabulator();
-                    } else {
-                        ret = ct.sendText(str);
-                    }
-
-                    if (ret == 1) {
-                        PasswdSafeUtil.showErrorMsg(
-                                "Lost characters in output due to missing mapping!",
-                                new ActContext(getContext()));
-                    }
-                }
-
-                if( itsAutoTypeReturnSuffix.isChecked() ) {
-                    ct.sendReturn();
-                }
-            }
-
-            ct.destruct();
-
-        } catch (HidNotReadyException e) {
-            int res = (e.getReason() == HidNotReadyException.Reason.NOT_FOUND) ?
-                      R.string.autotype_usb_hidg_not_found :
-                      R.string.autotype_usb_hidg_no_access;
-            PasswdSafeUtil.showErrorMsg(getString(res, e.getDevicePath()),
-                                        new ActContext(requireContext()));
-        } catch (Exception e) {
-            PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
-            PasswdSafeUtil.showErrorMsg(String.format("PasswdSafeRecordBasicFragment Exception: %s", e.getLocalizedMessage()), new ActContext(requireContext()));
+        if (sendOTP && otp != null) {
+            generateOtpToken();
+            otpTokenGenerated = true;
+            seq.addField(itsOtp.getCurrentCode());
         }
 
+        if (sendUsername && username != null) {
+            if (username.contains(SUB_OTP)) {
+                generateOtpToken();
+                otpTokenGenerated = true;
+                username = username.replace(SUB_OTP, itsOtp.getCurrentCode());
+            }
+            seq.addField(username);
+        }
+
+        if (sendUsername && sendPassword) {
+            int checkedId = itsAutoTypeDelimiter.getCheckedRadioButtonId();
+            if (checkedId == R.id.autotype_delimiter_return) {
+                seq.addReturn();
+            } else if (checkedId == R.id.autotype_delimiter_tab) {
+                seq.addTab();
+            }
+        }
+
+        if (sendPassword && password != null) {
+            if (password.contains(SUB_OTP)) {
+                if (!otpTokenGenerated) {
+                    generateOtpToken();
+                }
+                password = password.replace(SUB_OTP, itsOtp.getCurrentCode());
+            }
+            seq.addField(password);
+
+            if (itsAutoTypeReturnSuffix.isChecked()) {
+                seq.addReturn();
+            }
+        }
+
+        if (seq.isEmpty()) {
+            return;
+        }
+
+        SharedPreferences prefs = Preferences.getSharedPrefs(requireContext());
+        UsbAutoType.run(devicePath, lang, Preferences.getUsbHidKeyDelayMs(prefs),
+                        seq, (error, lostChars) -> {
+            if (!isAdded()) {
+                return;
+            }
+            Context ctx = requireContext();
+            String msg = UsbAutoType.errorMessage(ctx, error, lostChars);
+            if (msg != null) {
+                PasswdSafeUtil.showErrorMsg(msg, new ActContext(ctx));
+            }
+        });
     }
 
     /**

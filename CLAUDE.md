@@ -70,6 +70,12 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   categories are read from `/proc/self/attr/current`, never hard-coded.
 - Reports are 8 bytes, no report ID. A release report follows every press in
   a `finally` block so a key can't stay held on the host.
+- Never write reports back to back: `write()` returns as soon as the host
+  polls (1 ms) and hosts drop keys at that rate. Each key is held and then
+  spaced by `usbHidKeyDelayPref` (default 10 ms), and one all-keys-up report
+  is sent before the first key. Typing goes through `UsbAutoType` on its
+  worker thread, never on the main thread (writes block while the host is
+  not polling).
 - If libsu returns a non-root shell, close it before returning, or every
   later attempt fails until the process restarts.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
