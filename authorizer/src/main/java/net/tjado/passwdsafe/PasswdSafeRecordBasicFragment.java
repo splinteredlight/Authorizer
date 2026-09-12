@@ -816,7 +816,7 @@ public class PasswdSafeRecordBasicFragment
         String otp = getOtp();
         Token token = null;
         try {
-            PasswdSafeUtil.dbginfo("OTP", String.format("LOAD OTP: %s", otp));
+            PasswdSafeUtil.dbginfo("OTP", "Loading OTP token");
             token = new Token(otp, false);
             itsOtp = token.generateCodes();
 
