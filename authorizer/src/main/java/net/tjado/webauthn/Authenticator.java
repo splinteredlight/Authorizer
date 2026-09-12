@@ -359,6 +359,29 @@ public final class Authenticator {
      * @throws CtapException Error to be returned through the current transport
      * @throws VirgilException Generic error
      */
+    private static boolean containsCredentialId(java.util.List<PublicKeyCredentialSource> list, byte[] id) {
+        if (list == null || id == null) {
+            return false;
+        }
+        for (PublicKeyCredentialSource c : list) {
+            if (java.util.Arrays.equals(c.id, id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Point the credential backend at the current activity after the activity
+     * is recreated (e.g. rotation). Without this, FIDO writes would run against
+     * a destroyed activity because the backend captured the original one.
+     */
+    public void updateActivity(androidx.fragment.app.FragmentActivity activity) {
+        if (credentialSafe != null) {
+            credentialSafe.updateActivity(activity);
+        }
+    }
+
     public GetAssertionResult getAssertion(Map options, CredentialSelector credentialSelector, FragmentActivity activity) throws CtapException, VirgilException {
         GetAssertionOptions assertionOptions = new GetAssertionOptions().fromCBor(options);
         return getAssertion(assertionOptions, credentialSelector, activity);
@@ -418,8 +441,14 @@ public final class Authenticator {
 
         // 7. Allow the user to pick a specific credential, get verification
         PublicKeyCredentialSource selectedCredential;
-        if(!preFlight && selectedPreflightCredential != null && selectedPreflightCredential.rpId.equals(options.rpId)) {
-            Log.d(TAG, "getAssertion - Using selectedPreflightCredential: " + selectedPreflightCredential.userName);
+        if(!preFlight && selectedPreflightCredential != null
+                && selectedPreflightCredential.rpId.equals(options.rpId)
+                && containsCredentialId(credentials, selectedPreflightCredential.id)) {
+            // Reuse the preflight pick only if it is still among the credentials
+            // permitted by THIS request's allowCredentialDescriptorList (the
+            // list is already filtered above); otherwise fall through to normal
+            // selection so a narrower allow-list cannot be bypassed.
+            Log.d(TAG, "getAssertion - Using selectedPreflightCredential");
             selectedCredential = selectedPreflightCredential;
         } else if (credentials.size() == 1) {
             Log.d(TAG, "getAssertion - credentials count is one!");
@@ -1268,8 +1297,11 @@ public final class Authenticator {
                              if (pinLocker.isPinMatch(Arrays.copyOf(WebAuthnCryptography.sha256(oldPin.getBytes()), 16))) {
                                  isPinUpdated = pinLocker.setRetries(8L)
                                          .lockPin(Arrays.copyOf(WebAuthnCryptography.sha256(newPin.getBytes()), 16));
+                             } else {
+                                 // Only a wrong old PIN costs a retry; a successful
+                                 // change already reset retries to 8 above.
+                                 pinLocker.decrementPinRetries();
                              }
-                             pinLocker.decrementPinRetries();
                          } catch (VirgilException e) {
                              // Nothing to do here - just catch this exception for graceful handling
                          }

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import co.nstant.in.cbor.CborDecoder;
@@ -80,13 +81,22 @@ public class TransactionManager {
     private void handleError(CtapHidException hidException, Framing.SubmitReports submit) {
         Log.w(TAG, "HID error: " + hidException.error.code);
 
-        if (message != null && hidException.channelId != null) {
-            int channelId = message.channelId;
-            if (message.channelId == hidException.channelId) {
-                resetTransaction();
-            }
-            submit.submit(new Framing.ErrorResponse(channelId  , hidException.error).toRawReports());
+        if (hidException.channelId == null) {
+            // No channel to answer on; nothing we can send.
+            return;
         }
+        int channelId = hidException.channelId;
+        // Reset only when the error is on the active transaction's channel. An
+        // error on a different channel (e.g. ChannelBusy raised for a new
+        // channel while another is in progress) must not tear down the active
+        // transaction.
+        if (message != null && message.channelId == channelId) {
+            resetTransaction();
+        }
+        // Route the error to the channel that caused it (not the active one),
+        // and answer even when there is no in-progress message yet, so
+        // malformed-packet errors get a CTAPHID_ERROR instead of silence.
+        submit.submit(new Framing.ErrorResponse(channelId, hidException.error).toRawReports());
     }
 
     private static class U2fContinuation {
@@ -235,6 +245,7 @@ public class TransactionManager {
             case Cbor:
                 activeCborJob = CompletableFuture.supplyAsync(() -> {
                     CancellationSignal signal = new CancellationSignal();
+                    final ExecutorService keepaliveExecutor = Executors.newSingleThreadExecutor();
                     try {
                         final CompletableFuture<Boolean> keepaliveJob = CompletableFuture.supplyAsync(
                                 () -> {
@@ -242,8 +253,9 @@ public class TransactionManager {
                                         try {
                                             Thread.sleep(Constants.HID_KEEPALIVE_INTERVAL_MS);
                                         } catch (InterruptedException e) {
-                                            e.printStackTrace();
-                                            continue;
+                                            // Interrupted means the job was cancelled;
+                                            // stop promptly instead of sleeping again.
+                                            return false;
                                         }
                                         Constants.CtapHidStatus status = Constants.CtapHidStatus.IDLE;
                                         switch (authenticator.getInternalStatus()) {
@@ -264,7 +276,7 @@ public class TransactionManager {
                                         );
                                     }
                                 }
-                        , Executors.newSingleThreadExecutor());
+                        , keepaliveExecutor);
 
                         byte[] ctapResponsePayload = handleCTAP2(activity, payload);
                         signal.cancel();
@@ -279,6 +291,7 @@ public class TransactionManager {
                                         new byte[] {CtapException.CtapError.KEEP_ALIVE_CANCEL.value}
                                 ).toRawReports());
                     } finally {
+                        keepaliveExecutor.shutdownNow();
                         resetTransaction();
                     }
                     return true; //Dummy CompletableFuture return
@@ -392,6 +405,11 @@ public class TransactionManager {
 
     public void updateActivity(FragmentActivity newActivity) {
         activity = newActivity;
+        if (authenticator != null) {
+            // Keep the credential backend's activity current too, otherwise
+            // FIDO writes run against the activity captured at construction.
+            authenticator.updateActivity(newActivity);
+        }
     }
 
     public void registerListener(Framing.WebAuthnListener listener) {

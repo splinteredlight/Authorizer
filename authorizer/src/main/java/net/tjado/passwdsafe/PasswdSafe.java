@@ -588,9 +588,16 @@ public class PasswdSafe extends AppCompatActivity
                 PasswdSafeUtil.info(TAG, "Error initializing authenticator", e);
             }
 
-            mTransactionManager = new TransactionManager(this, mAuthenticator);
-            mTransactionManager.registerListener((Framing.WebAuthnListener) authenticatorListener);
-            mTransactionManager.registerListener((Framing.U2fAuthnListener) authenticatorListener);
+            // Only build the transaction manager if the authenticator was
+            // created. Building it around a null authenticator would leave
+            // mTransactionManager non-null (so this block never retries) while
+            // every CTAP report NPEs in handleCTAP2 -> FIDO dead for the whole
+            // process. Leaving both null lets a later onResume try again.
+            if (mAuthenticator != null) {
+                mTransactionManager = new TransactionManager(this, mAuthenticator);
+                mTransactionManager.registerListener((Framing.WebAuthnListener) authenticatorListener);
+                mTransactionManager.registerListener((Framing.U2fAuthnListener) authenticatorListener);
+            }
         }
 
         // Resumed is always foreground-safe: this both covers an onStart start

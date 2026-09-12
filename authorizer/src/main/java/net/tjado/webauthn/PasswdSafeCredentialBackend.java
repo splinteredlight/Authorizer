@@ -238,6 +238,14 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
     /**
      * Use the file data with an optional record at the current location
      */
+    @Override
+    public void updateActivity(androidx.fragment.app.FragmentActivity activity) {
+        // Called after the activity is recreated so writes target a live one.
+        if (activity instanceof PasswdSafe) {
+            this.activity = (PasswdSafe) activity;
+        }
+    }
+
     protected final <RetT> RetT useRecordFile(final AbstractPasswdSafeLocationFragment.RecordFileUser<RetT> user)
     {
         return activity.useFileData(fileData -> user.useFile(null, fileData));

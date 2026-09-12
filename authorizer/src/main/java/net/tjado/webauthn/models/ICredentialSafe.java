@@ -42,4 +42,6 @@ public interface ICredentialSafe {
     Boolean credentialsInHardware() ;
     int incrementCredentialUseCounter(PublicKeyCredentialSource credential);
     KeyPair keyAgreementPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException;
+
+    void updateActivity(androidx.fragment.app.FragmentActivity activity);
 }
