@@ -38,6 +38,12 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
 - `android.nonTransitiveRClass=false` and `nonFinalResIds=false` are still
   set in `gradle.properties`; migrating them is a separate job.
 - AndroidTreeView (`atv`) excludes `com.android.support` transitively.
+- Receivers for Bluetooth broadcasts (`ACTION_FOUND`, `ACTION_STATE_CHANGED`,
+  ...) must be registered `RECEIVER_EXPORTED`. They come from the Bluetooth
+  process, not the system uid, so Android drops them for non-exported
+  receivers; the scan then silently shows nothing. The actions are protected
+  broadcasts, so exporting is not a spoofing surface. Verified on device
+  2026-09-12, do not "fix" this back.
 
 ## Layout
 
@@ -87,7 +93,7 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
 ## Pico Bluetooth bridge (`hardware/pico-bt-bridge/`)
 
 Start with its `README.md`; it has the step-by-step for flashing and testing
-and a list of what is still unverified on hardware.
+and what was learned on hardware (verified 2026-09-12, Pico W + Pixel 11).
 
 - Toolchain: `~/.local/bin/arduino-cli` with core `rp2040:rp2040` 6.1.0
   (Earle Philhower). Build with `firmware/build.sh`, flash with `flash.sh`

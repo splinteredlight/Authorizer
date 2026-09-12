@@ -12,16 +12,21 @@ is a public Android API and needs nothing).
  (Authorizer, BluetoothHidDevice)  (this firmware)             (no driver, no pairing)
 ```
 
-Status (2026-09-10): firmware written and compiled, **not yet run on hardware**.
-Pico W ordered; a rigid USB-A-male to micro-USB-male adapter is on the way
-so the board can live in a printed case as a "dongle".
+Status (2026-09-12): **verified on a Pico W (2022 board) with an unrooted
+Pixel 11 Pro XL on Android 17.** Flash, pair from Authorizer, type a
+username/password with Return suffix, and reconnect after a power cycle
+without re-pairing all work with the prebuilt firmware, unchanged. The one
+bug found was on the app side (scan results never reached the app, fixed the
+same day, see *What was found on hardware*). A rigid USB-A-male to
+micro-USB-male adapter is on the way so the board can live in a printed case
+as a "dongle".
 
 ## Directory
 
 | Path | What |
 |---|---|
 | `flash.sh` | Waits for the Pico's BOOTSEL drive and copies a UF2 onto it |
-| `firmware/prebuilt/authorizer-bridge.picow.uf2` | **The one to flash tomorrow** (Pico W) |
+| `firmware/prebuilt/authorizer-bridge.picow.uf2` | **The one to flash** (Pico W, tested) |
 | `firmware/prebuilt/authorizer-bridge.pico2w.uf2` | Same firmware for a Pico 2 W |
 | `firmware/prebuilt/Bluetooth_Unified_Keyboard_Bridge.*.uf2` | Adafruit's unmodified bridge, fallback / sanity check |
 | `firmware/prebuilt/SHA256SUMS` | Checksums of the above |
@@ -31,7 +36,7 @@ so the board can live in a printed case as a "dongle".
 
 Everything under `firmware/build/` is ignored by git.
 
-## Tomorrow: flash and test
+## Flash and test
 
 1. **Flash.** Unplug the Pico, hold BOOTSEL, plug it into the PC, keep holding
    until a drive called `RPI-RP2` appears. Then:
@@ -52,17 +57,30 @@ Everything under `firmware/build/` is ignored by git.
    ```
 
    First lines should be `Bluetooth up, address xx:xx:..., name "Authorizer Bridge"`.
+   In practice you will miss the boot banner: the firmware prints it 1.5 s
+   after enumeration and ModemManager holds the new port for longer than
+   that. The slow blink only starts once the stack is up, so it is proof
+   enough. Everything after that (pairing, connect, disconnect, BOOTSEL) is
+   logged as long as something has the port open with DTR asserted;
+   `arduino-cli monitor` and pyserial both do, a bare `cat` may not.
 
 3. **Pair from the phone** (this is the normal Authorizer flow, the Pico is
-   just another "computer"):
+   just another "computer"). **Pair only from inside Authorizer.** A device
+   bonded from Android Settings shows up in the app as "Paired as Unknown"
+   with no *Pair as Keyboard* option, and auto-type refuses it; if that
+   happened, *Unpair* it in the app (or Forget in Settings), press BOOTSEL on
+   the Pico, and start over from here.
    - Authorizer → drawer → **Bluetooth**. Make sure the *Enable Bluetooth
      feature* switch is on; the foreground-service notification appears.
-   - **Start Device Scan**. `Authorizer Bridge` shows up in *Available Devices*.
+   - **Start Device Scan**. The button turns into *Stop Scan* with a progress
+     bar and `Authorizer Bridge` shows up in *Available Devices* within a
+     few seconds.
    - Tap **Pair as Keyboard**. Android shows a pairing prompt; accept it. The
-     Pico auto-accepts on its side ("Just Works", it has no display). The log
-     prints `Incoming HID control channel`, then `interrupt`, then
-     `*** Phone connected ***`, and the LED goes solid after three quick blinks.
-   - The device now sits under *Paired Devices* as "Paired as keyboard".
+     Pico auto-accepts on its side (it has no display). The log prints
+     `SSP confirmation`, then `Incoming HID control channel`, then
+     `interrupt`, then `*** Phone connected ***`, and the LED goes solid
+     after three quick blinks.
+   - The device now sits under *Paired Devices* as "Paired as Keyboard".
 
 4. **Type.** Put the cursor in a text editor on the PC. Open a record in
    Authorizer and use **Auto-Type Bluetooth → Username** (or long-press to
@@ -74,7 +92,7 @@ Everything under `firmware/build/` is ignored by git.
    auto-type, which connects first). No re-pairing should be needed: BTstack
    stores the link key in flash.
 
-If any step fails, see *Troubleshooting* and *Things that are still unverified*.
+If any step fails, see *What was found on hardware* below.
 
 ## LED
 
@@ -142,40 +160,40 @@ Do not `#include "tusb.h"` in the `.ino`: TinyUSB's `hid.h` and BTstack's
 `btstack_hid.h` both define `hid_report_type_t`. That is why the USB sender
 lives in its own `usb_kbd.cpp`.
 
-## Things that are still unverified
+## What was found on hardware (2026-09-12)
 
-Ranked by how likely they are to bite, with the fix if they do.
+Everything on the firmware's "unverified" list from the first draft turned
+out fine on a Pico W + Pixel 11 Pro XL (Android 17, unrooted):
 
-1. **Android's pairing prompt.** With the Pico declaring "no input, no
-   output", Android may auto-accept, show a "Pair with Authorizer Bridge?"
-   dialog, or only post a notification. If nothing appears, pull down the
-   shade. If pairing fails with `status 0x05` in the log, try changing
-   `SSP_IO_CAPABILITY_NO_INPUT_NO_OUTPUT` to `SSP_IO_CAPABILITY_DISPLAY_YES_NO`
-   in `bluetoothStart()`.
-2. **The app's scan may not list the Pico** if its inquiry response lacks the
-   name (the name is set before power-on so BTstack puts it in the EIR, but
-   this is untested). Android still lists unnamed devices by address; the
-   log prints the Pico's address at boot so you can match it.
-3. **Android might send a SET_PROTOCOL or GET_REPORT on the control channel**
-   and wait for a handshake. The firmware ignores control traffic. If the
-   connection opens but nothing types, enable `DEBUG_REPORTS`, watch whether
-   interrupt packets arrive, and if the control channel is chatty, answer
-   with a HANDSHAKE(SUCCESS) byte `0x00`.
-4. **Report length.** Expected 10 bytes (`A1 01` + 8). If the log shows
-   packets of another size, adjust `handleInputReport()`.
-5. **Reconnect after Pico power cycle.** If the phone says it cannot connect
-   after a replug, the link key was not persisted; check that the core's
-   `btstack_flash_bank` override is in the build (it is in 6.1.0) and press
-   BOOTSEL + re-pair as a workaround.
+- Android's pairing prompt appears and the phone pairs with Secure Simple
+  Pairing (the Pico logs `SSP confirmation, passkey ...`); the "no input,
+  no output" capability did not need changing.
+- The Pico's name is in its inquiry response; the phone lists it by name.
+- Nothing on the HID control channel needed answering; interrupt reports
+  arrive as expected and type correctly, including symbols and the Return
+  suffix.
+- The link key survives a Pico power cycle: replug, then auto-type from the
+  app, no prompt.
 
-Fallback if the custom firmware will not pair at all: flash
-`Bluetooth_Unified_Keyboard_Bridge.picow.uf2` (Adafruit's). It scans for a
-keyboard, so open **Android Settings → Connected devices → Pair new device**
-(that makes the phone discoverable) while Authorizer's Bluetooth service is
-running; the Pico finds the phone's keyboard class, connects, and Android
-prompts to pair. Then in Authorizer, tap **Pair as Keyboard** on the now-bonded
-entry so the app tags it as a keyboard host. This proves the radio/USB path
-works even if our host-side code needs fixing.
+The one real problem was in the **app**, not the firmware: since the Android
+17 modernisation every Bluetooth `BroadcastReceiver` was registered with
+`RECEIVER_NOT_EXPORTED`. Bluetooth broadcasts are sent by the Bluetooth
+process (its own uid, not `system`), and Android silently drops such
+broadcasts for non-exported receivers, so the app never saw
+`ACTION_DISCOVERY_STARTED` or `ACTION_FOUND`: *Start Device Scan* appeared to
+do nothing and the list stayed empty while the phone's own scanner showed the
+Pico. Those receivers are now `RECEIVER_EXPORTED`; the actions are protected
+broadcasts (even `adb shell am broadcast` gets a permission denial), so this
+is not a spoofing surface. Symptom to recognise it if it ever regresses: the
+scan button never changes to *Stop Scan*.
+
+If pairing ever fails with `status 0x05` in the Pico log, the fallback is
+still to change `SSP_IO_CAPABILITY_NO_INPUT_NO_OUTPUT` to
+`SSP_IO_CAPABILITY_DISPLAY_YES_NO` in `bluetoothStart()`. Adafruit's
+unmodified `Bluetooth_Unified_Keyboard_Bridge.picow.uf2` is kept as a radio /
+USB sanity check; it scans for the phone instead of waiting, so the phone has
+to be made discoverable from Android Settings and the resulting bond has to
+be re-made from inside Authorizer anyway.
 
 ## Security notes
 
@@ -183,7 +201,7 @@ works even if our host-side code needs fixing.
   pair to it. Treat the dongle as a trusted key, keep it paired to one phone.
   After pairing, other phones cannot inject keystrokes without the link key.
 - The Pico is always discoverable. Cheap to change (`gap_discoverable_control(0)`
-  after the first bond) once the flow is proven.
+  after the first bond) now that the flow is proven; not done yet.
 - Nothing typed is logged on either side. Keep it that way (see `CLAUDE.md`).
 
 ## Hardware / case
