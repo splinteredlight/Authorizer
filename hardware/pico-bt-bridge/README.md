@@ -216,6 +216,43 @@ be re-made from inside Authorizer anyway.
   lines wired. Measure adapter + board before drawing the case.
 - Leave BOOTSEL reachable (it doubles as "forget pairings") and a light pipe
   or window for the LED, which is next to the USB connector on the Pico W.
+- **Make sure the case does not block the USB connector from seating fully.**
+  A case wall or a tight adapter can leave the micro-USB plug a fraction short
+  of home, which powers the board (LED lights) but gives a flaky data/power
+  contact.
+
+## Troubleshooting: connects but never types
+
+Symptom: the Pico pairs and powers up, but auto-type does nothing. The LED
+sits on slow blink or drops back to it, and on the phone the HID link reaches
+*connecting* but never *connected*.
+
+Confirm it with the phone's own view of the link (no app logs needed):
+
+```sh
+adb shell dumpsys bluetooth_manager | grep -i "<pico-name>"
+# [ACL BR/EDR:N ...] = not actually connected; the app has nothing to type to
+```
+
+In the app's log the tell is `onConnectionStateChanged: ... state=1` (CONNECTING)
+with no following `state=2` (CONNECTED), and `updateDeviceList: still connected
+device` looping.
+
+Causes seen on hardware, in order of likelihood:
+
+1. **A half-seated USB cable / connector** (verified 2026-09-12). The Pico
+   powers on but the link will not complete, so it reads as "connecting"
+   forever. Reseat the cable firmly; if a printed case is in the way, see the
+   overhang note above. This looked for a while like an app bug and was not.
+2. **A stale link state on the phone** after repeated connect/disconnect
+   churn: the phone holds the Pico in a transitional state, and the app then
+   treats it as busy and will not start a fresh connection. Fix on the phone,
+   not the Pico: toggle Bluetooth off and on, then reopen Authorizer.
+   Replugging the Pico alone does not clear this.
+
+The HID keyboard registration itself needs the app to be in the foreground
+and unlocked; behind the lock screen `registerApp()` fails and nothing types
+(see `CLAUDE.md`), so test with the phone unlocked and the app open.
 
 ## References
 
