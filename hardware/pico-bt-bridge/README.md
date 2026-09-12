@@ -261,6 +261,18 @@ Causes seen on hardware, in order of likelihood:
    Check the PC: no new USB keyboard shows up (`lsusb` / Device Manager) and
    the Pico's serial port is absent. Swap to a cable known to carry data.
 
+Parked (2026-09-12): a hang that needed Bluetooth toggled off and on to
+clear. It coincided with the power-only cable above and was not chased
+further. One observation from the logs, in case it recurs with a known-good
+cable: the app unregisters and re-registers the HID app on every lock and
+unlock (`PasswdSafe.onStop` stops `BluetoothForegroundService`, `onResume`
+starts it again), and Android's HID device state machine (`bta_hd`) drops
+OPEN/CLOSE events that arrive while no app is registered, so a connect that
+was in flight at unregister time can leave the stack believing a link is
+half open. Only a Bluetooth restart resets that native state. Start there:
+either keep the registration across `onStop`, or defer the unregister until
+a pending connect has reached CONNECTED or DISCONNECTED.
+
 The HID keyboard registration itself needs the app to be in the foreground
 and unlocked; behind the lock screen `registerApp()` fails and nothing types
 (see `CLAUDE.md`), so test with the phone unlocked and the app open.
