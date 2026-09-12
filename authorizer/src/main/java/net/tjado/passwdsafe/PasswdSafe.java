@@ -592,6 +592,11 @@ public class PasswdSafe extends AppCompatActivity
             mTransactionManager.registerListener((Framing.WebAuthnListener) authenticatorListener);
             mTransactionManager.registerListener((Framing.U2fAuthnListener) authenticatorListener);
         }
+
+        // Resumed is always foreground-safe: this both covers an onStart start
+        // that was deferred behind the lock screen and rebuilds the service
+        // (and its HID registration) after onStop stopped it on the way out.
+        startBtServiceForeground();
     }
 
     @Override
@@ -660,6 +665,16 @@ public class PasswdSafe extends AppCompatActivity
         try {
             unbindService(btServiceConnection);
             unregisterReceiver(btStatusBroadcastReceiver);
+
+            // Keyboard mode only needs the HID service while the app is in
+            // front (auto-type is triggered from here), so stop it now. The
+            // foreground-service notification then lives only while the app is
+            // open, not as a persistent background banner. FIDO must keep
+            // answering with the app closed, so it is left running.
+            if (ApiCompat.supportsBluetoothHid()
+                    && !Preferences.getBluetoothFidoEnabled(Preferences.getSharedPrefs(this))) {
+                stopService(new Intent(this, BluetoothForegroundService.class));
+            }
         } catch (Exception ignored) {}
     }
 
@@ -2580,6 +2595,30 @@ public class PasswdSafe extends AppCompatActivity
         return false;
     }
 
+    /**
+     * Start the Bluetooth HID service as a foreground service. The foreground
+     * service is required for BluetoothHidDevice.registerApp() to succeed, and
+     * the notification only exists while the app is in the foreground because
+     * onStop stops the service again in keyboard mode. Guarded because
+     * startForegroundService() throws when the process is not foreground
+     * (e.g. onStart running behind the lock screen); onResume retries once the
+     * activity is definitely resumed.
+     */
+    private void startBtServiceForeground() {
+        if (!ApiCompat.supportsBluetoothHid()) {
+            return;
+        }
+        if (!Preferences.getBluetoothEnabled(Preferences.getSharedPrefs(this))) {
+            return;
+        }
+        try {
+            ContextCompat.startForegroundService(
+                    this, new Intent(this, BluetoothForegroundService.class));
+        } catch (Exception e) {
+            PasswdSafeUtil.dbginfo(TAG, "Deferring BT service foreground start: " + e.getMessage());
+        }
+    }
+
     public void checkBluetoothState() {
         checkBluetoothState(null);
     }
@@ -2620,19 +2659,14 @@ public class PasswdSafe extends AppCompatActivity
 
             SharedPreferences prefs = Preferences.getSharedPrefs(this);
             if(Preferences.getBluetoothEnabled(prefs)) {
-                // Binding alone keeps the service alive while the activity is
-                // visible and is allowed even while the device is locked.
-                // Only FIDO needs the service (and its persistent
-                // notification) to outlive the activity, so only then is it
-                // also started as a foreground service. A plain startService()
-                // here throws BackgroundServiceStartNotAllowedException when
-                // the activity starts behind the lock screen.
+                // Binding is allowed from any state and gives us the binder for
+                // pairing/typing. The foreground start (which is what makes HID
+                // registration succeed) is deferred to startBtServiceForeground(),
+                // called from a foreground-safe point, because
+                // startForegroundService() throws when the activity is not yet
+                // foreground (e.g. launched behind the lock screen).
                 bindService(new Intent(this, BluetoothForegroundService.class), btServiceConnection, Context.BIND_AUTO_CREATE);
-
-                if (Preferences.getBluetoothFidoEnabled(prefs)) {
-                    Intent serviceIntent = new Intent(this, BluetoothForegroundService.class);
-                    ContextCompat.startForegroundService(this, serviceIntent);
-                }
+                startBtServiceForeground();
             }
         } else if (state == BluetoothAdapter.STATE_TURNING_ON) {
             PasswdSafeUtil.dbginfo(TAG, "BluetoothAdapter.STATE_TURNING_ON");

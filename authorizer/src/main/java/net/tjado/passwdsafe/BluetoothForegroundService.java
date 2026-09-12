@@ -45,20 +45,17 @@ import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 public class BluetoothForegroundService extends Service {
 
     private static final String TAG = "BluetoothFgrndService";
-    private static final String CHANNEL_ID = "BluetoothServiceChannel";
+    private static final String CHANNEL_ID = "BluetoothServiceChannelQuiet";
+    private static final String OLD_CHANNEL_ID = "BluetoothServiceChannel";
     private static final int MAIN_NOTIFICATION_ID = 1;
     private static final int REQUEST_NOTIFICATION_ID = 2;
     private static boolean openFileStarted = false;
     private static final Object mLock = new Object();
+    private boolean hidRegistered = false;
+    private boolean oneTimeInitDone = false;
     private boolean isInitPhase = false;
 
     private boolean isBtProfileAlreadyRegistered = false;
-    // True while the service runs as a foreground service (with its
-    // persistent notification). Only needed for FIDO, which must keep
-    // receiving HID reports while the activity is gone. Plain keyboard
-    // auto-type is always triggered from the activity, so a bound service
-    // is enough and no notification is shown.
-    private boolean isForeground = false;
 
     private final IBinder binder = new BluetoothForegroundBinder();
 
@@ -74,6 +71,12 @@ public class BluetoothForegroundService extends Service {
 
     final private int OPEN_FILE_TIMEOUT_MS = 20 * 1000;
     final private int INIT_APP_REGISTRATION_TIMEOUT_MS = 2 * 1000;
+    // registerApp() fails with "app is not foreground" if it runs before the
+    // process reaches foreground importance after startForeground. Retry a few
+    // times with a short delay to win that cold-start race deterministically.
+    final private int REG_RETRY_MS = 400;
+    final private int MAX_REG_ATTEMPTS = 6;
+    private int registrationAttempts = 0;
 
     private NotificationManagerCompat notificationManager = null;
     private NotificationCompat.Builder serviceNotificationBuilder = null;
@@ -97,10 +100,6 @@ public class BluetoothForegroundService extends Service {
     public void onCreate() {
         super.onCreate();
 
-        // All initialisation lives here so it runs the same whether the
-        // service was only bound (keyboard mode) or also started as a
-        // foreground service (FIDO mode). onStartCommand is not called for
-        // a bound-only service.
         prefs = Preferences.getSharedPrefs(getApplicationContext());
 
         // A service needs to manage its own lifecycle - if Bluetooth gets deactivated the service
@@ -112,18 +111,33 @@ public class BluetoothForegroundService extends Service {
         ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
                                        ContextCompat.RECEIVER_EXPORTED);
 
-        PasswdSafeUtil.dbginfo(TAG, "Service created");
         createNotificationChannel();
-        setHid();
+        oneTimeInitDone = true;
+        PasswdSafeUtil.dbginfo(TAG, "Service created");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Only reached via startForegroundService(), i.e. FIDO is enabled and
-        // the service must outlive the activity. Android requires
-        // startForeground() promptly after startForegroundService().
-        PasswdSafeUtil.dbginfo(TAG, "Executing onStartCommand - " + intent);
-        updateForegroundMode();
+        // Called every time the activity (re)starts the foreground service. Go
+        // foreground first (required for registerApp) then ensure the HID app is
+        // registered. Idempotent: if registration is already confirmed or in
+        // progress, this only refreshes the notification. This is what lets a
+        // return to the foreground recover a registration that failed earlier
+        // (e.g. the first attempt ran behind the lock screen).
+        PasswdSafeUtil.dbginfo(TAG,"Executing onStartCommand - " + intent);
+        if (!oneTimeInitDone) {
+            // Defensive: onCreate should have run first via BIND_AUTO_CREATE.
+            prefs = Preferences.getSharedPrefs(getApplicationContext());
+            createNotificationChannel();
+            oneTimeInitDone = true;
+        }
+
+        showBroadcastNotification();
+
+        if (!hidRegistered && !isInitPhase) {
+            registrationAttempts = 0;
+            setHid();
+        }
 
         return START_STICKY;
     }
@@ -145,6 +159,8 @@ public class BluetoothForegroundService extends Service {
         } catch (Exception ignored) {}
 
 
+        hidRegistered = false;
+        oneTimeInitDone = false;
         // Stop foreground service and remove the notification.
         stopForeground(true);
 
@@ -155,36 +171,6 @@ public class BluetoothForegroundService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        // Without FIDO there is nothing to do once the activity is gone, and
-        // a started service in a background app would be killed by the
-        // system anyway. Stop cleanly so the HID app is unregistered.
-        if (!isForeground) {
-            PasswdSafeUtil.dbginfo(TAG, "Activity unbound, stopping bound-only service");
-            stopForegroundService();
-        }
-        return false;
-    }
-
-    /**
-     * Promote to or demote from a foreground service depending on whether
-     * Bluetooth FIDO is enabled. Must be called while the app is visible;
-     * Android does not allow starting a foreground service from the
-     * background.
-     */
-    public void updateForegroundMode() {
-        boolean wantForeground = Preferences.getBluetoothFidoEnabled(prefs);
-        if (wantForeground && !isForeground) {
-            showBroadcastNotification();
-            isForeground = true;
-        } else if (!wantForeground && isForeground) {
-            stopForeground(STOP_FOREGROUND_REMOVE);
-            serviceNotificationBuilder = null;
-            isForeground = false;
-        }
     }
 
     final class BluetoothForegroundBinder extends Binder {
@@ -220,8 +206,6 @@ public class BluetoothForegroundService extends Service {
         }
 
         stopForeground(STOP_FOREGROUND_REMOVE);
-        serviceNotificationBuilder = null;
-        isForeground = false;
     }
 
     private void setHid() {
@@ -238,25 +222,55 @@ public class BluetoothForegroundService extends Service {
 
         bluetoothDeviceListing = new BluetoothDeviceListing(getApplicationContext());
 
-        initAppRegistrationHandler.postDelayed(() -> {
-            if(isInitPhase) {
-                isInitPhase = false;
-                isBtProfileAlreadyRegistered = true;
-                updateServiceNotificationContent(getString(R.string.notification_body_bt_unclean));
-            }
-        }, INIT_APP_REGISTRATION_TIMEOUT_MS);
+        initAppRegistrationHandler.postDelayed(this::retryRegistrationIfNeeded, REG_RETRY_MS);
+    }
+
+    /**
+     * Called a short time after a registration attempt. If the Bluetooth stack
+     * has not confirmed registration (isInitPhase still true), tear down and
+     * try again: by now the process has usually reached foreground importance,
+     * so registerApp() succeeds. Give up after MAX_REG_ATTEMPTS.
+     */
+    private void retryRegistrationIfNeeded() {
+        if (!isInitPhase) {
+            // Registration confirmed via onAppStatusChanged; nothing to do.
+            return;
+        }
+
+        registrationAttempts++;
+        if (registrationAttempts >= MAX_REG_ATTEMPTS) {
+            PasswdSafeUtil.dbginfo(TAG, "HID registration gave up after " + registrationAttempts + " attempts");
+            isInitPhase = false;
+            isBtProfileAlreadyRegistered = true;
+            updateServiceNotificationContent(getString(R.string.notification_body_bt_unclean));
+            return;
+        }
+
+        PasswdSafeUtil.dbginfo(TAG, "Retrying HID registration, attempt " + registrationAttempts);
+        if (hidDeviceController != null && profileListener != null) {
+            hidDeviceController.unregister(profileListener);
+        }
+        setHid();
     }
 
     private void createNotificationChannel() {
+        // IMPORTANCE_MIN: the foreground-service notification Android requires
+        // is still posted, but it shows no status-bar icon and no heads-up, and
+        // sits collapsed at the bottom of the shade. That removes the intrusive
+        // "running in the background" banner while keeping the service (and its
+        // HID registration, which needs foreground importance) alive.
         NotificationChannel serviceChannel = new NotificationChannel(
                 CHANNEL_ID,
-                "Authorizer Foreground Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
+                "Authorizer Bluetooth Service",
+                NotificationManager.IMPORTANCE_MIN
         );
-        serviceChannel.setShowBadge(true);
+        serviceChannel.setShowBadge(false);
         serviceChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
         notificationManager = NotificationManagerCompat.from(this);
+        // Drop the old DEFAULT-importance channel so its status-bar notification
+        // disappears; importance cannot be lowered on an existing channel.
+        notificationManager.deleteNotificationChannel(OLD_CHANNEL_ID);
         notificationManager.createNotificationChannel(serviceChannel);
     }
 
@@ -349,7 +363,49 @@ public class BluetoothForegroundService extends Service {
         requireKeyboardMode();
 
         keyboardOutput = autotypeString;
-        hidDeviceController.requestConnect(device);
+
+        BluetoothDevice connected = hidDeviceController.getConnectedDevice();
+        if (connected != null && connected.equals(device)
+                && hidDeviceController.isHidKeyboardMode()) {
+            // Already connected to this keyboard host. requestConnect would not
+            // produce a fresh STATE_CONNECTED callback, so the send that the
+            // callback normally performs would never happen. Send directly on a
+            // worker thread instead (HID writes block and must never run on the
+            // main thread).
+            final BluetoothDevice target = device;
+            new Thread(() -> autotypeToConnectedHost(target), "BtAutotype").start();
+        } else {
+            // Not connected yet: connect and let the STATE_CONNECTED callback
+            // perform the send once the link is up.
+            hidDeviceController.requestConnect(device);
+        }
+    }
+
+    /**
+     * Send the pending keyboard output to an already-connected host. Mirrors the
+     * send performed from onConnectionStateChanged and clears keyboardOutput so
+     * a stray CONNECTED callback cannot repeat it.
+     */
+    // Runs on a dedicated worker thread; sendToKeyboardHost is @WorkerThread
+    // while requireFidoMode is @MainThread. This mirrors the pre-existing send
+    // in onConnectionStateChanged, which carries the same suppression.
+    @SuppressLint("ThreadConstraint")
+    private void autotypeToConnectedHost(BluetoothDevice device) {
+        synchronized (mLock) {
+            if (keyboardOutput == null) {
+                return;
+            }
+            if (bluetoothDeviceListing == null
+                    || !bluetoothDeviceListing.isKeyboardHost(device)) {
+                return;
+            }
+            byte[] out = keyboardOutput;
+            keyboardOutput = null;
+            SystemClock.sleep(100);
+            hidDeviceController.sendToKeyboardHost(out);
+            SystemClock.sleep(500);
+            requireFidoMode();
+        }
     }
 
     public BluetoothDevice getConnectedDevice() {
@@ -389,6 +445,8 @@ public class BluetoothForegroundService extends Service {
 
             if(isInitPhase && registered) {
                 isInitPhase = false;
+                registrationAttempts = 0;
+                hidRegistered = true;
                 isBtProfileAlreadyRegistered = false;
                 updateServiceNotificationContent(getString(R.string.notification_body_foregroundservice));
             }
@@ -413,6 +471,9 @@ public class BluetoothForegroundService extends Service {
                 pairingDevice = null;
             }
 
+            if (!registered) {
+                hidRegistered = false;
+            }
             if (!registered && hidDeviceController != null && profileListener != null) {
                 PasswdSafeUtil.dbginfo(TAG, "onAppStatusChanged - unregister profileListener");
                 hidDeviceController.unregister(profileListener);
@@ -436,8 +497,10 @@ public class BluetoothForegroundService extends Service {
                         keyboardOutput != null
                     ){
                         PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: initiate HID Keyboard Autotype");
+                        byte[] out = keyboardOutput;
+                        keyboardOutput = null;
                         SystemClock.sleep(100);
-                        hidDeviceController.sendToKeyboardHost(keyboardOutput);
+                        hidDeviceController.sendToKeyboardHost(out);
                         SystemClock.sleep(500);
                         requireFidoMode();
 

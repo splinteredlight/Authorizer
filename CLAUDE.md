@@ -87,13 +87,24 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   re-enumerates and early reports are lost.
 - If libsu returns a non-root shell, close it before returning, or every
   later attempt fails until the process restarts.
-- `BluetoothForegroundService` is a plain bound service unless Bluetooth
-  FIDO is enabled: the activity binds it in `onStart` and it stops itself on
-  unbind, so there is no persistent notification in keyboard-only use. Only
-  FIDO (which must receive reports with the app closed) starts it with
-  `startForegroundService`. Never call plain `startService` from `onStart`:
-  it throws `BackgroundServiceStartNotAllowedException` when the activity
-  starts behind the lock screen. FIDO defaults to off.
+- `BluetoothForegroundService` must run as a foreground service whenever HID
+  is active: `BluetoothHidDevice.registerApp()` fails with "app is not
+  foreground" unless the process has foreground importance, and a bound-only
+  service does not provide it (auto-type then silently does nothing).
+  Register in `onStartCommand` *after* `startForeground`, in that order, or
+  the registration races the foreground-importance update and fails on cold
+  start. To avoid a persistent notification in keyboard mode, the activity
+  ties the service to being in front: `startForegroundService` from a
+  foreground-safe point (`onResume`, and a guarded try in the STATE_ON
+  handler) and `stopService` in `onStop`, so the (LOW-importance, mandatory)
+  notification exists only while the app is open. FIDO leaves the service
+  running on `onStop` because it must answer with the app closed; FIDO
+  defaults to off. Never call `startForegroundService` from `onStart`
+  unguarded: it throws `BackgroundServiceStartNotAllowedException` behind the
+  lock screen. A foreground-service notification cannot go below
+  IMPORTANCE_LOW, and channel importance is locked after creation, so the
+  quiet channel uses a new id (`BluetoothServiceChannelQuiet`) and deletes
+  the old one.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
   explicitly: Magisk's busybox `stat` has no `%C`.
 

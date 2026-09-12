@@ -193,11 +193,8 @@ public class BluetoothFragment extends Fragment
                 } else {
                     btService.requireKeyboardMode();
                 }
-                // Demotes to a bound-only service when FIDO was turned off.
-                btService.updateForegroundMode();
             }
-            // Starts the foreground service when FIDO was turned on, so it
-            // survives the activity being unbound.
+            // Make sure the service is running and reflects the new mode.
             itsListener.checkBluetoothState();
         });
 
