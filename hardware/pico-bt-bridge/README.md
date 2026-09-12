@@ -71,7 +71,9 @@ Everything under `firmware/build/` is ignored by git.
    happened, *Unpair* it in the app (or Forget in Settings), press BOOTSEL on
    the Pico, and start over from here.
    - Authorizer → drawer → **Bluetooth**. Make sure the *Enable Bluetooth
-     feature* switch is on; the foreground-service notification appears.
+     feature* switch is on. Leave *FIDO* off: it is only needed for
+     security-key use and keeps a foreground service with a persistent
+     notification alive. In keyboard-only mode there is no notification.
    - **Start Device Scan**. The button turns into *Stop Scan* with a progress
      bar and `Authorizer Bridge` shows up in *Available Devices* within a
      few seconds.
@@ -84,8 +86,11 @@ Everything under `firmware/build/` is ignored by git.
 
 4. **Type.** Put the cursor in a text editor on the PC. Open a record in
    Authorizer and use **Auto-Type Bluetooth → Username** (or long-press to
-   pick a layout). The LED flickers on each report. Try a password with
-   symbols and the Return suffix too.
+   pick a layout). With the Pico as the only paired keyboard host the tap
+   sends straight away; with several, mark the Pico as default from the
+   three-dot menu on its card, or pick it in the dialog each time. The LED
+   flickers on each report. Try a password with symbols and the Return
+   suffix too.
 
 5. **Unplug and replug the Pico.** It must come back to slow-blink on its
    own; then in Authorizer press **Connect** on the paired entry (or just
