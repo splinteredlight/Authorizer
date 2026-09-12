@@ -644,8 +644,11 @@ public class PasswdSafe extends AppCompatActivity
         }
 
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts are sent by the Bluetooth
+        // process, not the system uid, so Android drops them for non-exported receivers.
+        // They are protected broadcasts; no third-party app can send them.
         ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
-                                       ContextCompat.RECEIVER_NOT_EXPORTED);
+                                       ContextCompat.RECEIVER_EXPORTED);
 
         checkBluetoothState(null);
     }

@@ -305,7 +305,7 @@ public class BluetoothFragment extends Fragment
         final IntentFilter btStatusIntentFilter = new IntentFilter();
         btStatusIntentFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         btStatusIntentFilter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
-        ContextCompat.registerReceiver(requireContext(), btStateReceiver, btStatusIntentFilter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        ContextCompat.registerReceiver(requireContext(), btStateReceiver, btStatusIntentFilter, ContextCompat.RECEIVER_EXPORTED);
 
         registerScanReceiver();
 
@@ -366,7 +366,11 @@ public class BluetoothFragment extends Fragment
         intentFilter.addAction(BluetoothDevice.ACTION_FOUND);
         intentFilter.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
         intentFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
-        ContextCompat.registerReceiver(requireContext(), btScanReceiver, intentFilter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts are sent by the Bluetooth
+        // process, not the system uid, so Android drops them for non-exported receivers
+        // (with RECEIVER_NOT_EXPORTED no scan result ever arrived here). They are
+        // protected broadcasts; no third-party app can send them.
+        ContextCompat.registerReceiver(requireContext(), btScanReceiver, intentFilter, ContextCompat.RECEIVER_EXPORTED);
     }
 
     private void unregisterScanReceiver() {
@@ -799,7 +803,9 @@ public class BluetoothFragment extends Fragment
                     btAppSettings.setVisibility(View.GONE);
 
                     IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-                    ContextCompat.registerReceiver(requireContext(), btStateReceiver, btStatusIntentFilter, ContextCompat.RECEIVER_NOT_EXPORTED);
+                    // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts do not reach
+                    // non-exported receivers (they come from the Bluetooth uid, not system).
+                    ContextCompat.registerReceiver(requireContext(), btStateReceiver, btStatusIntentFilter, ContextCompat.RECEIVER_EXPORTED);
                     registerScanReceiver();
                     checkBluetoothState(null);
 

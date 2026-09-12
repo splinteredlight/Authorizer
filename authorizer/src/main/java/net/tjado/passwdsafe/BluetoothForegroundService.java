@@ -106,8 +106,11 @@ public class BluetoothForegroundService extends Service {
         // A service needs to manage its own lifecycle - if Bluetooth gets deactivated the service
         // needs to terminate itself. It can't be done by the activity as it might be not running.
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts are sent by the Bluetooth
+        // process, not the system uid, so Android drops them for non-exported receivers.
+        // They are protected broadcasts; no third-party app can send them.
         ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
-                                       ContextCompat.RECEIVER_NOT_EXPORTED);
+                                       ContextCompat.RECEIVER_EXPORTED);
 
         PasswdSafeUtil.dbginfo(TAG,"Executing onStartCommand - " + intent);
         createNotificationChannel();
