@@ -501,6 +501,9 @@ public class BluetoothFragment extends Fragment
 
             holder.name.setText(device.getName());
             holder.address.setText(device.getAddress());
+            if (device.isDefault()) {
+                displayType += " (" + getString(R.string.bt_default) + ")";
+            }
             holder.state.setText(Html.fromHtml(String.format(getString(R.string.bt_paired_as), displayType)));
 
             holder.btnDeviceMenu.setOnClickListener(view -> showDeviceMenu(view, device));
@@ -569,11 +572,11 @@ public class BluetoothFragment extends Fragment
             popup.getMenuInflater().inflate(R.menu.cardview_bluetooth_device, popup.getMenu());
 
             MenuItem defaultMenu = popup.getMenu().findItem(R.id.menu_default);
-            if(type.equals(BluetoothDeviceListing.HID_FIDO_HOST) && bluetoothDeviceListing.isHidDefaultDevice(device)) {
+            // Keyboard hosts can be default too: auto-type then sends to
+            // this device without asking which one to use.
+            if(bluetoothDeviceListing.isHidDefaultDevice(device)) {
                 defaultMenu.setEnabled(false);
-                defaultMenu.setTitle("Is default");
-            } else if(type.equals(BluetoothDeviceListing.HID_KEYBOARD_HOST)) {
-                defaultMenu.setVisible(false);
+                defaultMenu.setTitle(R.string.bt_is_default);
             } else {
                 defaultMenu.setEnabled(true);
             }
@@ -596,6 +599,7 @@ public class BluetoothFragment extends Fragment
                 PasswdSafeUtil.dbginfo(TAG, "Paired device menu: clicked set default");
                 if(!rvPairedDevices.isComputingLayout()) {
                     bluetoothDeviceListing.cacheHidDefaultDevice(device.getDevice());
+                    checkBluetoothState(null);
                 }
 
             } else if (itemId == R.id.menu_unpair) {

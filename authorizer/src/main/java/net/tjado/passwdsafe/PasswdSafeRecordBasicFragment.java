@@ -1146,10 +1146,26 @@ public class PasswdSafeRecordBasicFragment
             PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
         }
 
-        List<BluetoothDeviceWrapper> bondedDevices = new BluetoothDeviceListing(requireContext()).getAvailableKeyboardHostDevices();
+        BluetoothDeviceListing listing = new BluetoothDeviceListing(requireContext());
+        List<BluetoothDeviceWrapper> bondedDevices = listing.getAvailableKeyboardHostDevices();
         if(bondedDevices.size() < 1) {
             Toast.makeText(getActivity(), getString(R.string.bt_autotype_no_devices), Toast.LENGTH_LONG).show();
             return;
+        }
+
+        final byte[] output = outputStream.toByteArray();
+
+        // No chooser when the target is unambiguous: a single paired keyboard
+        // host, or one marked as default in the Bluetooth screen.
+        if (bondedDevices.size() == 1) {
+            connectAndTypeBluetooth(btService, bondedDevices.get(0), output);
+            return;
+        }
+        for (BluetoothDeviceWrapper device : bondedDevices) {
+            if (listing.isHidDefaultDevice(device)) {
+                connectAndTypeBluetooth(btService, device, output);
+                return;
+            }
         }
 
         SortedMap<String, BluetoothDeviceWrapper> deviceList = new TreeMap<>();
@@ -1158,22 +1174,32 @@ public class PasswdSafeRecordBasicFragment
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        builder.setTitle(R.string.autotype_bluetooth_devices).setItems(cs, (dialog, which) -> {
-            btService.connectAndType(deviceList.get(cs[which]).getDevice(), outputStream.toByteArray());
-
-            new Handler().postDelayed(() -> {
-                if(btService.isAppRegistered()) {
-                    PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is TRUE");
-                } else {
-                    PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is FALSE");
-                    Toast.makeText(getActivity(), getString(R.string.bt_unclean_state_error), Toast.LENGTH_LONG).show();
-                }
-            }, 200);
-       });
+        builder.setTitle(R.string.autotype_bluetooth_devices).setItems(cs, (dialog, which) ->
+            connectAndTypeBluetooth(btService, deviceList.get(cs[which]), output));
 
         AlertDialog dialog = builder.create();
         // Display the alert dialog on interface
         dialog.show();
+    }
+
+    /**
+     * Hand the prepared HID output to the service for the given keyboard host
+     */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private void connectAndTypeBluetooth(BluetoothForegroundService btService,
+                                         BluetoothDeviceWrapper device,
+                                         byte[] output)
+    {
+        btService.connectAndType(device.getDevice(), output);
+
+        new Handler().postDelayed(() -> {
+            if(btService.isAppRegistered()) {
+                PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is TRUE");
+            } else {
+                PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is FALSE");
+                Toast.makeText(getActivity(), getString(R.string.bt_unclean_state_error), Toast.LENGTH_LONG).show();
+            }
+        }, 200);
     }
 
     /**
