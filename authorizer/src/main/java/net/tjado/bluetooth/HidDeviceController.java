@@ -22,6 +22,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHidDevice;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.ArraySet;
 import android.util.Log;
@@ -76,6 +78,20 @@ public class HidDeviceController
     private boolean registerAppReturnStatus;
 
     private int currentMode = Constants.MODE_FIDO;
+
+    /**
+     * How long an outgoing connect() may stay in STATE_CONNECTING before we
+     * assume the host is unreachable, cancel it, and report DISCONNECTED.
+     * A BR/EDR page attempt fails within about 5 s; the Android HID device
+     * service has no timeout of its own and has been observed to stay in
+     * STATE_CONNECTING with no ACL link until Bluetooth is toggled.
+     */
+    private static final long CONNECT_TIMEOUT_MS = 15_000;
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    @Nullable
+    private Runnable connectTimeout;
 
     /**
      * @param hidDeviceApp HID Device App interface.
@@ -167,8 +183,17 @@ public class HidDeviceController
             }
 
             hidDeviceApp.unregisterDeviceListener();
+            cancelConnectTimeout();
 
-            for (BluetoothDevice device : hidDeviceProfile.getConnectedDevices()) {
+            // Also tear down connects still in flight: unregistering the HID
+            // app while a device is STATE_CONNECTING leaves the Bluetooth
+            // stack in that state with no link behind it ("Connecting..."
+            // forever in Android's Bluetooth settings).
+            for (BluetoothDevice device : hidDeviceProfile.getDevicesMatchingConnectionStates(
+                    new int[] {
+                            BluetoothProfile.STATE_CONNECTED,
+                            BluetoothProfile.STATE_CONNECTING
+                    })) {
                 hidDeviceProfile.disconnect(device);
             }
 
@@ -338,14 +363,22 @@ public class HidDeviceController
                     Log.i(TAG, "Internal profileListener - onConnectionStateChanged: " + state);
                     synchronized (lock) {
                         if (state == BluetoothProfile.STATE_CONNECTED) {
+                            cancelConnectTimeout();
                             // A new connection was established. If we weren't expecting that, it
                             // must be an incoming one. In that case, we shouldn't try to disconnect
                             // from it.
                             waitingForDevice = device;
                         } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                            cancelConnectTimeout();
                             // If we are disconnected from a device we are waiting to connect to, we
                             // ran into a timeout and should no longer try to connect.
-                            if (device == waitingForDevice) {
+                            // The callback delivers a freshly unparceled BluetoothDevice, so
+                            // this must compare by address (equals), never by reference: with
+                            // == the pending request survived every failed attempt and
+                            // updateDeviceList() below re-issued connect() forever, leaving
+                            // Android's Bluetooth settings stuck on "Connecting..." whenever
+                            // the host (e.g. an unpowered Pico bridge) was out of reach.
+                            if (device != null && device.equals(waitingForDevice)) {
                                 waitingForDevice = null;
                             }
                         }
@@ -427,12 +460,35 @@ public class HidDeviceController
                         });
             if (connectionStateDevices.isEmpty() && waitingForDevice != null) {
                 hidDeviceProfile.connect(waitingForDevice);
+                armConnectTimeout(waitingForDevice);
             } else if(waitingForDevice == null) {
                 Log.i(TAG, "updateDeviceList: waitingForDevice is null");
             } else {
                 Log.i(TAG, "updateDeviceList: getDevicesMatchingConnectionStates is not empty: " );
                 for (BluetoothDevice device : connectionStateDevices) {
                     Log.i(TAG, "updateDeviceList: still connected device: " + device.getName());
+                }
+                if (!connected(waitingForDevice)) {
+                    // The device we want is not connected, yet the stack is busy with
+                    // something. When that something is our own target sitting in
+                    // STATE_CONNECTING, the Java HID device service may simply be
+                    // stale: it only leaves that state on a native event, and
+                    // disconnect() on a link that never came up is a no-op
+                    // ("HID_DevDisconnect returned 4"). Issue the connect anyway. If a
+                    // connect really is in flight the native layer answers
+                    // HID_ERR_ALREADY_CONN and nothing changes; otherwise it pages the
+                    // host, fails within a few seconds and delivers the CLOSE event
+                    // that finally drops the state to DISCONNECTED.
+                    if (connectionStateDevices.size() == 1
+                        && connectionStateDevices.get(0).equals(waitingForDevice)
+                        && hidDeviceProfile.getConnectionState(waitingForDevice)
+                           == BluetoothProfile.STATE_CONNECTING) {
+                        Log.i(TAG, "updateDeviceList: target stuck in CONNECTING, re-issuing connect");
+                        hidDeviceProfile.connect(waitingForDevice);
+                    }
+                    // Same deadline as a fresh connect so the pending request cannot
+                    // outlive the host being unreachable.
+                    armConnectTimeout(waitingForDevice);
                 }
             }
 
@@ -446,4 +502,44 @@ public class HidDeviceController
         }
     }
 
+    private boolean connected(@Nullable BluetoothDevice device) {
+        return device != null
+               && hidDeviceProfile.getConnectionState(device) == BluetoothProfile.STATE_CONNECTED;
+    }
+
+    /** Must be called with {@link #lock} held. */
+    private void cancelConnectTimeout() {
+        if (connectTimeout != null) {
+            mainHandler.removeCallbacks(connectTimeout);
+            connectTimeout = null;
+        }
+    }
+
+    /**
+     * Give up on an outgoing connect that produces no CONNECTED or
+     * DISCONNECTED callback within {@link #CONNECT_TIMEOUT_MS}. disconnect()
+     * makes the stack synthesise a close event and drop back to
+     * STATE_DISCONNECTED; the listeners then get the DISCONNECTED they were
+     * waiting for so pending auto-type output is discarded and the user told.
+     * Must be called with {@link #lock} held.
+     */
+    private void armConnectTimeout(final BluetoothDevice device) {
+        cancelConnectTimeout();
+        connectTimeout = () -> {
+            synchronized (lock) {
+                connectTimeout = null;
+                if (!device.equals(waitingForDevice) || connected(device)) {
+                    return;
+                }
+                Log.w(TAG, "connect timed out, cancelling: " + device.getName());
+                waitingForDevice = null;
+                hidDeviceProfile.disconnect(device);
+                updateDeviceList();
+                for (ProfileListener listener : listeners) {
+                    listener.onConnectionStateChanged(device, BluetoothProfile.STATE_DISCONNECTED);
+                }
+            }
+        };
+        mainHandler.postDelayed(connectTimeout, CONNECT_TIMEOUT_MS);
+    }
 }

@@ -873,6 +873,7 @@
     <string name="bt_pair_keyboard">Pair as Keyboard</string>
     <string name="bt_pair_fido">Pair as FIDO Key</string>
     <string name="bt_autotype_no_devices"><![CDATA[No device paired in keyboard mode!\nPlease pair devices only over Authorizer (Preferences -> Bluetooth).]]></string>
+    <string name="bt_autotype_connect_failed">Could not connect to %1$s over Bluetooth. Is the keyboard host powered on and in range?</string>
     <string name="bt_autotype_no_service">Authorizer Bluetooth Service is not available. Auto-typing is not possible!</string>
     <string name="bt_unclean_state_error"><![CDATA[Bluetooth HID stack is in an unclean state - please stop & start Bluetooth in Android and try again!]]></string>
     <string name="bt_unpair_info">At first, remove the pairing on the paired device.\n\nOnce that\'s done, proceed by confirming this dialog.</string>

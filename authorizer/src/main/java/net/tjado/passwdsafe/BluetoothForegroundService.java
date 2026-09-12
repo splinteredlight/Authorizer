@@ -23,6 +23,7 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -512,6 +513,20 @@ public class BluetoothForegroundService extends Service {
                         pairingDevice = null;
                         requireFidoMode();
                     }
+                } else if (state == BluetoothProfile.STATE_DISCONNECTED
+                           && keyboardOutput != null
+                           && hidDeviceController.getConnectedDevice() == null) {
+                    // The connect issued by connectAndType failed (host off or
+                    // out of range) or the link dropped before the send ran.
+                    // Drop the pending output so it cannot be typed into
+                    // whatever host connects next, and tell the user; the
+                    // controller has already given up retrying.
+                    PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: DISCONNECTED with pending autotype, discarding");
+                    keyboardOutput = null;
+                    String name = BluetoothUtils.getDeviceDisplayName(device);
+                    Toast.makeText(getApplicationContext(),
+                                   getString(R.string.bt_autotype_connect_failed, name),
+                                   Toast.LENGTH_LONG).show();
                 }
             }
         }

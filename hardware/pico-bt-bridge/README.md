@@ -244,11 +244,15 @@ Causes seen on hardware, in order of likelihood:
    powers on but the link will not complete, so it reads as "connecting"
    forever. Reseat the cable firmly; if a printed case is in the way, see the
    overhang note above. This looked for a while like an app bug and was not.
-2. **A stale link state on the phone** after repeated connect/disconnect
-   churn: the phone holds the Pico in a transitional state, and the app then
-   treats it as busy and will not start a fresh connection. Fix on the phone,
-   not the Pico: toggle Bluetooth off and on, then reopen Authorizer.
-   Replugging the Pico alone does not clear this.
+2. **A stale link state on the phone** after the Pico was unplugged (it is
+   USB-powered, so unplugging it kills the radio mid-link). Android's HID
+   device service keeps the Pico in STATE_CONNECTING with no ACL behind it,
+   and Bluetooth settings shows "Connecting..." indefinitely. Since
+   2026-09-12 the app clears this itself: opening Authorizer, or trying an
+   auto-type, re-issues the connect, the page attempt fails within about 5 s,
+   and the state drops to disconnected (a toast reports the failed
+   auto-type). If an older build is installed, toggle Bluetooth off and on
+   and reopen Authorizer; replugging the Pico alone does not clear it.
 
 The HID keyboard registration itself needs the app to be in the foreground
 and unlocked; behind the lock screen `registerApp()` fails and nothing types

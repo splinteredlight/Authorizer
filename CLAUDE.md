@@ -105,6 +105,15 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   IMPORTANCE_LOW, and channel importance is locked after creation, so the
   quiet channel uses a new id (`BluetoothServiceChannelQuiet`) and deletes
   the old one.
+- Bluetooth connect failures: `BluetoothHidDevice` callbacks deliver a freshly
+  unparceled `BluetoothDevice`, so compare with `equals`, never `==`. Android's
+  `HidDeviceService` only leaves STATE_CONNECTING on a native event, and
+  `disconnect()` on a link that never came up is a no-op
+  ("HID_DevDisconnect returned 4"), so a target stuck in CONNECTING must be
+  cleared by re-issuing `connect()` (native answers "already in progress" if
+  one is genuinely in flight, otherwise pages, fails in ~5 s and delivers
+  CLOSE). `HidDeviceController` does this plus a 15 s timeout backstop;
+  verified on device 2026-09-12 with the Pico unpowered.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
   explicitly: Magisk's busybox `stat` has no `%C`.
 
