@@ -89,7 +89,7 @@ public class BluetoothForegroundService extends Service {
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
 
-            if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                 checkBluetoothState(state);
             }
@@ -158,6 +158,12 @@ public class BluetoothForegroundService extends Service {
             unregisterReceiver(btStatusBroadcastReceiver);
         } catch (Exception ignored) {}
 
+        // Cancel any queued registration retry / file-reset callbacks so a
+        // stopped service cannot re-register the HID profile after stopSelf().
+        initAppRegistrationHandler.removeCallbacksAndMessages(null);
+        openFileResetHandler.removeCallbacksAndMessages(null);
+        isInitPhase = false;
+        registrationAttempts = 0;
 
         hidRegistered = false;
         oneTimeInitDone = false;
@@ -480,10 +486,6 @@ public class BluetoothForegroundService extends Service {
             }
         }
 
-        // Pre-existing: the Bluetooth stack delivers this on a binder
-        // thread and the HID send is annotated @WorkerThread; lint cannot
-        // prove the thread from the interface signature.
-        @SuppressLint("ThreadConstraint")
         @Override
         public void onConnectionStateChanged(BluetoothDevice device, int state) {
             synchronized (mLock) {
@@ -497,12 +499,13 @@ public class BluetoothForegroundService extends Service {
                         keyboardOutput != null
                     ){
                         PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: initiate HID Keyboard Autotype");
-                        byte[] out = keyboardOutput;
-                        keyboardOutput = null;
-                        SystemClock.sleep(100);
-                        hidDeviceController.sendToKeyboardHost(out);
-                        SystemClock.sleep(500);
-                        requireFidoMode();
+                        // This callback is delivered on the main thread
+                        // (HidDeviceApp re-posts it via a main-looper Handler),
+                        // and the send holds the report for hundreds of ms, so
+                        // it must run on a worker thread. autotypeToConnectedHost
+                        // clears keyboardOutput so it cannot be sent twice.
+                        final BluetoothDevice target = device;
+                        new Thread(() -> autotypeToConnectedHost(target), "BtAutotype").start();
 
                     } else if(pairingDevice != null && pairingDevice.equals(device)) {
                         // pairing seems to be successful
@@ -523,6 +526,7 @@ public class BluetoothForegroundService extends Service {
 
             if(!Preferences.getBluetoothFidoEnabled(prefs)) {
                 PasswdSafeUtil.dbginfo(TAG, "onInterruptData - received data with FIDO disabled... aborting");
+                return;
             }
 
             PasswdSafe activity = ((PasswdSafeApp) getApplication()).getActiveActivity();

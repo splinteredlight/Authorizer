@@ -83,6 +83,12 @@ public final class BluetoothDeviceWrapper {
         return this.devAddress.equals(other.getAddress());
     }
 
+    @Override
+    public int hashCode() {
+        // Must stay consistent with equals(), which compares devName + devAddress.
+        return java.util.Objects.hash(devName, devAddress);
+    }
+
     public String getHash() {
         String devHash;
         try {
