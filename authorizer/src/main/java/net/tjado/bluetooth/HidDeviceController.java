@@ -268,7 +268,8 @@ public class HidDeviceController
                     int start = 0;
                     for (int i = 0; i < blockCount; i++) {
                         byte[] scancode = Arrays.copyOfRange(keyboardOutput, start, start + blockSize);
-                        Utilities.dbginfo(TAG, "send: " + Utilities.bytesToHex(scancode) );
+                        // Never log the report itself: it is the keystroke (see CLAUDE.md).
+                        Utilities.dbginfo(TAG, "send report " + (i + 1) + "/" + blockCount);
 
                         sendScancodeInternal(scancode);
                         clean();
@@ -287,7 +288,6 @@ public class HidDeviceController
         // overwriting the last keystroke, otherwise it will be repeated until the next writing
         // and it would not be possible to repeat the keystroke
         byte[] scancode = new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        Utilities.dbginfo(TAG, "RST > " + Utilities.bytesToHex(scancode));
         sendScancode(scancode);
     }
 
