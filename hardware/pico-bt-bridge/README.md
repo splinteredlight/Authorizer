@@ -253,6 +253,13 @@ Causes seen on hardware, in order of likelihood:
    and the state drops to disconnected (a toast reports the failed
    auto-type). If an older build is installed, toggle Bluetooth off and on
    and reopen Authorizer; replugging the Pico alone does not clear it.
+3. **A power-only (charge-only) USB cable** (seen 2026-09-12). The Pico
+   powers up, the phone pairs and the HID link reaches *connected*, and the
+   app sends its reports, but nothing arrives at the PC: the cable has no
+   data lines, so the PC never enumerates the Pico as a keyboard. From the
+   phone side this looks like a working link, so the app cannot detect it.
+   Check the PC: no new USB keyboard shows up (`lsusb` / Device Manager) and
+   the Pico's serial port is absent. Swap to a cable known to carry data.
 
 The HID keyboard registration itself needs the app to be in the foreground
 and unlocked; behind the lock screen `registerApp()` fails and nothing types
