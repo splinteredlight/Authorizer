@@ -50,10 +50,15 @@ public class BluetoothForegroundService extends Service {
     private static final int REQUEST_NOTIFICATION_ID = 2;
     private static boolean openFileStarted = false;
     private static final Object mLock = new Object();
-    private static boolean isStarted = false;
     private boolean isInitPhase = false;
 
     private boolean isBtProfileAlreadyRegistered = false;
+    // True while the service runs as a foreground service (with its
+    // persistent notification). Only needed for FIDO, which must keep
+    // receiving HID reports while the activity is gone. Plain keyboard
+    // auto-type is always triggered from the activity, so a bound service
+    // is enough and no notification is shown.
+    private boolean isForeground = false;
 
     private final IBinder binder = new BluetoothForegroundBinder();
 
@@ -91,16 +96,11 @@ public class BluetoothForegroundService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-    }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        if(isStarted) {
-            PasswdSafeUtil.dbginfo(TAG,"Skipping onStartCommand - Already started ... ");
-            return START_STICKY;
-        }
-        isStarted = true;
-
+        // All initialisation lives here so it runs the same whether the
+        // service was only bound (keyboard mode) or also started as a
+        // foreground service (FIDO mode). onStartCommand is not called for
+        // a bound-only service.
         prefs = Preferences.getSharedPrefs(getApplicationContext());
 
         // A service needs to manage its own lifecycle - if Bluetooth gets deactivated the service
@@ -112,11 +112,18 @@ public class BluetoothForegroundService extends Service {
         ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
                                        ContextCompat.RECEIVER_EXPORTED);
 
-        PasswdSafeUtil.dbginfo(TAG,"Executing onStartCommand - " + intent);
+        PasswdSafeUtil.dbginfo(TAG, "Service created");
         createNotificationChannel();
-
-        showBroadcastNotification();
         setHid();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // Only reached via startForegroundService(), i.e. FIDO is enabled and
+        // the service must outlive the activity. Android requires
+        // startForeground() promptly after startForegroundService().
+        PasswdSafeUtil.dbginfo(TAG, "Executing onStartCommand - " + intent);
+        updateForegroundMode();
 
         return START_STICKY;
     }
@@ -138,7 +145,6 @@ public class BluetoothForegroundService extends Service {
         } catch (Exception ignored) {}
 
 
-        isStarted = false;
         // Stop foreground service and remove the notification.
         stopForeground(true);
 
@@ -149,6 +155,36 @@ public class BluetoothForegroundService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        // Without FIDO there is nothing to do once the activity is gone, and
+        // a started service in a background app would be killed by the
+        // system anyway. Stop cleanly so the HID app is unregistered.
+        if (!isForeground) {
+            PasswdSafeUtil.dbginfo(TAG, "Activity unbound, stopping bound-only service");
+            stopForegroundService();
+        }
+        return false;
+    }
+
+    /**
+     * Promote to or demote from a foreground service depending on whether
+     * Bluetooth FIDO is enabled. Must be called while the app is visible;
+     * Android does not allow starting a foreground service from the
+     * background.
+     */
+    public void updateForegroundMode() {
+        boolean wantForeground = Preferences.getBluetoothFidoEnabled(prefs);
+        if (wantForeground && !isForeground) {
+            showBroadcastNotification();
+            isForeground = true;
+        } else if (!wantForeground && isForeground) {
+            stopForeground(STOP_FOREGROUND_REMOVE);
+            serviceNotificationBuilder = null;
+            isForeground = false;
+        }
     }
 
     final class BluetoothForegroundBinder extends Binder {
@@ -184,6 +220,8 @@ public class BluetoothForegroundService extends Service {
         }
 
         stopForeground(STOP_FOREGROUND_REMOVE);
+        serviceNotificationBuilder = null;
+        isForeground = false;
     }
 
     private void setHid() {

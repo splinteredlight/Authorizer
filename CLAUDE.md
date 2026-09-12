@@ -87,6 +87,13 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   re-enumerates and early reports are lost.
 - If libsu returns a non-root shell, close it before returning, or every
   later attempt fails until the process restarts.
+- `BluetoothForegroundService` is a plain bound service unless Bluetooth
+  FIDO is enabled: the activity binds it in `onStart` and it stops itself on
+  unbind, so there is no persistent notification in keyboard-only use. Only
+  FIDO (which must receive reports with the app closed) starts it with
+  `startForegroundService`. Never call plain `startService` from `onStart`:
+  it throws `BackgroundServiceStartNotAllowedException` when the activity
+  starts behind the lock screen. FIDO defaults to off.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
   explicitly: Magisk's busybox `stat` has no `%C`.
 

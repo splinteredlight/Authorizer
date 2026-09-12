@@ -180,7 +180,9 @@ public class Preferences
     private static final boolean PREF_BLUETOOTH_ENABLED_DEF = true;
 
     public static final String PREF_BLUETOOTH_FIDO_ENABLED = "bluetoothFidoPref";
-    private static final boolean PREF_BLUETOOTH_FIDO_ENABLED_DEF = true;
+    // Off by default: FIDO keeps a foreground service (and its persistent
+    // notification) alive. Keyboard auto-type needs neither.
+    private static final boolean PREF_BLUETOOTH_FIDO_ENABLED_DEF = false;
 
     public static final String PREF_USERNAMES = "usernamesPref";
     public static final String PREF_USERNAMES_DEFAULT = "usernamesDefaultPref";

@@ -2620,10 +2620,19 @@ public class PasswdSafe extends AppCompatActivity
 
             SharedPreferences prefs = Preferences.getSharedPrefs(this);
             if(Preferences.getBluetoothEnabled(prefs)) {
+                // Binding alone keeps the service alive while the activity is
+                // visible and is allowed even while the device is locked.
+                // Only FIDO needs the service (and its persistent
+                // notification) to outlive the activity, so only then is it
+                // also started as a foreground service. A plain startService()
+                // here throws BackgroundServiceStartNotAllowedException when
+                // the activity starts behind the lock screen.
                 bindService(new Intent(this, BluetoothForegroundService.class), btServiceConnection, Context.BIND_AUTO_CREATE);
 
-                Intent serviceIntent = new Intent(this, BluetoothForegroundService.class);
-                ContextCompat.startForegroundService(this, serviceIntent);
+                if (Preferences.getBluetoothFidoEnabled(prefs)) {
+                    Intent serviceIntent = new Intent(this, BluetoothForegroundService.class);
+                    ContextCompat.startForegroundService(this, serviceIntent);
+                }
             }
         } else if (state == BluetoothAdapter.STATE_TURNING_ON) {
             PasswdSafeUtil.dbginfo(TAG, "BluetoothAdapter.STATE_TURNING_ON");
