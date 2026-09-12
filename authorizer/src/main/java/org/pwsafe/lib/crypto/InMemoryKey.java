@@ -84,6 +84,13 @@ public class InMemoryKey
             if (buffer.hasArray()) {
                 byte[] content = buffer.array();
                 Arrays.fill(content, (byte)0);
+            } else {
+                // A direct ByteBuffer has no backing array, so the previous
+                // hasArray() branch never ran and the key material was only
+                // dropped for GC, never zeroed. Overwrite it in place.
+                for (int i = 0; i < buffer.capacity(); i++) {
+                    buffer.put(i, (byte) 0);
+                }
             }
             buffer = null;
         }

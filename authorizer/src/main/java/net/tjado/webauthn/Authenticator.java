@@ -28,6 +28,7 @@ import java.security.Signature;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
 import java.util.ArrayList;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -634,7 +635,7 @@ public final class Authenticator {
                                                                      options.newPinEnc);
                 localPinAuth = Arrays.copyOfRange(localPinAuth, 0, 16);
 
-                if (!Arrays.equals(options.pinAuth, localPinAuth)) {
+                if (!MessageDigest.isEqual(options.pinAuth, localPinAuth)) {
                     throw new CtapException(CtapError.PIN_AUTH_INVALID,
                                             "Received and calculated pinAuth don't match");
                 }
@@ -670,7 +671,7 @@ public final class Authenticator {
                 localPinAuth = WebAuthnCryptography.encodeHmacSHA256(sharedSecret, localPinAuth);
                 localPinAuth = Arrays.copyOfRange(localPinAuth, 0, 16);
 
-                if (!Arrays.equals(options.pinAuth, localPinAuth)) {
+                if (!MessageDigest.isEqual(options.pinAuth, localPinAuth)) {
                     throw new CtapException(CtapError.PIN_AUTH_INVALID,
                                             "Received and calculated pinAuth don't match");
                 }
@@ -1198,7 +1199,7 @@ public final class Authenticator {
                                                                         clientDataHash);
             localPinAuth = Arrays.copyOf(localPinAuth, 16);
 
-            if (Arrays.equals(pinAuth, localPinAuth)) {
+            if (MessageDigest.isEqual(pinAuth, localPinAuth)) {
                 conPINmismatches = 0;
                 pinLocker.setRetries(8L);
                 return true;

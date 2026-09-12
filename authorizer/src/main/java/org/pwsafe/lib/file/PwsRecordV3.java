@@ -18,6 +18,7 @@ import org.pwsafe.lib.exception.RecordLoadException;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
@@ -532,7 +533,7 @@ public class PwsRecordV3 extends PwsRecord
                 data = new byte[32]; // to hold closing HMAC
                 file.readBytes(data);
                 byte[] hash = file.hasher.doFinal();
-                if (!Util.bytesAreEqual(data, hash)) {
+                if (!MessageDigest.isEqual(data, hash)) {
                     LOG.error("HMAC record did not match. File may have been " +
                               "tampered");
                     throw new IOException("HMAC record did not match. File " +
