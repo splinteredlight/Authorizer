@@ -148,6 +148,8 @@ public class BluetoothFragment extends Fragment
         CheckBox cbFidoAutoLogin = rootView.findViewById(R.id.cb_pref_bt_fido_auto_login);
         TextView tvFidoAutoRegister = rootView.findViewById(R.id.tv_pref_bt_fido_auto_register);
         CheckBox cbFidoAutoRegister = rootView.findViewById(R.id.cb_pref_bt_fido_auto_register);
+        TextView tvFidoBackground = rootView.findViewById(R.id.tv_pref_bt_fido_background);
+        CheckBox cbFidoBackground = rootView.findViewById(R.id.cb_pref_bt_fido_background);
 
         prefs = Preferences.getSharedPrefs(getContext());
 
@@ -163,6 +165,9 @@ public class BluetoothFragment extends Fragment
             tvFidoAutoRegister.setEnabled(fidoOn);
             cbFidoAutoLogin.setChecked(fidoOn && Preferences.getFidoAutoApproveLogin(prefs));
             cbFidoAutoRegister.setChecked(fidoOn && Preferences.getFidoAutoApproveRegister(prefs));
+            cbFidoBackground.setEnabled(fidoOn);
+            tvFidoBackground.setEnabled(fidoOn);
+            cbFidoBackground.setChecked(fidoOn && Preferences.getFidoBackgroundAnswer(prefs));
         };
 
         cbBluetoothFeature.setChecked(Preferences.getBluetoothEnabled(prefs));
@@ -184,6 +189,18 @@ public class BluetoothFragment extends Fragment
             Preferences.setFidoAutoApproveLoginPref(cbFidoAutoLogin.isChecked(), prefs));
         cbFidoAutoRegister.setOnClickListener(item ->
             Preferences.setFidoAutoApproveRegisterPref(cbFidoAutoRegister.isChecked(), prefs));
+        tvFidoBackground.setOnClickListener(item -> cbFidoBackground.performClick());
+        cbFidoBackground.setOnClickListener(item -> {
+            boolean on = cbFidoBackground.isChecked();
+            Preferences.setFidoBackgroundAnswerPref(on, prefs);
+            PasswdSafeApp app = (PasswdSafeApp) requireActivity().getApplication();
+            if (on) {
+                // Fill the cache from the file that is open right now, if any.
+                app.refreshFidoKeyCache((PasswdSafe) requireActivity());
+            } else {
+                app.getFidoKeyCache().clear();
+            }
+        });
 
         cbBluetoothFeature.setOnClickListener(item -> {
             Preferences.setBluetoothEnabledPref(cbBluetoothFeature.isChecked(), prefs);

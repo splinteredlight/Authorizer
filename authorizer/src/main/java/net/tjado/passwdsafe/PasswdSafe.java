@@ -1298,6 +1298,9 @@ public class PasswdSafe extends AppCompatActivity
 
         PasswdSafeApp app = (PasswdSafeApp)getApplication();
         app.getNotifyMgr().cancelNotification(fileData.getUri());
+        // Copy the FIDO records into the encrypted key cache (if enabled) so
+        // the Bluetooth service can keep answering after this file closes.
+        app.refreshFidoKeyCache(this);
 
         if (fileData.getRecordErrors() != null) {
             showFileRecordErrors();

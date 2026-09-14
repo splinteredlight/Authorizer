@@ -77,13 +77,19 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
     private volatile FidoFileAccess file = null;
 
     /**
+     * Optional cache of the FIDO records, used when the file is not
+     * available (closed, or a record is being edited). Null disables it.
+     */
+    private final FidoKeyCache cache;
+
+    /**
      * Construct a CredentialSafe that requires user authentication and strongbox backing.
      *
      * @param ctx The application context
      * @throws VirgilException
      */
     public PasswdSafeCredentialBackend(Context ctx) throws VirgilException {
-        this(ctx, true, null);
+        this(ctx, true, null, null);
     }
 
     /**
@@ -93,11 +99,14 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      * @param strongboxRequired      Require keys to be backed by the "Strongbox Keymaster" HSM.
      *                               Requires hardware support.
      * @param file                   Holder of the open file, may be null
+     * @param cache                  Key cache for answering with the file closed, may be null
      * @throws VirgilException
      */
-    public PasswdSafeCredentialBackend(Context ctx, boolean strongboxRequired, FidoFileAccess file) throws VirgilException {
+    public PasswdSafeCredentialBackend(Context ctx, boolean strongboxRequired, FidoFileAccess file,
+                                       FidoKeyCache cache) throws VirgilException {
 
         this.file = file;
+        this.cache = cache;
         this.biometricSigningSupported = false;
 
         if(strongboxRequired) {
@@ -235,6 +244,13 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             return null;
         }
 
+        if (cache != null) {
+            // The file record above has hmacSecret set; mirror it so a
+            // background hmac-secret request matches what the file holds.
+            credentialSource.hmacSecret = symmetricKey;
+            cache.put(credentialSource);
+        }
+
         return credentialSource;
     }
 
@@ -264,6 +280,22 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             return null;
         }
         return file.useFileData(user);
+    }
+
+    /**
+     * Whether reads and counter writes should go to the file. While a record
+     * is being edited the file is left alone (the original gate) and the
+     * cache answers instead.
+     */
+    private boolean fileUsable()
+    {
+        FidoFileAccess file = this.file;
+        return file != null && file.isFileOpen() && !file.isEditMode();
+    }
+
+    private boolean cacheUsable()
+    {
+        return cache != null && cache.canServe();
     }
 
     protected final <RetT> RetT useRecordFile(final AbstractPasswdSafeLocationFragment.RecordFileUser<RetT> user)
@@ -378,6 +410,10 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
     public List<PublicKeyCredentialSource> getAllCredentials() {
         Log.d(TAG, "getAllCredentials");
 
+        if (!fileUsable()) {
+            return cacheUsable() ? cache.getAll() : new ArrayList<>();
+        }
+
         List<PublicKeyCredentialSource> credentialSources = new ArrayList<>();
         useFileData(fileData -> {
             for (PwsRecord rec: fileData.getRecords()) {
@@ -401,6 +437,10 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      */
     public List<PublicKeyCredentialSource> getKeysForEntity(@NonNull String rpEntityId) {
         Log.d(TAG, "getKeysForEntity: " + rpEntityId);
+
+        if (!fileUsable()) {
+            return cacheUsable() ? cache.getForRp(rpEntityId) : new ArrayList<>();
+        }
 
         List<PublicKeyCredentialSource> credentialSources = new ArrayList<>();
         useFileData(fileData -> {
@@ -428,6 +468,10 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      * @return PublicKeyCredentialSource that matches the id, or null
      */
     public PublicKeyCredentialSource getCredentialSourceById(@NonNull byte[] id) {
+
+        if (!fileUsable()) {
+            return cacheUsable() ? cache.getById(id) : null;
+        }
 
         final PublicKeyCredentialSource[] credentialSource = {null};
         useFileData(fileData -> {
@@ -539,6 +583,24 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      */
     public int incrementCredentialUseCounter(PublicKeyCredentialSource credential) {
 
+        if (!fileUsable()) {
+            // File closed: advance the cached counter. It is merged back
+            // (max wins) the next time the file is used, see below.
+            if (cache == null) {
+                return 0;
+            }
+            int cnt = cache.getCounter(credential.id);
+            if (cnt < 0) {
+                return 0;
+            }
+            cache.setCounter(credential.id, cnt + 1);
+            return cnt;
+        }
+
+        // Never let the counter the relying party sees go down: a signature
+        // made from the cache while the file was closed may be ahead of the
+        // record.
+        final int cachedCounter = (cache != null) ? cache.getCounter(credential.id) : -1;
         final int[] currentCounter = {0};
         EditRecordResult rc = useRecordFile((info, fileData) -> {
             PwsRecord rec = fileData.getRecord(new String(credential.id, StandardCharsets.UTF_8));
@@ -546,6 +608,9 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             Integer cnt = fileData.getFidoKeyUseCounter(rec);
             if(cnt == null) {
                 cnt = 0;
+            }
+            if (cachedCounter > cnt) {
+                cnt = cachedCounter;
             }
             fileData.setFidoKeyUseCounter(cnt + 1, rec);
 
@@ -556,6 +621,9 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
         FidoFileAccess file = this.file;
         if (rc != null && file != null) {
             file.finishEditFidoRecord(rc);
+        }
+        if (cache != null) {
+            cache.setCounter(credential.id, currentCounter[0] + 1);
         }
 
         return currentCounter[0];

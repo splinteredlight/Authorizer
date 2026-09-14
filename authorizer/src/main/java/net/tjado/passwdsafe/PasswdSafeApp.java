@@ -33,6 +33,7 @@ import net.tjado.passwdsafe.file.PasswdRecordFilter;
 import net.tjado.passwdsafe.lib.ApiCompat;
 import net.tjado.passwdsafe.lib.PasswdSafeUtil;
 import net.tjado.webauthn.Authenticator;
+import net.tjado.webauthn.FidoKeyCache;
 import net.tjado.webauthn.PasswdSafeCredentialBackend;
 import net.tjado.webauthn.TransactionManager;
 import net.tjado.webauthn.fido.hid.Framing;
@@ -75,6 +76,7 @@ public final class PasswdSafeApp extends Application
      */
     private TransactionManager itsTransactionManager;
     private FidoFileAccess itsFidoFileAccess;
+    private FidoKeyCache itsFidoKeyCache;
     private final FidoAuthListener itsFidoAuthListener = new FidoAuthListener();
 
     private static final String TAG = "PasswdSafeApp";
@@ -199,7 +201,8 @@ public final class PasswdSafeApp extends Application
         }
         try {
             PasswdSafeCredentialBackend backend =
-                    new PasswdSafeCredentialBackend(this, false, itsFidoFileAccess);
+                    new PasswdSafeCredentialBackend(this, false, itsFidoFileAccess,
+                                                    getFidoKeyCache());
             Authenticator authenticator = new Authenticator(this, false, backend);
             TransactionManager tm = new TransactionManager(passwdSafeActivity, authenticator);
             tm.registerListener((Framing.WebAuthnListener)itsFidoAuthListener);
@@ -209,6 +212,27 @@ public final class PasswdSafeApp extends Application
             PasswdSafeUtil.info(TAG, "Error initializing authenticator", e);
         }
         return itsTransactionManager;
+    }
+
+    /** The FIDO key cache (always present; empty and inert unless enabled) */
+    public synchronized FidoKeyCache getFidoKeyCache()
+    {
+        if (itsFidoKeyCache == null) {
+            itsFidoKeyCache = new FidoKeyCache(this);
+        }
+        return itsFidoKeyCache;
+    }
+
+    /**
+     * Rebuild the FIDO key cache from the given open file on a background
+     * thread. Called when a file opens and when the feature is switched on.
+     */
+    public void refreshFidoKeyCache(FidoFileAccess file)
+    {
+        if (!getFidoKeyCache().isEnabled()) {
+            return;
+        }
+        scheduleTask(() -> getFidoKeyCache().refreshFromFile(file), this);
     }
 
     /**

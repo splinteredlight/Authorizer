@@ -189,6 +189,9 @@ public class Preferences
     public static final String PREF_FIDO_AUTO_APPROVE_REGISTER =
             "fidoAutoApproveRegisterPref";
     private static final boolean PREF_FIDO_AUTO_APPROVE_REGISTER_DEF = false;
+    public static final String PREF_FIDO_BACKGROUND_ANSWER =
+            "fidoBackgroundAnswerPref";
+    private static final boolean PREF_FIDO_BACKGROUND_ANSWER_DEF = false;
 
     public static final String PREF_USERNAMES = "usernamesPref";
     public static final String PREF_USERNAMES_DEFAULT = "usernamesDefaultPref";
@@ -683,6 +686,22 @@ public class Preferences
                                                       SharedPreferences prefs)
     {
         prefs.edit().putBoolean(PREF_FIDO_AUTO_APPROVE_REGISTER, enabled).apply();
+    }
+
+    /**
+     * Get whether FIDO keys are cached (encrypted under a keystore key) so
+     * requests are answered with the file closed and the app not running.
+     */
+    public static boolean getFidoBackgroundAnswer(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_BACKGROUND_ANSWER,
+                                PREF_FIDO_BACKGROUND_ANSWER_DEF);
+    }
+
+    public static void setFidoBackgroundAnswerPref(boolean enabled,
+                                                   SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_BACKGROUND_ANSWER, enabled).apply();
     }
 
     /**
