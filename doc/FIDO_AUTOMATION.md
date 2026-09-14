@@ -71,20 +71,61 @@ Suggested shape:
 This alone does **not** give hands-off operation: the app must still be in
 front with the file unlocked. See below.
 
-## Step 2: answering with the app closed
+## Step 2: answering with the app closed (implemented 2026-09-14)
 
-Today `BluetoothForegroundService.onInterruptData` only answers when there is
-a resumed activity and an open file:
+Route 3 below was built, in three commits:
+
+1. **Decoupling.** `PasswdSafeApp` owns the `Authenticator`,
+   `TransactionManager` and `PasswdSafeCredentialBackend`. The backend
+   reaches the file through the `FidoFileAccess` interface (implemented by
+   `PasswdSafe`) instead of the activity itself, and the resumed activity is
+   tracked separately and used only to host prompts. The authenticator uses
+   the application context for strings and toasts, and declines a prompt
+   when no activity is in front. The service gate became "file open and not
+   in edit mode", so the app answers from the background until the file
+   times out.
+2. **`FidoKeyCache`.** A copy of the FIDO records only (never passwords) in
+   app-private storage, AES-256-GCM under an AndroidKeyStore key with no
+   user authentication (StrongBox, TEE fallback). Rebuilt on every file
+   open, extended on registration, deleted when the preference is turned
+   off. The backend reads from the file when it is usable and from the
+   cache otherwise. Sign counters advance in the cache while the file is
+   closed and merge back (max wins) on the next foreground use.
+3. **Gate.** `BluetoothForegroundService.onInterruptData` answers when the
+   file is usable or the cache can serve. Preference: "Answer FIDO requests
+   with the app closed", off by default.
+
+What that gives: unlock the file once after a reboot (the cache file lives
+in credential-encrypted storage and the keystore key needs the device to
+have been unlocked once) and requests are answered afterwards with the
+screen off, the app swiped away, or the process restarted by Android.
+
+Known limits:
+
+- A login that needs the account picker (several credentials for one site
+  and no allow-list) is refused with no activity in front, rather than
+  answered with the first one.
+- A FIDO record deleted from the file stays in the cache until the file is
+  next opened.
+- Registration (a new passkey) always needs the file open and writable;
+  the cache serves logins only.
+- With confirmations still on, a cached request is declined and the
+  "action required" notification asks you to open the app.
+
+The original notes follow.
+
+Before this, `BluetoothForegroundService.onInterruptData` only answered when
+there was a resumed activity and an open file:
 
 ```java
 if (PasswdSafe.mTransactionManager != null && activity != null
         && activity.isFileOpen() && !activity.isEditMode()) {
 ```
 
-`PasswdSafeApp` nulls its activity reference in `onActivityPaused`, so
-backgrounding or locking the screen is enough to disable answering. With the
-app closed the service can only post the "Action Required" notification
-asking you to open it.
+`PasswdSafeApp` nulled its activity reference in `onActivityPaused`, so
+backgrounding or locking the screen was enough to disable answering. With
+the app closed the service could only post the "Action Required"
+notification asking you to open it.
 
 ### The hard floor: the private key is in the database
 
@@ -147,5 +188,5 @@ his own single-user setup.
 ## Order of work, if picked up
 
 1. ~~Auto-approve preference.~~ Done, see Step 1.
-2. Decouple the credential backend from the activity.
-3. Option 3 key cache, then relax the answering gate in the service.
+2. ~~Decouple the credential backend from the activity.~~ Done.
+3. ~~Option 3 key cache, then relax the answering gate in the service.~~ Done.

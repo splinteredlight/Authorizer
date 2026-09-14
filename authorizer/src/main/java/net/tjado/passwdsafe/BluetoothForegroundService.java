@@ -548,10 +548,13 @@ public class BluetoothForegroundService extends Service {
             PasswdSafeApp app = (PasswdSafeApp) getApplication();
             PasswdSafe activity = app.getActiveActivity();
             TransactionManager tm = app.getTransactionManager();
-            // The activity no longer has to be in front: an open file is
-            // enough. Prompts that need a resumed activity are declined by
-            // the authenticator itself when none is available.
-            if (tm != null && app.isFidoFileReady()) {
+            // Answer when a file is open (activity in front or not), or when
+            // the encrypted key cache can stand in for the closed file.
+            // Prompts that need a resumed activity are declined by the
+            // authenticator itself when none is available.
+            boolean fileReady = app.isFidoFileReady();
+            boolean cacheReady = !fileReady && app.getFidoKeyCache().canServe();
+            if (tm != null && (fileReady || cacheReady)) {
                 openFileStarted = false;
 
                 tm.handleReport(data, (rawReports) -> {
@@ -559,6 +562,13 @@ public class BluetoothForegroundService extends Service {
                         inputHost.sendReport(device, reportId, report);
                     }
                 });
+
+                if (cacheReady && !Preferences.getFidoAutoApproveLogin(prefs)) {
+                    // Serving from the cache with confirmations still on: the
+                    // request will be declined for lack of a prompt host, so
+                    // tell the user to open the app.
+                    showRequestNotification();
+                }
             } else {
                 if (activity != null && activity.isEditMode()) {
                     PasswdSafeUtil.dbginfo(TAG, "App is open - notify user inside app");

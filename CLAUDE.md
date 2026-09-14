@@ -105,6 +105,12 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   IMPORTANCE_LOW, and channel importance is locked after creation, so the
   quiet channel uses a new id (`BluetoothServiceChannelQuiet`) and deletes
   the old one.
+- FIDO objects (`Authenticator`, `TransactionManager`, credential backend)
+  are owned by `PasswdSafeApp`, never the activity. The app tracks two
+  things separately: the resumed activity (prompt host only, null when
+  paused) and the `FidoFileAccess` that holds the open file (the activity,
+  until destroyed). The service answers when the file is usable or
+  `FidoKeyCache.canServe()`; see `doc/FIDO_AUTOMATION.md`.
 - Bluetooth connect failures: `BluetoothHidDevice` callbacks deliver a freshly
   unparceled `BluetoothDevice`, so compare with `equals`, never `==`. Android's
   `HidDeviceService` only leaves STATE_CONNECTING on a native event, and
@@ -147,6 +153,10 @@ and what was learned on hardware (verified 2026-09-12, Pico W + Pixel 11).
 - Biometric saved-password keys: AES-GCM, `setInvalidatedByBiometricEnrollment(true)`,
   StrongBox with TEE fallback. Legacy CBC keys are detected via `KeyInfo` and
   still decrypt; keep that path until users have re-saved.
+- `FidoKeyCache` holds FIDO records only, never passwords. Its keystore key
+  deliberately has no user authentication (pocket operation); do not add
+  `setUserAuthenticationRequired` or `setUnlockedDeviceRequired` to it, and
+  do not widen what it stores.
 - FIDO client PIN reference is an AndroidKeyStore HMAC, compared with
   `MessageDigest.isEqual`. Never store a plain hash of the PIN.
 - Never log typed characters, HID reports, usernames, or passwords, even
