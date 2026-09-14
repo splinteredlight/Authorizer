@@ -28,6 +28,14 @@ public interface FidoFileAccess
     /** Use the open file data; returns null when no file is open */
     <RetT> RetT useFileData(PasswdFileDataUser<RetT> user);
 
+    /**
+     * Whether finishEditFidoRecord can run right now. Saving goes through
+     * the activity's fragment machinery, which throws after
+     * onSaveInstanceState (screen locked, app in the background). Reads
+     * through useFileData are always allowed.
+     */
+    boolean canPersistNow();
+
     /** Persist a record added or changed by the FIDO backend */
     void finishEditFidoRecord(EditRecordResult result);
 }

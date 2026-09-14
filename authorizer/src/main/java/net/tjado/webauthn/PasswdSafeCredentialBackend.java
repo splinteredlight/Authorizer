@@ -195,6 +195,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             Log.w(TAG, "PasswdSafe File is not writeable... exit");
             throw new VirgilException("PasswdSafe File is not writeable");
         }
+        if(!file.canPersistNow()) {
+            // Saving needs the activity in front; a registration with the
+            // screen locked cannot be stored, so refuse it cleanly.
+            Log.w(TAG, "App not in front, cannot save a new credential... exit");
+            throw new VirgilException("App not in front, cannot save a new credential");
+        }
 
         KeyPair keyPair = generateNewES256KeyPairLocal();
 
@@ -602,6 +608,34 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
         // record.
         final int cachedCounter = (cache != null) ? cache.getCounter(credential.id) : -1;
         final int[] currentCounter = {0};
+
+        FidoFileAccess fileNow = this.file;
+        if (fileNow == null || !fileNow.canPersistNow()) {
+            // File open but the activity is stopped (screen locked, app in
+            // the background): saving would throw after onSaveInstanceState.
+            // Bump the record in memory and the cache; the next foreground
+            // use writes the merged value to disk.
+            Integer cnt = useFileData(fileData -> {
+                PwsRecord rec = fileData.getRecord(new String(credential.id, StandardCharsets.UTF_8));
+                if (rec == null) {
+                    return null;
+                }
+                Integer c = fileData.getFidoKeyUseCounter(rec);
+                int base = (c == null) ? 0 : c;
+                if (cachedCounter > base) {
+                    base = cachedCounter;
+                }
+                fileData.setFidoKeyUseCounter(base + 1, rec);
+                return base;
+            });
+            if (cnt == null) {
+                cnt = Math.max(cachedCounter, 0);
+            }
+            if (cache != null) {
+                cache.setCounter(credential.id, cnt + 1);
+            }
+            return cnt;
+        }
         EditRecordResult rc = useRecordFile((info, fileData) -> {
             PwsRecord rec = fileData.getRecord(new String(credential.id, StandardCharsets.UTF_8));
 

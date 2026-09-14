@@ -1635,6 +1635,13 @@ public class PasswdSafe extends AppCompatActivity
                    null, result.itsNewLocation, null);
     }
 
+    @Override
+    public boolean canPersistNow()
+    {
+        return itsIsResumed;
+    }
+
+    @Override
     public void finishEditFidoRecord(EditRecordResult result)
     {
         finishEdit(result.itsIsNewRecord ?
