@@ -833,6 +833,14 @@ public class PasswdSafeRecordBasicFragment
             e.printStackTrace();
         }
 
+        if (itsOtp == null) {
+            // The token failed to parse above; the timer would NPE on every
+            // tick and take the whole process (and the HID service) with it.
+            setFieldText(itsOtpCode, null, "------");
+            itsOtpTimer.setProgress(0);
+            return;
+        }
+
         CountDownTimer otpTimeCountDown;
         otpTimeCountDown = new CountDownTimer(30000, 500)
         {
