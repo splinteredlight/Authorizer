@@ -40,7 +40,8 @@ public class TransactionManager {
 
     private final String TAG = "TransactionManager";
 
-    private FragmentActivity activity;
+    /** The resumed activity, used only to host prompts; null when none is in front. */
+    private volatile FragmentActivity activity;
     private Authenticator authenticator;
 
     private Framing.InMessage message = null;
@@ -405,12 +406,20 @@ public class TransactionManager {
         }
     }
 
+    /**
+     * Set (or clear, with null) the activity that hosts confirmation prompts.
+     * This is deliberately separate from the file: the file can stay open
+     * while the activity is paused, and a cache can serve keys with no
+     * activity at all.
+     */
     public void updateActivity(FragmentActivity newActivity) {
         activity = newActivity;
+    }
+
+    /** Point the credential backend at the holder of the open file, or null. */
+    public void setFileAccess(net.tjado.passwdsafe.FidoFileAccess fileAccess) {
         if (authenticator != null) {
-            // Keep the credential backend's activity current too, otherwise
-            // FIDO writes run against the activity captured at construction.
-            authenticator.updateActivity(newActivity);
+            authenticator.setFileAccess(fileAccess);
         }
     }
 
@@ -465,7 +474,12 @@ public class TransactionManager {
                     }
 
                     SelectCredentialDialogFragment credentialSelector = new SelectCredentialDialogFragment();
-                    credentialSelector.populateFragmentActivity(activity);
+                    if (activity != null) {
+                        // With no activity the selector returns null and a
+                        // multi-account login is refused rather than
+                        // silently answered with the first credential.
+                        credentialSelector.populateFragmentActivity(activity);
+                    }
 
                     cborAnswer = authenticator.getAssertion(params, credentialSelector, activity).asCBOR();
                     break;

@@ -15,6 +15,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 
@@ -29,7 +30,12 @@ import net.tjado.passwdsafe.file.PasswdExpiryFilter;
 import net.tjado.passwdsafe.file.PasswdFileUri;
 import net.tjado.passwdsafe.file.PasswdPolicy;
 import net.tjado.passwdsafe.file.PasswdRecordFilter;
+import net.tjado.passwdsafe.lib.ApiCompat;
 import net.tjado.passwdsafe.lib.PasswdSafeUtil;
+import net.tjado.webauthn.Authenticator;
+import net.tjado.webauthn.PasswdSafeCredentialBackend;
+import net.tjado.webauthn.TransactionManager;
+import net.tjado.webauthn.fido.hid.Framing;
 
 import org.pwsafe.lib.file.PwsFile;
 
@@ -59,6 +65,17 @@ public final class PasswdSafeApp extends Application
     private final ExecutorService itsThreadExecutor = Executors.newSingleThreadExecutor();
 
     private PasswdSafe passwdSafeActivity;
+
+    /**
+     * FIDO authenticator state lives here, not in the activity, so the
+     * Bluetooth service can answer requests while the activity is paused,
+     * stopped, or gone. The resumed activity is handed to the transaction
+     * manager for prompts, and the activity that holds the open file is
+     * handed to it as FidoFileAccess; the two are tracked separately.
+     */
+    private TransactionManager itsTransactionManager;
+    private FidoFileAccess itsFidoFileAccess;
+    private final FidoAuthListener itsFidoAuthListener = new FidoAuthListener();
 
     private static final String TAG = "PasswdSafeApp";
 
@@ -118,6 +135,14 @@ public final class PasswdSafeApp extends Application
                 PasswdSafeUtil.dbginfo(TAG, "onActivityResumed: " + activity.getPackageName());
                 if(activity instanceof PasswdSafe) {
                     passwdSafeActivity = (PasswdSafe) activity;
+                    itsFidoFileAccess = (PasswdSafe) activity;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        TransactionManager tm = getTransactionManager();
+                        if (tm != null) {
+                            tm.updateActivity((PasswdSafe) activity);
+                            tm.setFileAccess(itsFidoFileAccess);
+                        }
+                    }
                 }
             }
             @Override
@@ -125,6 +150,12 @@ public final class PasswdSafeApp extends Application
                 PasswdSafeUtil.dbginfo(TAG, "onActivityPaused: " + activity.getPackageName());
                 if(activity instanceof PasswdSafe) {
                     passwdSafeActivity = null;
+                    // Prompts need a resumed activity; the file stays
+                    // reachable until the activity is destroyed.
+                    if (itsTransactionManager != null
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        itsTransactionManager.updateActivity(null);
+                    }
                 }
             }
             @Override
@@ -137,12 +168,87 @@ public final class PasswdSafeApp extends Application
             @Override
             public void onActivityDestroyed(Activity activity) {
                 PasswdSafeUtil.dbginfo(TAG, "onActivityDestroyed: " + activity.getPackageName());
+                if (activity == itsFidoFileAccess) {
+                    itsFidoFileAccess = null;
+                    if (itsTransactionManager != null
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        itsTransactionManager.setFileAccess(null);
+                    }
+                }
             }
         });
     }
 
     public PasswdSafe getActiveActivity(){
         return passwdSafeActivity;
+    }
+
+    /**
+     * The FIDO transaction manager, created on first use. Null when the
+     * device has no Bluetooth HID support or the authenticator failed to
+     * initialise (the next call tries again).
+     */
+    public synchronized TransactionManager getTransactionManager()
+    {
+        if (itsTransactionManager != null) {
+            return itsTransactionManager;
+        }
+        if (!ApiCompat.supportsBluetoothHid()
+            || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return null;
+        }
+        try {
+            PasswdSafeCredentialBackend backend =
+                    new PasswdSafeCredentialBackend(this, false, itsFidoFileAccess);
+            Authenticator authenticator = new Authenticator(this, false, backend);
+            TransactionManager tm = new TransactionManager(passwdSafeActivity, authenticator);
+            tm.registerListener((Framing.WebAuthnListener)itsFidoAuthListener);
+            tm.registerListener((Framing.U2fAuthnListener)itsFidoAuthListener);
+            itsTransactionManager = tm;
+        } catch (Exception e) {
+            PasswdSafeUtil.info(TAG, "Error initializing authenticator", e);
+        }
+        return itsTransactionManager;
+    }
+
+    /**
+     * Whether a FIDO request can be answered from the open file right now:
+     * a file is open and no record is being edited. The activity does not
+     * have to be in front.
+     */
+    public boolean isFidoFileReady()
+    {
+        FidoFileAccess file = itsFidoFileAccess;
+        return file != null && file.isFileOpen() && !file.isEditMode();
+    }
+
+    /** Log-only listener for completed FIDO operations */
+    private static final class FidoAuthListener
+            implements Framing.WebAuthnListener, Framing.U2fAuthnListener
+    {
+        @Override
+        public void onCompleteMakeCredential()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTREGISTERED");
+        }
+
+        @Override
+        public void onCompleteGetAssertion()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTLOGIN");
+        }
+
+        @Override
+        public void onRegistrationResponse()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_REGISTRATION");
+        }
+
+        @Override
+        public void onAuthenticationResponse()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_AUTHENTICATION");
+        }
     }
 
     @Override

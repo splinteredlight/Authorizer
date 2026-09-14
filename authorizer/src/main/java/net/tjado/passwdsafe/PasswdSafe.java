@@ -88,10 +88,6 @@ import net.tjado.passwdsafe.view.EditRecordResult;
 import net.tjado.passwdsafe.view.PasswdFileDataView;
 import net.tjado.passwdsafe.view.PasswdLocation;
 import net.tjado.passwdsafe.view.PasswdRecordListData;
-import net.tjado.webauthn.Authenticator;
-import net.tjado.webauthn.PasswdSafeCredentialBackend;
-import net.tjado.webauthn.TransactionManager;
-import net.tjado.webauthn.fido.hid.Framing;
 
 import org.pwsafe.lib.file.PwsRecord;
 
@@ -106,6 +102,7 @@ import java.util.List;
  */
 public class PasswdSafe extends AppCompatActivity
         implements AbstractPasswdSafeRecordFragment.Listener,
+                   FidoFileAccess,
                    View.OnClickListener,
                    MenuItem.OnActionExpandListener,
                    ConfirmPromptDialog.Listener,
@@ -348,9 +345,6 @@ public class PasswdSafe extends AppCompatActivity
     private static final int MENU_BIT_HAS_RESTORE_ENABLED = 10;
 
     @Nullable
-    public static TransactionManager mTransactionManager;
-    public static Authenticator mAuthenticator;
-    private static final AuthListener authenticatorListener = new AuthListener();
     private static final Handler foregroundHandler = new Handler();
     public BluetoothForegroundService btService;
     private final ServiceConnection btServiceConnection = new ServiceConnection() {
@@ -580,25 +574,9 @@ public class PasswdSafe extends AppCompatActivity
 
         foregroundHandler.removeCallbacksAndMessages(null);
 
-        if (ApiCompat.supportsBluetoothHid() && mTransactionManager == null) {
-            try {
-                PasswdSafeCredentialBackend credentialBackend = new PasswdSafeCredentialBackend(this, false, this);
-                mAuthenticator = new Authenticator(this, false, credentialBackend);
-            } catch (Exception e) {
-                PasswdSafeUtil.info(TAG, "Error initializing authenticator", e);
-            }
-
-            // Only build the transaction manager if the authenticator was
-            // created. Building it around a null authenticator would leave
-            // mTransactionManager non-null (so this block never retries) while
-            // every CTAP report NPEs in handleCTAP2 -> FIDO dead for the whole
-            // process. Leaving both null lets a later onResume try again.
-            if (mAuthenticator != null) {
-                mTransactionManager = new TransactionManager(this, mAuthenticator);
-                mTransactionManager.registerListener((Framing.WebAuthnListener) authenticatorListener);
-                mTransactionManager.registerListener((Framing.U2fAuthnListener) authenticatorListener);
-            }
-        }
+        // The FIDO authenticator and transaction manager are owned by
+        // PasswdSafeApp, which also tracks this activity's lifecycle for
+        // prompts and file access. Nothing to build here.
 
         // Resumed is always foreground-safe: this both covers an onStart start
         // that was deferred behind the lock screen and rebuilds the service
@@ -649,10 +627,6 @@ public class PasswdSafe extends AppCompatActivity
 
         if(!ApiCompat.supportsBluetoothHid()) {
             return;
-        }
-
-        if (mTransactionManager != null) {
-            mTransactionManager.updateActivity(this);
         }
 
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
@@ -3087,27 +3061,5 @@ public class PasswdSafe extends AppCompatActivity
     }
 
 
-    private static class AuthListener implements Framing.WebAuthnListener, Framing.U2fAuthnListener {
-
-        @Override
-        public void onCompleteMakeCredential() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTREGISTERED");
-        }
-
-        @Override
-        public void onCompleteGetAssertion() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTLOGIN");
-        }
-
-        @Override
-        public void onRegistrationResponse() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_REGISTRATION");
-        }
-
-        @Override
-        public void onAuthenticationResponse() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_AUTHENTICATION");
-        }
-    }
 }
 

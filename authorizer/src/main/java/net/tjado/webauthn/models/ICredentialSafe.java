@@ -2,6 +2,7 @@ package net.tjado.webauthn.models;
 
 
 import androidx.annotation.NonNull;
+import net.tjado.passwdsafe.FidoFileAccess;
 import net.tjado.passwdsafe.file.PasswdFileData;
 import net.tjado.webauthn.exceptions.VirgilException;
 import org.pwsafe.lib.file.PwsRecord;
@@ -43,5 +44,9 @@ public interface ICredentialSafe {
     int incrementCredentialUseCounter(PublicKeyCredentialSource credential);
     KeyPair keyAgreementPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException;
 
-    void updateActivity(androidx.fragment.app.FragmentActivity activity);
+    /**
+     * Point the backend at whoever holds the open file (or at nothing when
+     * the file is closed). Reads and writes go through it from then on.
+     */
+    void setFileAccess(FidoFileAccess fileAccess);
 }

@@ -42,7 +42,7 @@ import kotlin.NotImplementedError;
 
 import net.tjado.authorizer.Utilities;
 import net.tjado.passwdsafe.AbstractPasswdSafeLocationFragment;
-import net.tjado.passwdsafe.PasswdSafe;
+import net.tjado.passwdsafe.FidoFileAccess;
 import net.tjado.passwdsafe.file.PasswdFileData;
 import net.tjado.passwdsafe.view.EditRecordResult;
 import net.tjado.passwdsafe.view.PasswdLocation;
@@ -69,7 +69,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
 
     private final static String TAG = "CredentialSafe";
 
-    private PasswdSafe activity = null;
+    /**
+     * Whoever holds the open password file. Null while no file is open, in
+     * which case reads return nothing and writes fail; set by the
+     * application as activities come and go.
+     */
+    private volatile FidoFileAccess file = null;
 
     /**
      * Construct a CredentialSafe that requires user authentication and strongbox backing.
@@ -87,11 +92,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      * @param ctx                    The application context
      * @param strongboxRequired      Require keys to be backed by the "Strongbox Keymaster" HSM.
      *                               Requires hardware support.
+     * @param file                   Holder of the open file, may be null
      * @throws VirgilException
      */
-    public PasswdSafeCredentialBackend(Context ctx, boolean strongboxRequired, PasswdSafe activity) throws VirgilException {
+    public PasswdSafeCredentialBackend(Context ctx, boolean strongboxRequired, FidoFileAccess file) throws VirgilException {
 
-        this.activity = activity;
+        this.file = file;
         this.biometricSigningSupported = false;
 
         if(strongboxRequired) {
@@ -171,7 +177,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
                                                         String userDisplayName, boolean generateHmacSecret,
                                                         String u2fRpId) throws VirgilException {
         Log.w(TAG, "generateCredential");
-        if(!activity.isFileWritable()) {
+        FidoFileAccess file = this.file;
+        if(file == null || !file.isFileOpen()) {
+            Log.w(TAG, "PasswdSafe File is not open... exit");
+            throw new VirgilException("PasswdSafe File is not open");
+        }
+        if(!file.isFileWritable()) {
             Log.w(TAG, "PasswdSafe File is not writeable... exit");
             throw new VirgilException("PasswdSafe File is not writeable");
         }
@@ -211,7 +222,7 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
         });
 
         if (rc != null) {
-            activity.finishEditFidoRecord(rc);
+            file.finishEditFidoRecord(rc);
         }
 
         PublicKeyCredentialSource credentialSource;
@@ -232,23 +243,32 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      */
     public boolean isEditMode()
     {
-        return activity.isEditMode();
+        FidoFileAccess file = this.file;
+        return file != null && file.isEditMode();
+    }
+
+    @Override
+    public void setFileAccess(FidoFileAccess fileAccess) {
+        this.file = fileAccess;
     }
 
     /**
-     * Use the file data with an optional record at the current location
+     * Use the open file data, or return null when no file is open. Every
+     * read below goes through here so a closed file degrades to "no
+     * credentials" instead of a crash.
      */
-    @Override
-    public void updateActivity(androidx.fragment.app.FragmentActivity activity) {
-        // Called after the activity is recreated so writes target a live one.
-        if (activity instanceof PasswdSafe) {
-            this.activity = (PasswdSafe) activity;
+    private <RetT> RetT useFileData(net.tjado.passwdsafe.file.PasswdFileDataUser<RetT> user)
+    {
+        FidoFileAccess file = this.file;
+        if (file == null) {
+            return null;
         }
+        return file.useFileData(user);
     }
 
     protected final <RetT> RetT useRecordFile(final AbstractPasswdSafeLocationFragment.RecordFileUser<RetT> user)
     {
-        return activity.useFileData(fileData -> user.useFile(null, fileData));
+        return useFileData(fileData -> user.useFile(null, fileData));
     }
 
     public String keyToString(Key key) {
@@ -359,7 +379,7 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
         Log.d(TAG, "getAllCredentials");
 
         List<PublicKeyCredentialSource> credentialSources = new ArrayList<>();
-        activity.useFileData(fileData -> {
+        useFileData(fileData -> {
             for (PwsRecord rec: fileData.getRecords()) {
                 String rpId = fileData.getFidoRpId(rec);
                 if (rpId != null) {
@@ -383,7 +403,7 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
         Log.d(TAG, "getKeysForEntity: " + rpEntityId);
 
         List<PublicKeyCredentialSource> credentialSources = new ArrayList<>();
-        activity.useFileData(fileData -> {
+        useFileData(fileData -> {
             for (PwsRecord rec: fileData.getRecords()) {
                 String rpId = fileData.getFidoRpId(rec);
                 if (rpId != null && rpId.equals(rpEntityId)) {
@@ -410,7 +430,7 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
     public PublicKeyCredentialSource getCredentialSourceById(@NonNull byte[] id) {
 
         final PublicKeyCredentialSource[] credentialSource = {null};
-        activity.useFileData(fileData -> {
+        useFileData(fileData -> {
             PwsRecord rec = fileData.getRecord(new String(id, StandardCharsets.UTF_8));
             credentialSource[0] = recordToCredential(fileData, rec);
 
@@ -533,8 +553,9 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             return new EditRecordResult(false, rec.isModified(), new PasswdLocation(rec, fileData));
         });
 
-        if (rc != null) {
-            activity.finishEditFidoRecord(rc);
+        FidoFileAccess file = this.file;
+        if (rc != null && file != null) {
+            file.finishEditFidoRecord(rc);
         }
 
         return currentCounter[0];

@@ -36,6 +36,7 @@ import net.tjado.passwdsafe.lib.ApiCompat;
 import net.tjado.passwdsafe.lib.PasswdSafeUtil;
 import net.tjado.bluetooth.BluetoothDeviceWrapper;
 import net.tjado.passwdsafe.lib.Utils;
+import net.tjado.webauthn.TransactionManager;
 
 import static android.app.Notification.DEFAULT_SOUND;
 import static android.app.Notification.DEFAULT_VIBRATE;
@@ -544,11 +545,16 @@ public class BluetoothForegroundService extends Service {
                 return;
             }
 
-            PasswdSafe activity = ((PasswdSafeApp) getApplication()).getActiveActivity();
-            if (PasswdSafe.mTransactionManager != null && activity != null && activity.isFileOpen() && !activity.isEditMode()) {
+            PasswdSafeApp app = (PasswdSafeApp) getApplication();
+            PasswdSafe activity = app.getActiveActivity();
+            TransactionManager tm = app.getTransactionManager();
+            // The activity no longer has to be in front: an open file is
+            // enough. Prompts that need a resumed activity are declined by
+            // the authenticator itself when none is available.
+            if (tm != null && app.isFidoFileReady()) {
                 openFileStarted = false;
 
-                PasswdSafe.mTransactionManager.handleReport(data, (rawReports) -> {
+                tm.handleReport(data, (rawReports) -> {
                     for (byte[] report : rawReports) {
                         inputHost.sendReport(device, reportId, report);
                     }
