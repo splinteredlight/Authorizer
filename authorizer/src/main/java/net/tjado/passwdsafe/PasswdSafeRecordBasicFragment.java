@@ -1070,6 +1070,13 @@ public class PasswdSafeRecordBasicFragment
                 try {
                     outputStream.write(itsOutputBluetoothKeyboard.convertTextToScancode(
                                     itsOtp.getCurrentCode()));
+                    // The OTP is the last thing typed when it is sent on its
+                    // own, so the "Return after" setting applies to it too
+                    // (the code is usually the only field on an MFA page).
+                    if (!sendUsername && !sendPassword
+                        && itsAutoTypeReturnSuffix.isChecked()) {
+                        outputStream.write(itsOutputBluetoothKeyboard.getReturn());
+                    }
                 } catch (Exception e) {
                     PasswdSafeUtil.showErrorMsg(
                             "Invalid OTP token generated! - " +
@@ -1314,6 +1321,12 @@ public class PasswdSafeRecordBasicFragment
             generateOtpToken();
             otpTokenGenerated = true;
             seq.addField(itsOtp.getCurrentCode());
+            // Same rule as the Bluetooth path: an OTP sent on its own gets
+            // the "Return after" suffix.
+            if (!sendUsername && !sendPassword
+                && itsAutoTypeReturnSuffix.isChecked()) {
+                seq.addReturn();
+            }
         }
 
         if (sendUsername && username != null) {
