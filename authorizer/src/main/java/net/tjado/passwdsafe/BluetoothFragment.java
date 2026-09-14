@@ -144,7 +144,26 @@ public class BluetoothFragment extends Fragment
         CheckBox cbBluetoothFeature = rootView.findViewById(R.id.cb_pref_bt);
         CheckBox cbBluetoothFido = rootView.findViewById(R.id.cb_pref_bt_fido);
 
+        TextView tvFidoAutoLogin = rootView.findViewById(R.id.tv_pref_bt_fido_auto_login);
+        CheckBox cbFidoAutoLogin = rootView.findViewById(R.id.cb_pref_bt_fido_auto_login);
+        TextView tvFidoAutoRegister = rootView.findViewById(R.id.tv_pref_bt_fido_auto_register);
+        CheckBox cbFidoAutoRegister = rootView.findViewById(R.id.cb_pref_bt_fido_auto_register);
+
         prefs = Preferences.getSharedPrefs(getContext());
+
+        // The auto-approve rows only make sense while FIDO mode is on. They
+        // keep their stored values while disabled so turning FIDO off and on
+        // again does not silently re-enable them.
+        Runnable syncFidoAutoApprove = () -> {
+            boolean fidoOn = Preferences.getBluetoothEnabled(prefs)
+                    && Preferences.getBluetoothFidoEnabled(prefs);
+            cbFidoAutoLogin.setEnabled(fidoOn);
+            cbFidoAutoRegister.setEnabled(fidoOn);
+            tvFidoAutoLogin.setEnabled(fidoOn);
+            tvFidoAutoRegister.setEnabled(fidoOn);
+            cbFidoAutoLogin.setChecked(fidoOn && Preferences.getFidoAutoApproveLogin(prefs));
+            cbFidoAutoRegister.setChecked(fidoOn && Preferences.getFidoAutoApproveRegister(prefs));
+        };
 
         cbBluetoothFeature.setChecked(Preferences.getBluetoothEnabled(prefs));
         if(Preferences.getBluetoothEnabled(prefs)) {
@@ -154,9 +173,17 @@ public class BluetoothFragment extends Fragment
             cbBluetoothFido.setChecked(false);
             cbBluetoothFido.setEnabled(false);
         }
+        syncFidoAutoApprove.run();
 
         tvBluetoothFeature.setOnClickListener(item -> cbBluetoothFeature.performClick());
         tvBluetoothFido.setOnClickListener(item -> cbBluetoothFido.performClick());
+        tvFidoAutoLogin.setOnClickListener(item -> cbFidoAutoLogin.performClick());
+        tvFidoAutoRegister.setOnClickListener(item -> cbFidoAutoRegister.performClick());
+
+        cbFidoAutoLogin.setOnClickListener(item ->
+            Preferences.setFidoAutoApproveLoginPref(cbFidoAutoLogin.isChecked(), prefs));
+        cbFidoAutoRegister.setOnClickListener(item ->
+            Preferences.setFidoAutoApproveRegisterPref(cbFidoAutoRegister.isChecked(), prefs));
 
         cbBluetoothFeature.setOnClickListener(item -> {
             Preferences.setBluetoothEnabledPref(cbBluetoothFeature.isChecked(), prefs);
@@ -175,12 +202,14 @@ public class BluetoothFragment extends Fragment
                     btService.stopForegroundService();
                 }
             }
+            syncFidoAutoApprove.run();
 
             checkBluetoothState(null);
         });
 
         cbBluetoothFido.setOnClickListener(item -> {
             Preferences.setBluetoothFidoEnabledPref(cbBluetoothFido.isChecked(), prefs);
+            syncFidoAutoApprove.run();
 
             if(cbBluetoothFido.isChecked()) {
                 rvDiscoveredDevicesAdapter.notifyDataSetChanged();

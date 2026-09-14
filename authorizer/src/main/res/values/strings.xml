@@ -860,6 +860,11 @@
     <string name="bt_pairing_no_service">Authorizer Bluetooth Service is not available. Pairing not possible!</string>
     <string name="bt_feature_enable">Enable Bluetooth feature</string>
     <string name="bt_fido_enable">Enable FIDO U2F/WebAuthn</string>
+    <string name="bt_fido_auto_approve_login">Approve FIDO logins without confirmation</string>
+    <string name="bt_fido_auto_approve_register">Approve FIDO registrations without confirmation</string>
+    <string name="bt_fido_auto_approve_warning">Any paired computer in range can then sign in as you with only a toast shown on the phone.</string>
+    <string name="fido_auto_approved_login">Auto-approved login for %s</string>
+    <string name="fido_auto_approved_register">Auto-approved registration for %s</string>
     <string name="bt_paired_devices">Paired Devices</string>
     <string name="bt_no_paired_devices">No devices are paired!</string>
     <string name="bt_available_devices">Available Devices</string>

@@ -223,7 +223,9 @@ public class TransactionManager {
                         // CONDITIONS_NOT_SATISFIED while waiting.
                         activeU2fConfirmation = new U2fContinuation(
                                 message,
-                                CompletableFuture.supplyAsync(() -> authenticator.U2FuserPresence(activity)),
+                                CompletableFuture.supplyAsync(() -> authenticator.U2FuserPresence(
+                                        activity,
+                                        u2fResponse instanceof RawMessages.RegistrationResponse)),
                                 u2fResponse);
                         rearmU2fRetryTimeout();
                         Log.i(TAG, "User confirmation required; expecting client to retry");

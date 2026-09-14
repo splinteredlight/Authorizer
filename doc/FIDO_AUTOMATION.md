@@ -39,9 +39,21 @@ Two things worth knowing:
   typed in the browser on the computer, never on the phone. There is no
   prompt to remove and auto-approval would not weaken it.
 
-## Step 1: auto-approve the taps
+## Step 1: auto-approve the taps (implemented 2026-09-14)
 
-Small and self-contained. Replace the gate result with an automatic yes at
+Two preferences on the Bluetooth settings screen, both off by default and
+only enabled while FIDO mode is on:
+
+- "Approve FIDO logins without confirmation" (`fidoAutoApproveLoginPref`):
+  `getAssertion` and U2F authenticate return "allowed" without the dialog.
+- "Approve FIDO registrations without confirmation"
+  (`fidoAutoApproveRegisterPref`): `makeCredential` and U2F register.
+
+They are read from `SharedPreferences` on every request in
+`Authenticator.autoApproveLogin/Register`, so a change applies immediately.
+A toast still names the site that was answered. The original notes follow.
+
+Replace the gate result with an automatic yes at
 the three call sites above, behind a preference defaulting to off.
 
 The signed response carries a user-presence flag that would then be set
@@ -56,7 +68,8 @@ Suggested shape:
 - Optionally auto-approve logins but still confirm registrations, since
   registration is rare and creates lasting state.
 
-This alone does **not** give hands-off operation. See below.
+This alone does **not** give hands-off operation: the app must still be in
+front with the file unlocked. See below.
 
 ## Step 2: answering with the app closed
 
@@ -133,6 +146,6 @@ his own single-user setup.
 
 ## Order of work, if picked up
 
-1. Auto-approve preference. Small, independent, reversible.
+1. ~~Auto-approve preference.~~ Done, see Step 1.
 2. Decouple the credential backend from the activity.
 3. Option 3 key cache, then relax the answering gate in the service.

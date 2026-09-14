@@ -42,6 +42,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.UnicodeString;
 
+import net.tjado.passwdsafe.Preferences;
 import net.tjado.passwdsafe.R;
 import net.tjado.passwdsafe.lib.Utils;
 import net.tjado.webauthn.exceptions.ApduException;
@@ -251,9 +252,17 @@ public final class Authenticator {
                                     activity.getString(R.string.credentials_makeTitle, options.rpEntity.id),
                                     subtitle, cryptoObject);
         } else {*/
+        if (autoApproveRegister(activity)) {
+            // User chose to skip the confirmation; keep something visible.
+            permission = true;
+            showToast(activity,
+                      activity.getString(R.string.fido_auto_approved_register, options.rpEntity.id),
+                      Toast.LENGTH_SHORT);
+        } else {
             permission = showDialog(activity,
                     activity.getString(R.string.credentials_makeTitle, options.rpEntity.id),
                     activity.getString(R.string.credentials_makeSubtitle, options.userEntity.name, options.userEntity.displayName, options.rpEntity.id, options.rpEntity.name));
+        }
         //}
 
         if (!permission) {
@@ -482,6 +491,11 @@ public final class Authenticator {
         if(preFlight) {
             permission = true;
             selectedPreflightCredential = selectedCredential;
+        } else if (autoApproveLogin(activity)) {
+            // Same outcome as the user tapping "allow"; the post-login toast
+            // below still shows which site was answered.
+            permission = true;
+            selectedPreflightCredential = null;
         } else {
             permission = showDialog(activity, activity.getString(R.string.request_title, options.rpId), txSimpleAuth +
                 activity.getString(
@@ -874,7 +888,22 @@ public final class Authenticator {
         return new RawMessages.AuthenticationResponse(buff.array(), userVerification);
     }
 
-    public boolean U2FuserPresence(FragmentActivity activity) {
+    /**
+     * Confirm user presence for a legacy U2F request.
+     *
+     * @param isRegistration true for U2F_REGISTER, false for U2F_AUTHENTICATE;
+     *                       selects which auto-approve preference applies
+     */
+    public boolean U2FuserPresence(FragmentActivity activity, boolean isRegistration) {
+        if (isRegistration ? autoApproveRegister(activity) : autoApproveLogin(activity)) {
+            showToast(activity,
+                      activity.getString(isRegistration
+                                         ? R.string.fido_auto_approved_register
+                                         : R.string.fido_auto_approved_login,
+                                         "U2F"),
+                      Toast.LENGTH_SHORT);
+            return true;
+        }
         return showPrompt(activity,
                             activity.getString(R.string.u2f_registerTitle),
                             activity.getString(R.string.u2f_registerSubtitle),
@@ -1425,6 +1454,18 @@ public final class Authenticator {
 
         // Using array to have a final reference of a primitive type
         return res[0];
+    }
+
+    /**
+     * Auto-approval is read from preferences on every request so a change in
+     * the Bluetooth settings screen applies immediately. Both default to off.
+     */
+    private static boolean autoApproveLogin(Context ctx) {
+        return Preferences.getFidoAutoApproveLogin(Preferences.getSharedPrefs(ctx));
+    }
+
+    private static boolean autoApproveRegister(Context ctx) {
+        return Preferences.getFidoAutoApproveRegister(Preferences.getSharedPrefs(ctx));
     }
 
     private void showToast(FragmentActivity activity, String msg, int duration) {

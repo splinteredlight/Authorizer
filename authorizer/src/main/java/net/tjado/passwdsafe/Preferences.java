@@ -183,6 +183,12 @@ public class Preferences
     // Off by default: FIDO keeps a foreground service (and its persistent
     // notification) alive. Keyboard auto-type needs neither.
     private static final boolean PREF_BLUETOOTH_FIDO_ENABLED_DEF = false;
+    public static final String PREF_FIDO_AUTO_APPROVE_LOGIN =
+            "fidoAutoApproveLoginPref";
+    private static final boolean PREF_FIDO_AUTO_APPROVE_LOGIN_DEF = false;
+    public static final String PREF_FIDO_AUTO_APPROVE_REGISTER =
+            "fidoAutoApproveRegisterPref";
+    private static final boolean PREF_FIDO_AUTO_APPROVE_REGISTER_DEF = false;
 
     public static final String PREF_USERNAMES = "usernamesPref";
     public static final String PREF_USERNAMES_DEFAULT = "usernamesDefaultPref";
@@ -643,6 +649,40 @@ public class Preferences
     public static void setBluetoothFidoEnabledPref(boolean enabled, SharedPreferences prefs)
     {
         prefs.edit().putBoolean(PREF_BLUETOOTH_FIDO_ENABLED, enabled).apply();
+    }
+
+    /**
+     * Get whether FIDO login requests (getAssertion, U2F authenticate) are
+     * approved without a confirmation on the phone. The signed response
+     * still carries the user-presence flag; the relying party cannot tell.
+     */
+    public static boolean getFidoAutoApproveLogin(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_AUTO_APPROVE_LOGIN,
+                                PREF_FIDO_AUTO_APPROVE_LOGIN_DEF);
+    }
+
+    public static void setFidoAutoApproveLoginPref(boolean enabled,
+                                                   SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_AUTO_APPROVE_LOGIN, enabled).apply();
+    }
+
+    /**
+     * Get whether FIDO registrations (makeCredential, U2F register) are
+     * approved without a confirmation on the phone. Kept separate from
+     * logins because a registration creates a lasting credential.
+     */
+    public static boolean getFidoAutoApproveRegister(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_AUTO_APPROVE_REGISTER,
+                                PREF_FIDO_AUTO_APPROVE_REGISTER_DEF);
+    }
+
+    public static void setFidoAutoApproveRegisterPref(boolean enabled,
+                                                      SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_AUTO_APPROVE_REGISTER, enabled).apply();
     }
 
     /**
