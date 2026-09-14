@@ -34,6 +34,13 @@ public class AddSecretTextWatcher extends AddTextWatcher
 
     @Override
     public void afterTextChanged(Editable s) {
+        // A pasted otpauth:// link needs its '=' signs (secret=, issuer=);
+        // only a bare base32 seed gets the padding clean-up below.
+        if (s.length() >= 10
+            && s.toString().regionMatches(true, 0, "otpauth://", 0, 10)) {
+            super.afterTextChanged(s);
+            return;
+        }
         if (s.length() != 0) {
             // Ensure that = is only permitted at the end
             boolean haveData = false;

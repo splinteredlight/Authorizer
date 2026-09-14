@@ -99,6 +99,15 @@ public class AddActivity extends Activity
             // the token was enrolled by QR) is accepted as-is; it already
             // carries the algorithm, digits and period.
             if (raw.regionMatches(true, 0, "otpauth://", 0, 10)) {
+                // The field is set to capitalise input; the parser wants the
+                // scheme and type in lower case. The label may stay as is
+                // and base32 is case-insensitive.
+                int slash = raw.indexOf('/', 10);
+                if (slash < 0) {
+                    slash = raw.length();
+                }
+                raw = "otpauth://" + raw.substring(10, slash).toLowerCase(Locale.US)
+                      + raw.substring(slash);
                 try {
                     new Token(raw);
                 } catch (Token.TokenUriInvalidException e) {
