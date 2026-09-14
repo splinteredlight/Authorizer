@@ -493,19 +493,13 @@ public class PasswdSafeRecordBasicFragment
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
                 saveOtpChange(data.getExtras().getString("uri"), false);
-                PasswdSafeUtil.dbginfo("OTP",
-                                       String.format("Store manual otp uri: %s",
-                                                     data.getExtras()
-                                                         .getString("uri")));
+                PasswdSafeUtil.dbginfo("OTP", "Store manual otp uri");
             }
         } else if (requestCode == REQUEST_SAVE_OTP_CAMERA) {
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
                 saveOtpChange(data.getExtras().getString("uri"), false);
-                PasswdSafeUtil.dbginfo("OTP",
-                                       String.format("Store camera otp uri: %s",
-                                                     data.getExtras()
-                                                         .getString("uri")));
+                PasswdSafeUtil.dbginfo("OTP", "Store camera otp uri");
             }
         } else if (requestCode == REQUEST_ENABLE_BT) {
             if (resultCode == RESULT_OK) {

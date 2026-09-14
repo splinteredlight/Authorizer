@@ -809,6 +809,7 @@
     <string name="counter">Counter</string>
     <string name="otp_token">Token:</string>
     <string name="otp_add_manually">Add OTP manually</string>
+    <string name="otp_invalid">Not a valid secret: enter the base32 key (letters A–Z and digits 2–7) or a full otpauth:// link</string>
     <string name="otp_add_camera">Scan OTP QR Code</string>
 
     <string name="autotype_delimiter_return">Return</string>

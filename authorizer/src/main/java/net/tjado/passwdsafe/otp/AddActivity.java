@@ -22,6 +22,8 @@
 
 package net.tjado.passwdsafe.otp;
 
+import com.google.android.apps.authenticator.Base32String;
+
 
 import android.app.Activity;
 import android.content.Intent;
@@ -33,6 +35,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.RadioButton;
+import android.widget.Toast;
 import android.widget.Spinner;
 
 import net.tjado.passwdsafe.R;
@@ -90,10 +93,42 @@ public class AddActivity extends Activity
         if (viewId == R.id.cancel) {
             finish();
         } else if (viewId == R.id.add) {
+            String raw = mSecret.getText().toString().trim();
+
+            // A full otpauth:// link (what Bitwarden and most apps show when
+            // the token was enrolled by QR) is accepted as-is; it already
+            // carries the algorithm, digits and period.
+            if (raw.regionMatches(true, 0, "otpauth://", 0, 10)) {
+                try {
+                    new Token(raw);
+                } catch (Token.TokenUriInvalidException e) {
+                    Toast.makeText(this, R.string.otp_invalid, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("uri", raw);
+                setResult(Activity.RESULT_OK, resultIntent);
+                finish();
+                return;
+            }
+
+            // Otherwise it is a bare base32 seed. Sites show it with spaces
+            // or dashes and in lower case; normalise, then refuse anything
+            // that still does not decode instead of storing a dead token.
+            String normalised = raw.replaceAll("[\\s-]", "").toUpperCase(Locale.US);
+            try {
+                if (Base32String.decode(normalised).length == 0) {
+                    throw new Base32String.DecodingException("empty");
+                }
+            } catch (Base32String.DecodingException e) {
+                Toast.makeText(this, R.string.otp_invalid, Toast.LENGTH_LONG).show();
+                return;
+            }
+
             // Get the fields
             String issuer = "";
             String label = "";
-            String secret = Uri.encode(mSecret.getText().toString());
+            String secret = Uri.encode(normalised);
             String algorithm = mAlgorithm.getSelectedItem().toString().toLowerCase(
                     Locale.US);
             int interval = Integer.parseInt(mInterval.getText().toString());
