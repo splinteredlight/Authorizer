@@ -67,6 +67,8 @@ public class BluetoothForegroundService extends Service {
     private BtServiceProfileListener profileListener = null;
 
     private byte[] keyboardOutput = null;
+    /** Keyboard host that keyboardOutput is destined for; null when none is pending. */
+    private BluetoothDevice keyboardOutputTarget = null;
 
     final private Handler openFileResetHandler = new Handler();
     final private Handler initAppRegistrationHandler = new Handler();
@@ -371,6 +373,7 @@ public class BluetoothForegroundService extends Service {
         requireKeyboardMode();
 
         keyboardOutput = autotypeString;
+        keyboardOutputTarget = device;
 
         BluetoothDevice connected = hidDeviceController.getConnectedDevice();
         if (connected != null && connected.equals(device)
@@ -409,6 +412,7 @@ public class BluetoothForegroundService extends Service {
             }
             byte[] out = keyboardOutput;
             keyboardOutput = null;
+            keyboardOutputTarget = null;
             SystemClock.sleep(100);
             hidDeviceController.sendToKeyboardHost(out);
             SystemClock.sleep(500);
@@ -516,14 +520,27 @@ public class BluetoothForegroundService extends Service {
                     }
                 } else if (state == BluetoothProfile.STATE_DISCONNECTED
                            && keyboardOutput != null
+                           && device != null
+                           && device.equals(keyboardOutputTarget)
                            && hidDeviceController.getConnectedDevice() == null) {
                     // The connect issued by connectAndType failed (host off or
                     // out of range) or the link dropped before the send ran.
                     // Drop the pending output so it cannot be typed into
                     // whatever host connects next, and tell the user; the
                     // controller has already given up retrying.
+                    //
+                    // Only the target host counts. When the phone was on the
+                    // FIDO host (the PC), connectAndType's switch to keyboard
+                    // mode tears that link down first, and its DISCONNECTED
+                    // arrives while the output is still pending and nothing
+                    // is connected yet. Treating that as the failure discarded
+                    // the text and blamed the PC; the keyboard host then
+                    // connected with nothing left to type, so only the second
+                    // tap worked. The callback's device is freshly unparceled,
+                    // hence equals, not ==.
                     PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: DISCONNECTED with pending autotype, discarding");
                     keyboardOutput = null;
+                    keyboardOutputTarget = null;
                     String name = BluetoothUtils.getDeviceDisplayName(device);
                     Toast.makeText(getApplicationContext(),
                                    getString(R.string.bt_autotype_connect_failed, name),
