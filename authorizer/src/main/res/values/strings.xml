@@ -9,7 +9,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="add">Add</string>
     <string name="add_policy">Add Policy</string>
-    <string name="add_record">Add Record</string>
+    <string name="add_record">Add entry</string>
     <string name="alias_base_record_header">ALIAS</string>
     <string name="alias_to_same_record">Alias to the same record</string>
     <string name="any_changes_will_be_lost">Any changes to the record will be lost.</string>
@@ -33,7 +33,7 @@
     <string name="cannot_create_file">Cannot create file: %1$s</string>
     <string name="case_sensitive">Case sensitive</string>
     <string name="case_sensitive_sorting">Case-sensitive sorting</string>
-    <string name="change_password">Change Password</string>
+    <string name="change_password">Change password</string>
     <string name="choose">Choose</string>
     <string name="choose_group">Choose Group</string>
     <string name="choose_record">Choose Record</string>
@@ -53,7 +53,7 @@
     <string name="copy_clipboard">Copy to Clipboard</string>
     <string name="copy_email">Copy Email</string>
     <string name="copy_notes">Copy Notes</string>
-    <string name="copy_password">Copy Password</string>
+    <string name="copy_password">Copy password</string>
     <string name="copy_password_warning">
         Warning: All apps can read the clipboard contents, and the clipboard
         cannot be reliably cleared.  The PasswdSafe alternate keyboard is a
@@ -61,7 +61,7 @@
         to open the keyboard settings.
     </string>
     <string name="copy_url">Copy URL</string>
-    <string name="copy_user">Copy User Name</string>
+    <string name="copy_user">Copy username</string>
     <string name="created">Created</string>
     <string name="current">Current</string>
     <string name="custom_symbols">Custom Symbols</string>
@@ -91,7 +91,7 @@
     <string name="edit_policy">Edit Policy</string>
     <string name="email">Email</string>
     <string name="email_attachment">Email Attachment</string>
-    <string name="email_header">EMAIL</string>
+    <string name="email_header">Email</string>
     <string name="empty_custom_symbols">Empty custom symbols</string>
     <string name="empty_file_name">Empty file name</string>
     <string name="empty_name">Empty name</string>
@@ -112,7 +112,7 @@
     <string name="file_close_timeout">File close timeout</string>
     <string name="file_exists">File exists</string>
     <string name="file">File</string>
-    <string name="file_name">File Name</string>
+    <string name="file_name">File name</string>
     <string name="file_not_found_perm_denied">File not found or permission denied</string>
     <string name="file_open_help">
         File passwords can be saved on devices with biometrics scanner and
@@ -162,19 +162,19 @@
     <string name="generate">Generate</string>
     <string name="generate_password">Generate Password</string>
     <string name="go">Go</string>
-    <string name="go_to_shortcut">Goto</string>
+    <string name="go_to_shortcut">Open</string>
     <string name="group">Group</string>
     <string name="group_cannot_start_with_dot">Group cannot start with a \'.\'</string>
-    <string name="group_header">GROUP</string>
+    <string name="group_header">Group</string>
     <string name="group_records">Group records</string>
     <string name="help">Help</string>
-    <string name="hidden_password_alias">***** (from alias, tap to show)</string>
-    <string name="hidden_password_normal">***** (tap to show)</string>
-    <string name="hidden_password_shortcut">***** (from shortcut, tap to show)</string>
+    <string name="hidden_password_alias">•••••••• (from alias, tap to show)</string>
+    <string name="hidden_password_normal">•••••••• (tap to show)</string>
+    <string name="hidden_password_shortcut">•••••••• (from shortcut, tap to show)</string>
     <string name="hide_password">Hide Password</string>
     <string name="hide_passwords">Hide Passwords</string>
     <string name="history">History</string>
-    <string name="history_header">HISTORY</string>
+    <string name="history_header">History</string>
     <string name="home">Home</string>
     <string name="interval">Interval</string>
     <string name="invalid_file_name">Invalid file name</string>
@@ -213,7 +213,7 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="new_box_file">New Box File</string>
     <string name="new_entry">New Entry</string>
-    <string name="new_file">New File</string>
+    <string name="new_file">New file</string>
     <string name="new_dropbox_file">New Dropbox File</string>
     <string name="new_file_not_supp_uri">New file not supported for URI %1$s</string>
     <string name="new_group">New group</string>
@@ -243,7 +243,7 @@
     <string name="no_groups">No Groups</string>
     <string name="no_permission">No permission</string>
     <string name="no_policies">No Policies</string>
-    <string name="no_records">No Records</string>
+    <string name="no_records">No entries yet</string>
     <string name="no_records_open_file">No Records. Open a file first and then retry.</string>
     <string name="no_shortcut_chosen">No shortcut chosen</string>
     <string name="none_paren">(None)</string>
@@ -253,7 +253,7 @@
     <string name="num_records">Number of records</string>
     <string name="ok">OK</string>
     <string name="open_file">Open %s</string>
-    <string name="open_file_title">Open File</string>
+    <string name="open_file_title">Open file</string>
     <string name="open_password_file">Open password file</string>
     <string name="option_not_selected">At least one option must be selected</string>
     <string name="password">Password</string>
@@ -265,7 +265,7 @@
     <string name="password_expires_before">Password expires before %1$s</string>
     <string name="password_expires_today">Password expires today</string>
     <string name="password_file">Password file</string>
-    <string name="password_header">PASSWORD</string>
+    <string name="password_header">Password</string>
     <string name="password_len_short_opt">Password length too short for options</string>
     <string name="password_loaded">Password loaded</string>
     <string name="password_not_found">Password not found for %1$s</string>
@@ -282,13 +282,13 @@
         from the end.
     </string>
     <string name="password_subset_hint">Password subset. E.g. 1,5,-1</string>
-    <string name="password_times_header">PASSWORD TIMES</string>
+    <string name="password_times_header">Expiry</string>
     <string name="password_visibility_timeout">Password visibility timeout</string>
     <string name="password_with_expiration">Password with expiration date</string>
     <string name="passwords">Passwords</string>
     <string name="passwords_do_not_match">Passwords do not match</string>
     <string name="permissions">Permissions</string>
-    <string name="policy_header">POLICY</string>
+    <string name="policy_header">Policy</string>
     <string name="policy_no">No</string>
     <string name="policy_yes_len">Yes - At least %1$d</string>
     <string name="policy_yes_sym_default" tools:ignore="PluralsCandidate">Yes - At least %1$d from default symbols: %2$s</string>
@@ -303,12 +303,12 @@
     <string name="protect_all">Protect All Records</string>
     <string name="protect_group">Protect Group Records</string>
     <string name="protected_record">Protected</string>
-    <string name="protected_record_header">PROTECTED RECORD</string>
+    <string name="protected_record_header">Protected entry</string>
     <string name="psafe3_ext">.psafe3</string>
     <string name="query_label">Search: %1$s</string>
-    <string name="recent_files">Recent Files</string>
+    <string name="recent_files">Recent files</string>
     <string name="record">Record</string>
-    <string name="records">Records</string>
+    <string name="records">Entries</string>
     <string name="record_errors">Record Errors</string>
     <string name="record_error_note">
         One or more records have failed to load.  The successful records are
@@ -337,7 +337,7 @@
     </string>
     <string name="read_write">Read-write</string>
     <string name="recurring">Recurring</string>
-    <string name="references_label">REFERENCES</string>
+    <string name="references_label">Referenced by</string>
     <string name="regular_expression">Regular expression</string>
     <string name="regular_expression_summary">Use a regular expression to search instead of a sub-string</string>
     <string name="remove">Remove</string>
@@ -384,7 +384,9 @@
     <string name="symbols_used_by_default">Symbols used by default in a password policy: %1$s</string>
     <string name="sync">Sync</string>
     <string name="theme">Theme</string>
-    <string name="times_header">TIMES</string>
+    <string name="dynamic_colors">Use system colours</string>
+    <string name="dynamic_colors_summary">Take the colour palette from the wallpaper (Android 12 and later)</string>
+    <string name="times_header">Dates</string>
     <string name="title">Title</string>
     <string name="touch_sensor_to_save_the_password">Touch sensor to save the password</string>
     <string name="touch_sensor_to_load_saved_password">Touch sensor to load saved password</string>
@@ -392,7 +394,7 @@
     <string name="unprotect_all">Unprotect All Records</string>
     <string name="unprotect_group">Unprotect Group Records</string>
     <string name="unprotect_to_modify">Unprotect to modify</string>
-    <string name="username">User Name</string>
+    <string name="username">Username</string>
     <string name="usb_yubikey_present">USB YubiKey present</string>
     <string name="usb_yubikey_present_check_button">USB YubiKey present.  Check button press to activate.</string>
     <string name="use_count">Uses</string>
@@ -400,7 +402,7 @@
     <string name="use_lowercase">Lowercase</string>
     <string name="use_symbols">Symbols</string>
     <string name="use_uppercase">Uppercase</string>
-    <string name="username_header">USER NAME</string>
+    <string name="username_header">Username</string>
     <string name="vibrate_keyboard_on_press">Vibrate keyboard on press</string>
     <string name="view">View</string>
     <string name="view_password_expirations">View password expirations</string>
@@ -416,6 +418,25 @@
 
     <string name="release_notes">
         \n
+        &lt;b&gt;0.7.0&lt;/b&gt;\n
+        - New look: Material 3 throughout, light and dark, with optional wallpaper (dynamic) colours on Android 12+\n
+        - Entry screen: copy buttons, colour-coded revealed passwords, a "Type to computer" block for USB and Bluetooth, one-time code with countdown ring\n
+        - Entry list with tonal icons and group counts; recent files, unlock, new file and edit screens rebuilt\n
+        - Bottom navigation: Entries, Expiry, Policies, Settings; screen titles no longer repeat the app name\n
+        - Adaptive launcher icon with a themed (monochrome) variant\n
+        - Master and entry password fields no longer trigger the system password manager\n
+        - Fixed: a denied Bluetooth permission crashed the app at start
+        \n\n
+        &lt;b&gt;0.6.0&lt;/b&gt;\n
+        - Android 17 (API 37) target, minimum Android 8.0\n
+        - USB Auto-Type writes directly to /dev/hidg0 on stock kernels; root is only used once to prepare the device (configfs HID function, SELinux via magiskpolicy/ksud). No custom kernel or gadget app needed\n
+        - Passwords are no longer passed through a root shell\n
+        - New files use 262144 key-stretching iterations (was 2048)\n
+        - Biometric saved passwords use AES-GCM, StrongBox when available, and are invalidated by new biometric enrolments\n
+        - FIDO client PIN reference is protected by an Android Keystore HMAC key\n
+        - OTP QR scanning moved to CameraX\n
+        - Updated all libraries (BouncyCastle, Yubikit 3, AndroidX)
+        \n\n
         &lt;b&gt;0.5.0&lt;/b&gt;\n
         - New feature: FIDO U2F and FIDO2 WebAuthn\n
         - New feature: Predefined usernames / emails with placeholders\n
@@ -740,15 +761,22 @@
 
     <string name="autotype_lang">Auto-Type Keyboard Layout</string>
     <string name="autotype_bluetooth_devices">Paired Bluetooth Devices</string>
-    <string name="autotype_return_suffix">Type \"Return\" after password</string>
+    <string name="bt_is_default">Is default</string>
+    <string name="bt_default">default</string>
+    <string name="autotype_return_suffix">Type \"Return\" after password or OTP</string>
     <string name="autotype_header">Auto-Type</string>
     <string name="autotype_usb_enable">Enable Auto-Type over USB</string>
     <string name="autotype_bt_enable">Enable Auto-Type over Bluetooth</string>
     <string name="autotype_bt_enable_summary">Android Pie (28) or higher required.</string>
 
-    <string name="autotype_usb_root_denied">root access denied. Could not auto-type over USB as this requires root access!</string>
+    <string name="autotype_usb_root_denied">Root access denied. Preparing the USB HID device requires root (Magisk or KernelSU).</string>
 
-    <string name="autotype_usb_hidg_not_found">No USB auto-type possible: USB HID device file (/dev/hidg0) not found! It can be activated by using "USB Gadget Tool" (root access required).</string>
+    <string name="autotype_usb_hidg_not_found">No USB auto-type possible: USB HID device %1$s not found. Enable "Prepare USB HID device automatically" or run it from the settings (root required).</string>
+    <string name="autotype_usb_hidg_no_access">USB HID device %1$s exists but cannot be written from the app. Run "Prepare USB HID device" in the settings (root required).</string>
+    <string name="autotype_usb_preparing">Preparing USB HID device (root)…</string>
+    <string name="autotype_usb_prepare_failed">USB HID setup failed: %1$s</string>
+    <string name="autotype_usb_write_failed">Could not send keystrokes over USB: %1$s. Is the phone connected to a computer, and has it finished detecting the keyboard?</string>
+    <string name="autotype_lost_chars">Lost characters in output due to missing mapping in the selected keyboard layout!</string>
 
     <string name="use_treeview_list">Use tree list</string>
     <string name="entry">entry</string>
@@ -792,6 +820,7 @@
     <string name="counter">Counter</string>
     <string name="otp_token">Token:</string>
     <string name="otp_add_manually">Add OTP manually</string>
+    <string name="otp_invalid">Not a valid secret: enter the base32 key (letters A–Z and digits 2–7) or a full otpauth:// link</string>
     <string name="otp_add_camera">Scan OTP QR Code</string>
 
     <string name="autotype_delimiter_return">Return</string>
@@ -805,8 +834,32 @@
     <string name="about_app">About Authorizer</string>
     <string name="show_license">Show license</string>
     <string name="hide_license">Hide license</string>
-    <string name="usb_native_mode">USB Auto-Type Native Mode</string>
-    <string name="usb_native_mode_summary">Advanced users: USB gadget access without root</string>
+    <string name="usb_hid_device">USB HID device</string>
+    <string name="usb_hid_auto_setup">Prepare USB HID device automatically</string>
+    <string name="usb_hid_auto_setup_summary">When the device cannot be written, patch SELinux and node ownership with root before typing</string>
+    <string name="usb_hid_prepare">Prepare USB HID device now</string>
+    <string name="usb_hid_prepare_summary">Creates the configfs HID keyboard function if missing, patches SELinux (magiskpolicy/ksud) and gives this app access to the device node. Root required.</string>
+    <string name="usb_hid_key_delay">USB typing delay</string>
+    <string name="usb_hid_key_delay_summary">%1$s. How long each key is held and the pause after it. Increase it if the computer drops or garbles characters (KVM switches and remote desktops often need 20–50 ms).</string>
+    <string-array name="usb_hid_key_delay_titles">
+        <item>None (one report per USB poll)</item>
+        <item>5 ms</item>
+        <item>10 ms (default)</item>
+        <item>20 ms</item>
+        <item>50 ms</item>
+        <item>100 ms</item>
+    </string-array>
+    <string-array name="usb_hid_key_delay_values" translatable="false">
+        <item>0</item>
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
+    <string name="usb_hid_status_ready">%1$s: ready</string>
+    <string name="usb_hid_status_no_access">%1$s: exists, no access</string>
+    <string name="usb_hid_status_missing">%1$s: not found</string>
     <string name="writeable_summary">Allow to write to the current open file</string>
 
     <string name="bluetooth">Bluetooth</string>
@@ -819,6 +872,13 @@
     <string name="bt_pairing_no_service">Authorizer Bluetooth Service is not available. Pairing not possible!</string>
     <string name="bt_feature_enable">Enable Bluetooth feature</string>
     <string name="bt_fido_enable">Enable FIDO U2F/WebAuthn</string>
+    <string name="bt_fido_auto_approve_login">Approve FIDO logins without confirmation</string>
+    <string name="bt_fido_auto_approve_register">Approve FIDO registrations without confirmation</string>
+    <string name="bt_fido_background_answer">Answer FIDO requests with the app closed</string>
+    <string name="bt_fido_background_answer_warning">Keeps a copy of the FIDO keys (not passwords) encrypted under a hardware key so the phone can sign after the file locks or the app is closed. Unlock the file once after each reboot. Turning this off deletes the copy.</string>
+    <string name="bt_fido_auto_approve_warning">Any paired computer in range can then sign in as you with only a toast shown on the phone.</string>
+    <string name="fido_auto_approved_login">Auto-approved login for %s</string>
+    <string name="fido_auto_approved_register">Auto-approved registration for %s</string>
     <string name="bt_paired_devices">Paired Devices</string>
     <string name="bt_no_paired_devices">No devices are paired!</string>
     <string name="bt_available_devices">Available Devices</string>
@@ -832,6 +892,7 @@
     <string name="bt_pair_keyboard">Pair as Keyboard</string>
     <string name="bt_pair_fido">Pair as FIDO Key</string>
     <string name="bt_autotype_no_devices"><![CDATA[No device paired in keyboard mode!\nPlease pair devices only over Authorizer (Preferences -> Bluetooth).]]></string>
+    <string name="bt_autotype_connect_failed">Could not connect to %1$s over Bluetooth. Is the keyboard host powered on and in range?</string>
     <string name="bt_autotype_no_service">Authorizer Bluetooth Service is not available. Auto-typing is not possible!</string>
     <string name="bt_unclean_state_error"><![CDATA[Bluetooth HID stack is in an unclean state - please stop & start Bluetooth in Android and try again!]]></string>
     <string name="bt_unpair_info">At first, remove the pairing on the paired device.\n\nOnce that\'s done, proceed by confirming this dialog.</string>
@@ -860,7 +921,7 @@
     <string name="USERNAMES_SUB_TITLE" translatable="false">{TITLE}</string>
     <string name="USERNAMES_SUB_CURSOR_POSITION" translatable="false">#</string>
 
-    <string name="fido_header">FIDO U2F/WebAuthn</string>
+    <string name="fido_header">Passkey (FIDO U2F/WebAuthn)</string>
     <string name="rp_id">Website / App ID</string>
     <string name="rp_name">Website / App Name</string>
     <string name="user_handle">User ID</string>
@@ -939,11 +1000,37 @@
     <string name="onedrive">OneDrive</string>
     <string name="owncloud">ownCloud</string>
     <string name="parent_directory">Parent Directory</string>
-    <string name="preferences">Preferences</string>
+    <string name="preferences">Settings</string>
     <string name="release_notes_title">Release Notes</string>
     <string name="reload">Reload</string>
     <string name="type">Type</string>
     <string name="url">URL</string>
     <string name="version">Version</string>
     <string name="fido_file_closed">Incoming FIDO request - please open respective PasswdSafe file!</string>
+
+    <!-- Redesign (2026): entry screen and navigation -->
+    <string name="pref_category_current_file">Current file</string>
+    <string name="pref_category_app">About this app</string>
+    <string name="otp_add_title">Add one-time code</string>
+    <string name="usb_backup_now">Back up now</string>
+    <string name="create_file">Create file</string>
+    <string name="new_file_hint">Choose a name and a master password. New files use strong key stretching.</string>
+    <string name="change_password_hint">Enter the new master password twice, then save from the top bar.</string>
+    <string name="record_autotype_title">Type to computer</string>
+    <string name="autotype_target_usb">USB</string>
+    <string name="autotype_credentials_long">Username + password</string>
+    <string name="autotype_delimiter_label">Between name and password</string>
+    <string name="autotype_usb_hold_hint">Hold to type the username and password over USB</string>
+    <string name="otp_section">One-time code</string>
+    <string name="otp_enter_key">Enter key</string>
+    <string name="otp_scan_code">Scan QR code</string>
+    <string name="password_reveal_slider">Reveal the password character by character</string>
+    <string name="nav_entries">Entries</string>
+    <string name="nav_expiry">Expiry</string>
+    <string name="nav_policies">Policies</string>
+    <string name="nav_settings">Settings</string>
+    <plurals name="group_entries">
+        <item quantity="one">%d entry</item>
+        <item quantity="other">%d entries</item>
+    </plurals>
 </resources>

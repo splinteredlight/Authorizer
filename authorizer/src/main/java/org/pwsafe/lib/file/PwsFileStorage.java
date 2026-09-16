@@ -27,8 +27,7 @@ public class PwsFileStorage extends PwsStreamStorage
     /**
      * An object for logging activity in this class.
      */
-    private static final Log LOG = Log.getInstance(Objects.requireNonNull(
-            PwsFileStorage.class.getPackage()).getName());
+    private static final Log LOG = Log.getInstance("org.pwsafe.lib.file");
 
     /*
      * Build an implementation given the filename for the underlying storage.

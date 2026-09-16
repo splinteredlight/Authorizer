@@ -1,19 +1,19 @@
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-                                   xmlns:app="http://schemas.android.com/apk/res-auto"
-                                   android:layout_width="match_parent"
-                                   android:layout_height="wrap_content"
-                                   android:layout_margin="5dp"
-                                   android:clickable="true"
-                                   android:orientation="horizontal"
-                                   app:cardBackgroundColor="@color/treeview_icons_background">
+<!-- One cell of the icon picker grid. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:layout_margin="4dp"
+    android:background="@drawable/bg_icon_choice"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
     <com.mikepenz.iconics.view.IconicsImageView
         android:id="@+id/icon"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:clickable="false"
-        android:padding="8dp"
-        android:scaleType="fitXY" />
+        android:padding="11dp"
+        android:scaleType="fitCenter"/>
 
-</androidx.cardview.widget.CardView>
+</FrameLayout>

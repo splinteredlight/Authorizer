@@ -53,9 +53,6 @@ public class OutputBluetoothKeyboard implements OutputInterface
 
             try {
                 byte[] scancode = kbdKeyInterpreter.getScancode(textCharString);
-                Utilities.dbginfo(TAG, "convertTextToScancode: '" + textCharString + "' > " + Utilities
-                        .bytesToHex(scancode) );
-
                 outputStream.write( scancode );
             }
             catch (NoSuchElementException e) {

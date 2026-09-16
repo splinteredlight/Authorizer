@@ -28,6 +28,7 @@ import java.security.Signature;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
 import java.util.ArrayList;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -41,6 +42,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.UnicodeString;
 
+import net.tjado.passwdsafe.Preferences;
 import net.tjado.passwdsafe.R;
 import net.tjado.passwdsafe.lib.Utils;
 import net.tjado.webauthn.exceptions.ApduException;
@@ -84,6 +86,8 @@ public final class Authenticator {
     private static final Pair<String, Long> ES256_COSE = new Pair<>("public-key", (long) -7);
     ICredentialSafe credentialSafe;
     WebAuthnCryptography cryptoProvider;
+    /** Application context for strings and toasts; never an activity. */
+    private final Context appContext;
     private final ClientPinLocker pinLocker;
     private AuthenticatorStatus internalStatus;
 
@@ -109,6 +113,7 @@ public final class Authenticator {
      */
     public Authenticator(Context ctx, boolean strongboxRequired, ICredentialSafe credentialSafe) throws VirgilException {
 
+        this.appContext = ctx.getApplicationContext();
         this.credentialSafe = credentialSafe;
         this.cryptoProvider = new WebAuthnCryptography(this.credentialSafe);
         this.pinLocker = new ClientPinLocker(ctx, new byte[32], strongboxRequired);
@@ -173,7 +178,7 @@ public final class Authenticator {
      */
     public AttestationObject makeCredential(MakeCredentialOptions options, FragmentActivity activity) throws VirgilException, CtapException {
         // Check if all supplied parameters are syntactically well-formed and of the correct length.
-        if (options.areDummys(activity)) {
+        if (options.areDummys(activity, autoApproveRegister(appContext))) {
             return new DummyAttestation();
         }
 
@@ -189,7 +194,7 @@ public final class Authenticator {
                 if (existingCredentialSource != null &&
                     existingCredentialSource.rpId.equals(options.rpEntity.id) &&
                     PublicKeyCredentialSource.type.equals(descriptor.type)) {
-                    showToast(activity, "Already registered - Registration canceled!", Toast.LENGTH_SHORT);
+                    showToast("Already registered - Registration canceled!", Toast.LENGTH_SHORT);
 
                     throw new CtapException(CtapError.CREDENTIAL_EXCLUDED);
                 }
@@ -233,9 +238,9 @@ public final class Authenticator {
         if (options.requireUserVerification) {
             String subtitle = "";
             if (options.userEntity.name != null) {
-                subtitle = activity.getString(R.string.credentials_userName, options.userEntity.name);
+                subtitle = appContext.getString(R.string.credentials_userName, options.userEntity.name);
             }
-            subtitle += activity.getString(R.string.credentials_userId, Base64.encodeToString(options.userEntity.id, Base64.NO_WRAP));
+            subtitle += appContext.getString(R.string.credentials_userId, Base64.encodeToString(options.userEntity.id, Base64.NO_WRAP));
 
             // Always null, as we allow biometric users to use PIN/Pattern to unlock
             CryptoObject cryptoObject = null;
@@ -247,12 +252,19 @@ public final class Authenticator {
             }
 
             permission = showPrompt(activity,
-                                    activity.getString(R.string.credentials_makeTitle, options.rpEntity.id),
+                                    appContext.getString(R.string.credentials_makeTitle, options.rpEntity.id),
                                     subtitle, cryptoObject);
         } else {*/
+        if (autoApproveRegister(appContext)) {
+            // User chose to skip the confirmation; keep something visible.
+            permission = true;
+            showToast(appContext.getString(R.string.fido_auto_approved_register, options.rpEntity.id),
+                      Toast.LENGTH_SHORT);
+        } else {
             permission = showDialog(activity,
-                    activity.getString(R.string.credentials_makeTitle, options.rpEntity.id),
-                    activity.getString(R.string.credentials_makeSubtitle, options.userEntity.name, options.userEntity.displayName, options.rpEntity.id, options.rpEntity.name));
+                    appContext.getString(R.string.credentials_makeTitle, options.rpEntity.id),
+                    appContext.getString(R.string.credentials_makeSubtitle, options.userEntity.name, options.userEntity.displayName, options.rpEntity.id, options.rpEntity.name));
+        }
         //}
 
         if (!permission) {
@@ -275,7 +287,7 @@ public final class Authenticator {
         // MakeCredentialOptions steps 9 through 13
         AttestationObject attestation = makeInternalCredential(options, credentialSource,
                                                                extensionOutput, biometricSignature);
-        showToast(activity, "Successfully created credentials for " +
+        showToast("Successfully created credentials for " +
                 options.rpEntity.id, Toast.LENGTH_SHORT);
 
         return attestation;
@@ -358,6 +370,25 @@ public final class Authenticator {
      * @throws CtapException Error to be returned through the current transport
      * @throws VirgilException Generic error
      */
+    private static boolean containsCredentialId(java.util.List<PublicKeyCredentialSource> list, byte[] id) {
+        if (list == null || id == null) {
+            return false;
+        }
+        for (PublicKeyCredentialSource c : list) {
+            if (java.util.Arrays.equals(c.id, id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Point the credential backend at the holder of the open file, or null. */
+    public void setFileAccess(net.tjado.passwdsafe.FidoFileAccess fileAccess) {
+        if (credentialSafe != null) {
+            credentialSafe.setFileAccess(fileAccess);
+        }
+    }
+
     public GetAssertionResult getAssertion(Map options, CredentialSelector credentialSelector, FragmentActivity activity) throws CtapException, VirgilException {
         GetAssertionOptions assertionOptions = new GetAssertionOptions().fromCBor(options);
         return getAssertion(assertionOptions, credentialSelector, activity);
@@ -417,8 +448,14 @@ public final class Authenticator {
 
         // 7. Allow the user to pick a specific credential, get verification
         PublicKeyCredentialSource selectedCredential;
-        if(!preFlight && selectedPreflightCredential != null && selectedPreflightCredential.rpId.equals(options.rpId)) {
-            Log.d(TAG, "getAssertion - Using selectedPreflightCredential: " + selectedPreflightCredential.userName);
+        if(!preFlight && selectedPreflightCredential != null
+                && selectedPreflightCredential.rpId.equals(options.rpId)
+                && containsCredentialId(credentials, selectedPreflightCredential.id)) {
+            // Reuse the preflight pick only if it is still among the credentials
+            // permitted by THIS request's allowCredentialDescriptorList (the
+            // list is already filtered above); otherwise fall through to normal
+            // selection so a narrower allow-list cannot be bypassed.
+            Log.d(TAG, "getAssertion - Using selectedPreflightCredential");
             selectedCredential = selectedPreflightCredential;
         } else if (credentials.size() == 1) {
             Log.d(TAG, "getAssertion - credentials count is one!");
@@ -440,7 +477,7 @@ public final class Authenticator {
         String txSimpleAuth;
         DataItem index = new UnicodeString("txSimpleAuth");
         if (extensionOutput.getKeys().contains(index)) {
-            txSimpleAuth = activity.getString(R.string.extensions_txsimpleAuth_suffix) +
+            txSimpleAuth = appContext.getString(R.string.extensions_txsimpleAuth_suffix) +
                            ((UnicodeString)extensionOutput.get(index)).getString() +
                            "\n";
         } else {
@@ -452,9 +489,14 @@ public final class Authenticator {
         if(preFlight) {
             permission = true;
             selectedPreflightCredential = selectedCredential;
+        } else if (autoApproveLogin(appContext)) {
+            // Same outcome as the user tapping "allow"; the post-login toast
+            // below still shows which site was answered.
+            permission = true;
+            selectedPreflightCredential = null;
         } else {
-            permission = showDialog(activity, activity.getString(R.string.request_title, options.rpId), txSimpleAuth +
-                activity.getString(
+            permission = showDialog(activity, appContext.getString(R.string.request_title, options.rpId), txSimpleAuth +
+                appContext.getString(
                     R.string.request_subtitleDialog,
                     selectedCredential.userName,
                     selectedCredential.userDisplayName,
@@ -473,7 +515,7 @@ public final class Authenticator {
                     biometricSignature, uv, extensionOutput, preFlight);
 
         if(!preFlight) {
-            showToast(activity, "Authenticated for " + options.rpId, Toast.LENGTH_SHORT);
+            showToast("Authenticated for " + options.rpId, Toast.LENGTH_SHORT);
         }
 
         return result;
@@ -634,7 +676,7 @@ public final class Authenticator {
                                                                      options.newPinEnc);
                 localPinAuth = Arrays.copyOfRange(localPinAuth, 0, 16);
 
-                if (!Arrays.equals(options.pinAuth, localPinAuth)) {
+                if (!MessageDigest.isEqual(options.pinAuth, localPinAuth)) {
                     throw new CtapException(CtapError.PIN_AUTH_INVALID,
                                             "Received and calculated pinAuth don't match");
                 }
@@ -670,7 +712,7 @@ public final class Authenticator {
                 localPinAuth = WebAuthnCryptography.encodeHmacSHA256(sharedSecret, localPinAuth);
                 localPinAuth = Arrays.copyOfRange(localPinAuth, 0, 16);
 
-                if (!Arrays.equals(options.pinAuth, localPinAuth)) {
+                if (!MessageDigest.isEqual(options.pinAuth, localPinAuth)) {
                     throw new CtapException(CtapError.PIN_AUTH_INVALID,
                                             "Received and calculated pinAuth don't match");
                 }
@@ -844,10 +886,24 @@ public final class Authenticator {
         return new RawMessages.AuthenticationResponse(buff.array(), userVerification);
     }
 
-    public boolean U2FuserPresence(FragmentActivity activity) {
+    /**
+     * Confirm user presence for a legacy U2F request.
+     *
+     * @param isRegistration true for U2F_REGISTER, false for U2F_AUTHENTICATE;
+     *                       selects which auto-approve preference applies
+     */
+    public boolean U2FuserPresence(FragmentActivity activity, boolean isRegistration) {
+        if (isRegistration ? autoApproveRegister(appContext) : autoApproveLogin(appContext)) {
+            showToast(appContext.getString(isRegistration
+                                         ? R.string.fido_auto_approved_register
+                                         : R.string.fido_auto_approved_login,
+                                         "U2F"),
+                      Toast.LENGTH_SHORT);
+            return true;
+        }
         return showPrompt(activity,
-                            activity.getString(R.string.u2f_registerTitle),
-                            activity.getString(R.string.u2f_registerSubtitle),
+                            appContext.getString(R.string.u2f_registerTitle),
+                            appContext.getString(R.string.u2f_registerSubtitle),
                             null);
     }
 
@@ -864,15 +920,15 @@ public final class Authenticator {
         });
 
         new WioBiometricPrompt(activity,
-                                activity.getString(R.string.pin_resetTitle),
-                                activity.getString(R.string.pin_resetSubtitle),
+                                appContext.getString(R.string.pin_resetTitle),
+                                appContext.getString(R.string.pin_resetSubtitle),
                                 true);
     }
 
     public void resetAuthenticator(FragmentActivity activity) throws CtapException {
         boolean permission = showPrompt(activity,
-                                        activity.getString(R.string.reset_requestTitle),
-                                        activity.getString(R.string.reset_requestSubtitle),
+                                        appContext.getString(R.string.reset_requestTitle),
+                                        appContext.getString(R.string.reset_requestSubtitle),
                                         null);
 
         if (permission) {
@@ -925,8 +981,8 @@ public final class Authenticator {
         });
 
         new WioBiometricPrompt(activity,
-                                activity.getString(R.string.credentials_deleteAllTitle),
-                                activity.getString(R.string.credentials_deleteAllSubtitle),
+                                appContext.getString(R.string.credentials_deleteAllTitle),
+                                appContext.getString(R.string.credentials_deleteAllSubtitle),
                                 true,
                                 null);
 
@@ -941,8 +997,8 @@ public final class Authenticator {
             displayName = Arrays.toString(credentialSource.id);
         }
         boolean permission = showPrompt(activity,
-                                        activity.getString(R.string.credentials_deleteTitle),
-                                        activity.getString(R.string.credentials_deleteSubtitle,
+                                        appContext.getString(R.string.credentials_deleteTitle),
+                                        appContext.getString(R.string.credentials_deleteSubtitle,
                                                 displayName, credentialSource.rpId),
                                         null);
         if (permission) {
@@ -976,8 +1032,8 @@ public final class Authenticator {
         });
 
         new WioBiometricPrompt(activity,
-                                activity.getString(R.string.credentials_deleteTitle),
-                                activity.getString(R.string.credentials_deleteSubtitle,
+                                appContext.getString(R.string.credentials_deleteTitle),
+                                appContext.getString(R.string.credentials_deleteSubtitle,
                                         displayName, credentialSource.rpId),
                           true, null);
     }
@@ -1158,8 +1214,8 @@ public final class Authenticator {
             conPINmismatches++;
             if (conPINmismatches == 3) {
                 showPrompt(activity,
-                            activity.getString(R.string.pin_missed3Title),
-                            activity.getString(R.string.pin_missed3Subtitle),
+                            appContext.getString(R.string.pin_missed3Title),
+                            appContext.getString(R.string.pin_missed3Subtitle),
                             null);
                 throw new CtapException(CtapError.PIN_AUTH_BLOCKED,
                         "3 consecutive PIN missmatches, authentication blocked! do a power cycle");
@@ -1184,8 +1240,8 @@ public final class Authenticator {
         if (pinAuth != null) {
             if (pinAuth.length == 0) {
                 showPrompt(activity,
-                            activity.getString(R.string.pin_nullPinTitle),
-                            activity.getString(R.string.pin_nullPinSubtitle),
+                            appContext.getString(R.string.pin_nullPinTitle),
+                            appContext.getString(R.string.pin_nullPinSubtitle),
                             null);
                 if (!pinLocker.isPinSet()) {
                     throw new CtapException(CtapError.PIN_NOT_SET);
@@ -1198,7 +1254,7 @@ public final class Authenticator {
                                                                         clientDataHash);
             localPinAuth = Arrays.copyOf(localPinAuth, 16);
 
-            if (Arrays.equals(pinAuth, localPinAuth)) {
+            if (MessageDigest.isEqual(pinAuth, localPinAuth)) {
                 conPINmismatches = 0;
                 pinLocker.setRetries(8L);
                 return true;
@@ -1212,8 +1268,8 @@ public final class Authenticator {
             conPINmismatches++;
             if (conPINmismatches == 3) {
                 showPrompt(activity,
-                            activity.getString(R.string.pin_missed3Title),
-                            activity.getString(R.string.pin_missed3Subtitle),
+                            appContext.getString(R.string.pin_missed3Title),
+                            appContext.getString(R.string.pin_missed3Subtitle),
                             null);
                 throw new CtapException(CtapError.PIN_AUTH_BLOCKED,
                                         "3 consecutive PIN missmatches, authentication blocked!" +
@@ -1249,8 +1305,8 @@ public final class Authenticator {
 
             new Thread(() -> {
                  boolean acquiredPermission = showPrompt(activity,
-                         activity.getString(R.string.pin_changeTitle),
-                         activity.getString(R.string.pin_changeSubtitle),
+                         appContext.getString(R.string.pin_changeTitle),
+                         appContext.getString(R.string.pin_changeSubtitle),
                          null);
                  boolean isPinUpdated = false;
                  if (acquiredPermission) {
@@ -1267,8 +1323,11 @@ public final class Authenticator {
                              if (pinLocker.isPinMatch(Arrays.copyOf(WebAuthnCryptography.sha256(oldPin.getBytes()), 16))) {
                                  isPinUpdated = pinLocker.setRetries(8L)
                                          .lockPin(Arrays.copyOf(WebAuthnCryptography.sha256(newPin.getBytes()), 16));
+                             } else {
+                                 // Only a wrong old PIN costs a retry; a successful
+                                 // change already reset retries to 8 above.
+                                 pinLocker.decrementPinRetries();
                              }
-                             pinLocker.decrementPinRetries();
                          } catch (VirgilException e) {
                              // Nothing to do here - just catch this exception for graceful handling
                          }
@@ -1329,6 +1388,12 @@ public final class Authenticator {
 
     private boolean showPrompt(FragmentActivity fragmentActivity, String title, String subtitle,
                                CryptoObject cryptoObject) {
+        if (fragmentActivity == null) {
+            // No resumed activity to host the prompt (app in the background or
+            // closed). The caller treats "false" as the user declining.
+            Log.w(TAG, "prompt needed but no activity is in front; denying");
+            return false;
+        }
 
         final boolean[] res = new boolean[1];
         final WioBiometricPrompt[] prompt = new WioBiometricPrompt[1];
@@ -1364,6 +1429,10 @@ public final class Authenticator {
     }
 
     private boolean showDialog(FragmentActivity fragmentActivity, String title, String message) {
+        if (fragmentActivity == null) {
+            Log.w(TAG, "confirmation needed but no activity is in front; denying");
+            return false;
+        }
         final boolean[] res = new boolean[1];
         final WioRequestDialog[] prompt = new WioRequestDialog[1];
         final Semaphore sem = new Semaphore(0);
@@ -1394,9 +1463,21 @@ public final class Authenticator {
         return res[0];
     }
 
-    private void showToast(FragmentActivity activity, String msg, int duration) {
-        Handler mainHandler = new Handler(activity.getMainLooper());
+    /**
+     * Auto-approval is read from preferences on every request so a change in
+     * the Bluetooth settings screen applies immediately. Both default to off.
+     */
+    private static boolean autoApproveLogin(Context ctx) {
+        return Preferences.getFidoAutoApproveLogin(Preferences.getSharedPrefs(ctx));
+    }
 
-        mainHandler.post(() -> Toast.makeText(activity, msg, duration).show());
+    private static boolean autoApproveRegister(Context ctx) {
+        return Preferences.getFidoAutoApproveRegister(Preferences.getSharedPrefs(ctx));
+    }
+
+    private void showToast(String msg, int duration) {
+        Handler mainHandler = new Handler(appContext.getMainLooper());
+
+        mainHandler.post(() -> Toast.makeText(appContext, msg, duration).show());
     }
 }

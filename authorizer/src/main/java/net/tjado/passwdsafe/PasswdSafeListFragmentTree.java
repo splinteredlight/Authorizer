@@ -96,6 +96,8 @@ public class PasswdSafeListFragmentTree extends ListFragment
     private boolean itsIsContents = false;
     private Listener itsListener;
     private TextView itsEmptyText;
+    /** Whether the tree built in onCreateView has any node at all */
+    private boolean itsTreeHasNodes;
     private ItemListAdapter itsAdapter;
     private String itsSelectedRecord;
     private View tvView;
@@ -186,6 +188,7 @@ public class PasswdSafeListFragmentTree extends ListFragment
 
         final TreeNode itsTreeNodeRoot = TreeNode.root();
         addGroup(itsTreeNodeRoot, itsRootLocation, 0);
+        itsTreeHasNodes = !itsTreeNodeRoot.getChildren().isEmpty();
 
         final AndroidTreeView itsAndroidTreeView = new AndroidTreeView(getActivity(), itsTreeNodeRoot);
         itsAndroidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyleCustom, true);
@@ -371,23 +374,22 @@ public class PasswdSafeListFragmentTree extends ListFragment
             return super.onContextItemSelected(item);
         }
 
-        switch (item.getItemId()) {
-        case R.id.menu_copy_password:
-        case R.id.menu_copy_user: {
-                AdapterView.AdapterContextMenuInfo info =
+        int itemId = item.getItemId();
+        if ((itemId == R.id.menu_copy_password) ||
+            (itemId == R.id.menu_copy_user)) {
+            AdapterView.AdapterContextMenuInfo info =
                     (AdapterView.AdapterContextMenuInfo)item.getMenuInfo();
             final PasswdRecordListData listItem =
                     itsAdapter.getItem(info.position);
             if (listItem.itsIsRecord) {
                 itsSelectedRecord = listItem.itsUuid;
                 itsListener.copyField(
-                        (item.getItemId() == R.id.menu_copy_password) ?
+                        (itemId == R.id.menu_copy_password) ?
                         CopyField.PASSWORD : CopyField.USER_NAME,
                         listItem.itsUuid);
             }
 
             return true;
-        }
         }
         return super.onContextItemSelected(item);
     }
@@ -486,9 +488,13 @@ public class PasswdSafeListFragmentTree extends ListFragment
             list.clearChoices();
         }
 
-        if (itsEmptyText.getText().length() == 0 && data.size() == 0) {
+        // The loader only carries the records of the current location; the
+        // tree itself may still show groups, so only report an empty tree.
+        boolean empty = data.isEmpty() && !itsTreeHasNodes;
+        if (empty && (itsEmptyText.getText().length() == 0)) {
             itsEmptyText.setText(itsIsContents ? R.string.no_records : R.string.no_groups);
         }
+        itsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
 
     }
 

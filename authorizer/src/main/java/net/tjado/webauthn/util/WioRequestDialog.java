@@ -1,6 +1,7 @@
 package net.tjado.webauthn.util;
 
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import androidx.appcompat.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
@@ -35,7 +36,7 @@ public class WioRequestDialog extends DialogFragment {
     @NotNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        final AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
         builder.setMessage(mMessage).setTitle(mTitle);
 
         builder.setPositiveButton("Accept", (dialog, which) -> {

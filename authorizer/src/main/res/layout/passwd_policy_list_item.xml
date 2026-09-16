@@ -1,70 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright (©) 2015 Jeff Harris <jefftharris@gmail.com>
-  ~ All rights reserved. Use of the code is allowed under the
-  ~ Artistic License 2.0 terms, as specified in the LICENSE file
-  ~ distributed with this code, or available from
-  ~ http://www.opensource.org/licenses/artistic-license-2.0.php
-  -->
-<LinearLayout style="@style/ListItem"
-              xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:descendantFocusability="blocksDescendants"
-              android:orientation="vertical">
+<!-- One password policy: name with edit/delete actions, details below. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:descendantFocusability="blocksDescendants"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/screen_gutter"
+    android:paddingEnd="@dimen/screen_gutter">
 
-    <RelativeLayout android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="?attr/listPreferredItemHeight">
-
-        <LinearLayout android:id="@+id/actions"
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_alignParentEnd="true"
-                      android:layout_alignParentRight="true"
-                      android:layout_centerVertical="true"
-                      android:orientation="horizontal">
-
-            <ImageButton android:id="@+id/edit"
-                         android:layout_width="wrap_content"
-                         android:layout_height="wrap_content"
-                         android:contentDescription="@string/edit"
-                         android:src="@drawable/ic_action_edit"/>
-
-            <ImageButton android:id="@+id/delete"
-                         android:layout_width="wrap_content"
-                         android:layout_height="wrap_content"
-                         android:contentDescription="@string/delete"
-                         android:src="@drawable/ic_action_delete"/>
-
-        </LinearLayout>
-
-        <TextView android:id="@+id/title"
-                  style="@style/ListItemText"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_alignParentLeft="true"
-                  android:layout_alignParentStart="true"
-                  android:layout_centerVertical="true"
-                  android:layout_toLeftOf="@id/actions"
-                  android:layout_toStartOf="@id/actions"
-                  android:gravity="center_vertical"/>
-
-    </RelativeLayout>
-
-    <androidx.cardview.widget.CardView
-        android:id="@+id/policy_card"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="?attr/listPreferredItemPaddingRight"
-        app:cardPreventCornerOverlap="true"
-        app:cardUseCompatPadding="true"
-        app:contentPadding="4dp">
+        android:gravity="center_vertical"
+        android:minHeight="56dp"
+        android:orientation="horizontal">
+
+        <TextView android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnSurface"/>
+
+        <LinearLayout android:id="@+id/actions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <ImageButton android:id="@+id/edit"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/edit"
+                android:src="@drawable/ic_edit"
+                app:tint="?attr/colorOnSurfaceVariant"/>
+
+            <ImageButton android:id="@+id/delete"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/delete"
+                android:src="@drawable/ic_delete"
+                app:tint="?attr/colorOnSurfaceVariant"/>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/policy_card"
+        style="@style/Widget.Authorizer.Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
+
         <net.tjado.passwdsafe.view.PasswdPolicyView
             android:id="@+id/policy_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-    </androidx.cardview.widget.CardView>
+            android:layout_height="wrap_content"
+            android:padding="12dp"/>
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>

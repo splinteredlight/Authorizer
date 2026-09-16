@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import co.nstant.in.cbor.CborDecoder;
@@ -39,7 +40,8 @@ public class TransactionManager {
 
     private final String TAG = "TransactionManager";
 
-    private FragmentActivity activity;
+    /** The resumed activity, used only to host prompts; null when none is in front. */
+    private volatile FragmentActivity activity;
     private Authenticator authenticator;
 
     private Framing.InMessage message = null;
@@ -80,13 +82,22 @@ public class TransactionManager {
     private void handleError(CtapHidException hidException, Framing.SubmitReports submit) {
         Log.w(TAG, "HID error: " + hidException.error.code);
 
-        if (message != null && hidException.channelId != null) {
-            int channelId = message.channelId;
-            if (message.channelId == hidException.channelId) {
-                resetTransaction();
-            }
-            submit.submit(new Framing.ErrorResponse(channelId  , hidException.error).toRawReports());
+        if (hidException.channelId == null) {
+            // No channel to answer on; nothing we can send.
+            return;
         }
+        int channelId = hidException.channelId;
+        // Reset only when the error is on the active transaction's channel. An
+        // error on a different channel (e.g. ChannelBusy raised for a new
+        // channel while another is in progress) must not tear down the active
+        // transaction.
+        if (message != null && message.channelId == channelId) {
+            resetTransaction();
+        }
+        // Route the error to the channel that caused it (not the active one),
+        // and answer even when there is no in-progress message yet, so
+        // malformed-packet errors get a CTAPHID_ERROR instead of silence.
+        submit.submit(new Framing.ErrorResponse(channelId, hidException.error).toRawReports());
     }
 
     private static class U2fContinuation {
@@ -213,7 +224,9 @@ public class TransactionManager {
                         // CONDITIONS_NOT_SATISFIED while waiting.
                         activeU2fConfirmation = new U2fContinuation(
                                 message,
-                                CompletableFuture.supplyAsync(() -> authenticator.U2FuserPresence(activity)),
+                                CompletableFuture.supplyAsync(() -> authenticator.U2FuserPresence(
+                                        activity,
+                                        u2fResponse instanceof RawMessages.RegistrationResponse)),
                                 u2fResponse);
                         rearmU2fRetryTimeout();
                         Log.i(TAG, "User confirmation required; expecting client to retry");
@@ -235,6 +248,7 @@ public class TransactionManager {
             case Cbor:
                 activeCborJob = CompletableFuture.supplyAsync(() -> {
                     CancellationSignal signal = new CancellationSignal();
+                    final ExecutorService keepaliveExecutor = Executors.newSingleThreadExecutor();
                     try {
                         final CompletableFuture<Boolean> keepaliveJob = CompletableFuture.supplyAsync(
                                 () -> {
@@ -242,8 +256,9 @@ public class TransactionManager {
                                         try {
                                             Thread.sleep(Constants.HID_KEEPALIVE_INTERVAL_MS);
                                         } catch (InterruptedException e) {
-                                            e.printStackTrace();
-                                            continue;
+                                            // Interrupted means the job was cancelled;
+                                            // stop promptly instead of sleeping again.
+                                            return false;
                                         }
                                         Constants.CtapHidStatus status = Constants.CtapHidStatus.IDLE;
                                         switch (authenticator.getInternalStatus()) {
@@ -264,7 +279,7 @@ public class TransactionManager {
                                         );
                                     }
                                 }
-                        , Executors.newSingleThreadExecutor());
+                        , keepaliveExecutor);
 
                         byte[] ctapResponsePayload = handleCTAP2(activity, payload);
                         signal.cancel();
@@ -279,6 +294,7 @@ public class TransactionManager {
                                         new byte[] {CtapException.CtapError.KEEP_ALIVE_CANCEL.value}
                                 ).toRawReports());
                     } finally {
+                        keepaliveExecutor.shutdownNow();
                         resetTransaction();
                     }
                     return true; //Dummy CompletableFuture return
@@ -390,8 +406,21 @@ public class TransactionManager {
         }
     }
 
+    /**
+     * Set (or clear, with null) the activity that hosts confirmation prompts.
+     * This is deliberately separate from the file: the file can stay open
+     * while the activity is paused, and a cache can serve keys with no
+     * activity at all.
+     */
     public void updateActivity(FragmentActivity newActivity) {
         activity = newActivity;
+    }
+
+    /** Point the credential backend at the holder of the open file, or null. */
+    public void setFileAccess(net.tjado.passwdsafe.FidoFileAccess fileAccess) {
+        if (authenticator != null) {
+            authenticator.setFileAccess(fileAccess);
+        }
     }
 
     public void registerListener(Framing.WebAuthnListener listener) {
@@ -445,7 +474,12 @@ public class TransactionManager {
                     }
 
                     SelectCredentialDialogFragment credentialSelector = new SelectCredentialDialogFragment();
-                    credentialSelector.populateFragmentActivity(activity);
+                    if (activity != null) {
+                        // With no activity the selector returns null and a
+                        // multi-account login is refused rather than
+                        // silently answered with the first credential.
+                        credentialSelector.populateFragmentActivity(activity);
+                    }
 
                     cborAnswer = authenticator.getAssertion(params, credentialSelector, activity).asCBOR();
                     break;

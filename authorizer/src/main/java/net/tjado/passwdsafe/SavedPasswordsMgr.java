@@ -8,6 +8,11 @@
 package net.tjado.passwdsafe;
 
 import android.annotation.TargetApi;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.SecretKey;
+import android.security.keystore.StrongBoxUnavailableException;
+import android.security.keystore.KeyInfo;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
@@ -191,23 +196,67 @@ public final class SavedPasswordsMgr
         try {
             KeyGenerator keyGen = KeyGenerator.getInstance(
                     KeyProperties.KEY_ALGORITHM_AES, KEYSTORE);
-            keyGen.init(
-                    new KeyGenParameterSpec.Builder(
-                            keyName,
-                            KeyProperties.PURPOSE_ENCRYPT |
-                            KeyProperties.PURPOSE_DECRYPT)
-                            .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                            .setEncryptionPaddings(
-                                    KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                            .setKeySize(256)
-                            .setUserAuthenticationRequired(true)
-                            .build());
-            keyGen.generateKey();
+            // AES-256-GCM (authenticated), unusable after a new biometric
+            // is enrolled, in StrongBox (Titan) when the device has one.
+            boolean generated = false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    keyGen.init(newKeySpec(keyName)
+                                        .setIsStrongBoxBacked(true)
+                                        .build());
+                    keyGen.generateKey();
+                    generated = true;
+                    PasswdSafeUtil.dbginfo(TAG, "generated StrongBox key");
+                } catch (StrongBoxUnavailableException |
+                         InvalidAlgorithmParameterException e) {
+                    PasswdSafeUtil.dbginfo(TAG, "StrongBox unavailable: %s", e);
+                }
+            }
+            if (!generated) {
+                keyGen.init(newKeySpec(keyName).build());
+                keyGen.generateKey();
+            }
         } catch (NoSuchAlgorithmException | NoSuchProviderException |
                 InvalidAlgorithmParameterException e) {
             Log.e(TAG, "generateKey failure", e);
             removeSavedPassword(fileUri);
             throw e;
+        }
+    }
+
+    /** Common key parameters for a saved-password key */
+    private static KeyGenParameterSpec.Builder newKeySpec(String keyName)
+    {
+        return new KeyGenParameterSpec.Builder(
+                keyName,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .setUserAuthenticationRequired(true)
+                .setInvalidatedByBiometricEnrollment(true);
+    }
+
+    /**
+     * Whether a key was generated with the legacy CBC parameters (before
+     * 0.6.0). Such keys keep working for decryption until the password is
+     * re-saved.
+     */
+    private static boolean isLegacyCbcKey(Key key)
+    {
+        try {
+            SecretKeyFactory factory = SecretKeyFactory.getInstance(
+                    key.getAlgorithm(), KEYSTORE);
+            KeyInfo info = (KeyInfo)factory.getKeySpec((SecretKey)key,
+                                                       KeyInfo.class);
+            for (String mode : info.getBlockModes()) {
+                if (KeyProperties.BLOCK_MODE_GCM.equals(mode)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -414,10 +463,13 @@ public final class SavedPasswordsMgr
                                                        uri));
         }
 
+        boolean legacyCbc = isLegacyCbcKey(key);
         Cipher ciph = Cipher.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES + "/" +
-                KeyProperties.BLOCK_MODE_CBC + "/" +
-                KeyProperties.ENCRYPTION_PADDING_PKCS7);
+                (legacyCbc ? KeyProperties.BLOCK_MODE_CBC :
+                             KeyProperties.BLOCK_MODE_GCM) + "/" +
+                (legacyCbc ? KeyProperties.ENCRYPTION_PADDING_PKCS7 :
+                             KeyProperties.ENCRYPTION_PADDING_NONE));
         if (encrypt) {
             ciph.init(Cipher.ENCRYPT_MODE, key);
         } else {
@@ -425,7 +477,9 @@ public final class SavedPasswordsMgr
                 throw new IOException("Key IV not found for " + fileUri, exc);
             }
             byte[] iv = Base64.decode(saved.iv, Base64.NO_WRAP);
-            ciph.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+            ciph.init(Cipher.DECRYPT_MODE, key,
+                      legacyCbc ? new IvParameterSpec(iv) :
+                                  new GCMParameterSpec(128, iv));
         }
         return ciph;
     }

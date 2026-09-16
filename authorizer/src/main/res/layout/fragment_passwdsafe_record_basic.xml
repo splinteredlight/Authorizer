@@ -5,517 +5,654 @@
   ~ distributed with this code, or available from
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
+<!-- "Basic" tab of an entry: credentials, the type-to-computer block, the
+     one-time code, then the quieter details. Ids are bound by
+     PasswdSafeRecordBasicFragment; rows are shown or hidden from code. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:tools="http://schemas.android.com/tools"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            tools:context="net.tjado.passwdsafe.PasswdSafeRecordBasicFragment">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    tools:context="net.tjado.passwdsafe.PasswdSafeRecordBasicFragment">
 
-    <LinearLayout android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:orientation="vertical"
-                  android:paddingBottom="6dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/screen_gutter"
+        android:paddingTop="8dp"
+        android:paddingEnd="@dimen/screen_gutter"
+        android:paddingBottom="24dp">
 
+        <!-- Alias / shortcut base entry -->
         <LinearLayout android:id="@+id/base_row"
-                      style="@style/RecordRow"
-                      android:clickable="true"
-                      android:focusable="true">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
             <TextView android:id="@+id/base_label"
-                      style="@style/RecordHeader"
-                      android:clickable="false"/>
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.Authorizer.Label"/>
 
-            <View style="@style/Separator"
-                  android:clickable="false"/>
-
-            <RelativeLayout android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:clickable="false">
-
-                <Button android:id="@+id/base_btn"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_alignParentRight="true"
-                        android:text="@string/go_to_shortcut"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView android:id="@+id/base"
-                          style="@style/RecordField"
-                          android:layout_alignParentBottom="false"
-                          android:layout_alignParentLeft="true"
-                          android:layout_alignParentStart="true"
-                          android:layout_alignParentTop="false"
-                          android:layout_toLeftOf="@id/base_btn"
-                          android:layout_toStartOf="@id/base_btn"
-                          android:clickable="false"/>
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.Authorizer.Value"/>
 
-            </RelativeLayout>
-
-        </LinearLayout>
-
-        <LinearLayout android:id="@+id/user_row"
-                      style="@style/RecordRow">
-
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/username_header" />
-
-            <View style="@style/Separator"/>
-
-            <TextView android:id="@+id/user"
-                      style="@style/RecordField.Large"/>
-
-        </LinearLayout>
-
-        <LinearLayout android:id="@+id/password_row"
-                      style="@style/RecordRow"
-                      android:clickable="true">
-
-            <TextView style="@style/RecordHeader"
-                      android:clickable="false"
-                      android:text="@string/password_header" />
-
-            <View style="@style/Separator"
-                  android:clickable="false"/>
-
-            <RelativeLayout android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clickable="false">
-
-                <ToggleButton android:id="@+id/password_subset_btn"
+                <Button android:id="@+id/base_btn"
+                    style="@style/Widget.Authorizer.Button.Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_alignParentRight="true"
-                    android:layout_alignParentTop="true"
-                    android:checked="false"
-                    android:minWidth="48dp"
-                    android:text="@string/password_subset_btn"
-                    android:textAppearance="?android:textAppearanceSmall"
-                    android:textOff="@string/password_subset_btn"
-                    android:textOn="@string/password_subset_btn"/>
+                    android:text="@string/go_to_shortcut"
+                    app:icon="@drawable/ic_open_in_new"/>
+            </LinearLayout>
+        </LinearLayout>
 
-                <TextView android:id="@+id/password"
+        <!-- Username -->
+        <LinearLayout android:id="@+id/user_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="56dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentLeft="true"
-                    android:layout_alignParentStart="true"
-                    android:layout_alignParentTop="true"
-                    android:layout_toLeftOf="@id/password_subset_btn"
-                    android:layout_toStartOf="@id/password_subset_btn"
-                    android:clickable="false"
-                    android:textAppearance="?android:textAppearanceLarge"/>
+                    android:text="@string/username_header"
+                    android:textAppearance="@style/TextAppearance.Authorizer.Label"/>
 
-                <SeekBar android:id="@+id/password_seek"
+                <TextView android:id="@+id/user"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_alignEnd="@id/password"
-                    android:layout_alignParentLeft="true"
-                    android:layout_alignParentStart="true"
-                    android:layout_alignRight="@id/password"
-                    android:layout_below="@+id/password"
-                    android:indeterminate="false"/>
+                    android:textAppearance="@style/TextAppearance.Authorizer.Value"
+                    android:textIsSelectable="false"/>
+            </LinearLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/password_subset_input"
-                    android:layout_width="match_parent"
+            <ImageButton android:id="@+id/user_copy_btn"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/copy_user"
+                android:src="@drawable/ic_content_copy"
+                app:tint="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+
+        <!-- Password -->
+        <LinearLayout android:id="@+id/password_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_alignParentLeft="true"
-                    android:layout_alignParentRight="true"
-                    android:layout_alignParentStart="true"
-                    android:layout_below="@+id/password_subset_btn"
-                    android:hint="@string/password_subset_hint"
-                    android:visibility="gone">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/password_subset"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:maxLines="1"/>
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:text="@string/password_header"
+                        android:textAppearance="@style/TextAppearance.Authorizer.Label"/>
 
-            </RelativeLayout>
-        </LinearLayout>
+                    <TextView android:id="@+id/password"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Authorizer.Password"/>
+                </LinearLayout>
 
-        <LinearLayout android:id="@+id/autotype_usb_row"
-                      style="@style/RecordRow"
-                      android:clickable="true">
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/password_subset_btn"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:checkable="true"
+                    android:fontFamily="monospace"
+                    android:text="@string/password_subset_btn"
+                    app:ensureMinTouchTargetSize="false"/>
 
-            <TextView style="@style/RecordHeader"
-                      android:clickable="false"
-                      android:text="@string/autotype_usb_header" />
-
-            <View style="@style/Separator"
-                  android:clickable="false"/>
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <Button
-                    android:text="@string/autotype_username"
-                    android:layout_width="191dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_usb_username"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    style="@style/Widget.AppCompat.Button"/>
-
-                <Button
-                    android:text="@string/autotype_password"
-                    android:layout_width="191dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_usb_password"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    style="@style/Widget.AppCompat.Button"/>
-                <Button
-                    android:text="@string/autotype_otp"
-                    android:layout_width="191dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_usb_otp"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    android:enabled = "false"
-                    style="@style/Widget.AppCompat.Button"/>
-                <Button
-                    android:text="@string/autotype_credentials"
-                    android:layout_width="187dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_usb_credentials"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    style="@style/Widget.AppCompat.Button.Colored"/>
+                <ImageButton android:id="@+id/password_copy_btn"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/copy_password"
+                    android:src="@drawable/ic_content_copy"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
             </LinearLayout>
 
-        </LinearLayout>
-        <LinearLayout android:id="@+id/autotype_bt_row"
-                      style="@style/RecordRow"
-                      android:clickable="true">
-
-            <TextView style="@style/RecordHeader"
-                      android:clickable="false"
-                      android:text="@string/autotype_bt_header" />
-
-            <View style="@style/Separator"
-                  android:clickable="false"/>
-            <LinearLayout
-                android:orientation="horizontal"
+            <SeekBar android:id="@+id/password_seek"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <Button
-                    android:text="@string/autotype_username"
-                    android:layout_width="191dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_bt_username"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    style="@style/Widget.AppCompat.Button"/>
-
-                <Button
-                    android:text="@string/autotype_password"
-                    android:layout_width="191dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_bt_password"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    style="@style/Widget.AppCompat.Button"/>
-                <Button
-                    android:text="@string/autotype_otp"
-                    android:layout_width="191dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_bt_otp"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    android:enabled="false"
-                    style="@style/Widget.AppCompat.Button"/>
-                <Button
-                    android:text="@string/autotype_credentials"
-                    android:layout_width="187dp"
-                    android:layout_height="match_parent"
-                    android:id="@+id/autotype_bt_credentials"
-                    android:layout_weight="1"
-                    android:textSize="10sp"
-                    style="@style/Widget.AppCompat.Button.Colored"/>
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout android:id="@+id/autotype_settings_row"
-                      style="@style/RecordRow"
-                      android:clickable="true">
-            <CheckBox
-                android:text="@string/autotype_return_suffix"
-                android:layout_width="375dp"
                 android:layout_height="wrap_content"
-                android:id="@+id/autotype_return_suffix" />
+                android:layout_marginBottom="4dp"
+                android:contentDescription="@string/password_reveal_slider"
+                android:indeterminate="false"/>
 
-            <RadioGroup
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/password_subset_input"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal"
-                android:id="@+id/autotype_delimiter"
-                android:checkedButton="@+id/autotype_delimiter_tab">
-                <RadioButton
-                    android:id="@+id/autotype_delimiter_return"
-                    android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp"
+                android:hint="@string/password_subset_hint"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/password_subset"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/autotype_delimiter_return" />
-                <RadioButton
-                    android:id="@+id/autotype_delimiter_tab"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/autotype_delimiter_tab" />
-            </RadioGroup>
+                    android:fontFamily="monospace"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1"/>
+            </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
-        <LinearLayout android:id="@+id/otp_row"
-                      style="@style/RecordRow"
-                      android:clickable="true">
+        <!-- Type to computer -->
+        <LinearLayout android:id="@+id/autotype_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card_tonal"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <TextView style="@style/RecordHeader"
-                      android:clickable="false"
-                      android:text="@string/otp_header" />
-
-            <View style="@style/Separator"
-                  android:clickable="false"/>
             <LinearLayout
-                android:orientation="vertical"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:id="@+id/otp_token_row"
-                android:visibility="gone">
-                <LinearLayout
-                    android:orientation="horizontal"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_computer"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="@string/record_autotype_title"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/autotype_usb_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical">
+
+                <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="6dp"
+                    android:gravity="center_vertical"
+                    android:text="@string/autotype_target_usb"
+                    android:textAppearance="@style/TextAppearance.Authorizer.Label"
+                    app:drawableStartCompat="@drawable/ic_usb"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal">
+
+                    <Button android:id="@+id/autotype_usb_username"
+                        style="@style/Widget.Authorizer.Button.AutoType"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/autotype_username"/>
+
+                    <Button android:id="@+id/autotype_usb_password"
+                        style="@style/Widget.Authorizer.Button.AutoType"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/autotype_password"/>
+
+                    <Button android:id="@+id/autotype_usb_otp"
+                        style="@style/Widget.Authorizer.Button.AutoType"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:enabled="false"
+                        android:text="@string/autotype_otp"/>
+                </LinearLayout>
+
+                <Button android:id="@+id/autotype_usb_credentials"
+                    style="@style/Widget.Authorizer.Button.AutoType.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/autotype_credentials_long"
+                    app:icon="@drawable/ic_keyboard"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/autotype_bt_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="6dp"
+                    android:gravity="center_vertical"
+                    android:text="@string/bluetooth"
+                    android:textAppearance="@style/TextAppearance.Authorizer.Label"
+                    app:drawableStartCompat="@drawable/ic_bluetooth"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal">
+
+                    <Button android:id="@+id/autotype_bt_username"
+                        style="@style/Widget.Authorizer.Button.AutoType"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/autotype_username"/>
+
+                    <Button android:id="@+id/autotype_bt_password"
+                        style="@style/Widget.Authorizer.Button.AutoType"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/autotype_password"/>
+
+                    <Button android:id="@+id/autotype_bt_otp"
+                        style="@style/Widget.Authorizer.Button.AutoType"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:enabled="false"
+                        android:text="@string/autotype_otp"/>
+                </LinearLayout>
+
+                <Button android:id="@+id/autotype_bt_credentials"
+                    style="@style/Widget.Authorizer.Button.AutoType.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/autotype_credentials_long"
+                    app:icon="@drawable/ic_keyboard"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/autotype_settings_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
+
+                <CheckBox android:id="@+id/autotype_return_suffix"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/autotype_return_suffix"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
                     <TextView
-                        android:id="@+id/otp_headline"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/otp_token"
-                        android:textSize="30dp"
-                        android:gravity="right"/>
-                    <TextView
-                        android:id="@+id/otp_code"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:text="@string/autotype_delimiter_label"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurface"/>
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/autotype_delimiter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="3"
-                        android:gravity="center"
-                        android:text="------"
-                        android:textSize="30dp"
-                        tools:ignore="HardcodedText" />
-                </LinearLayout>
-                <ProgressBar
-                    android:id="@+id/otp_time"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:max="1000"/>
-            </LinearLayout>
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <Button
-                    android:id="@+id/otp_new"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/otp_add_manually"/>
-                <Button
-                    android:id="@+id/otp_new_camera"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/otp_add_camera"/>
-            </LinearLayout>
+                        app:checkedButton="@id/autotype_delimiter_tab"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
 
+                        <Button android:id="@+id/autotype_delimiter_tab"
+                            style="@style/Widget.Authorizer.Button.Outlined"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="72dp"
+                            android:text="@string/autotype_delimiter_tab"/>
+
+                        <Button android:id="@+id/autotype_delimiter_return"
+                            style="@style/Widget.Authorizer.Button.Outlined"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="72dp"
+                            android:text="@string/autotype_delimiter_return"/>
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
 
+        <!-- One-time code -->
+        <LinearLayout android:id="@+id/otp_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/otp_section"
+                android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
+
+            <LinearLayout android:id="@+id/otp_token_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="8dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/otp_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="false"
+                    android:max="1000"
+                    app:indicatorColor="?attr/colorTertiary"
+                    app:indicatorSize="44dp"
+                    app:trackColor="?attr/colorSurfaceContainerHighest"
+                    app:trackThickness="4dp"/>
+
+                <TextView android:id="@+id/otp_headline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_token"
+                    android:visibility="gone"/>
+
+                <TextView android:id="@+id/otp_code"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:text="------"
+                    android:textAppearance="@style/TextAppearance.Authorizer.Otp"
+                    tools:ignore="HardcodedText"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <Button android:id="@+id/otp_new"
+                    style="@style/Widget.Authorizer.Button.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/otp_enter_key"
+                    app:icon="@drawable/ic_edit"/>
+
+                <Button android:id="@+id/otp_new_camera"
+                    style="@style/Widget.Authorizer.Button.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/otp_scan_code"
+                    app:icon="@drawable/ic_qr_code_scanner"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Website -->
         <LinearLayout android:id="@+id/url_row"
-                      style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/url" />
-
-            <View style="@style/Separator"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/url"
+                android:textAppearance="@style/TextAppearance.Authorizer.Label"/>
 
             <TextView android:id="@+id/url"
-                      style="@style/RecordField"
-                      android:autoLink="web"/>
-
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:autoLink="web"
+                android:textAppearance="@style/TextAppearance.Authorizer.Value"
+                android:textColorLink="?attr/colorPrimary"/>
         </LinearLayout>
 
+        <!-- Email -->
         <LinearLayout android:id="@+id/email_row"
-                      style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/email_header" />
-
-            <View style="@style/Separator"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/email_header"
+                android:textAppearance="@style/TextAppearance.Authorizer.Label"/>
 
             <TextView android:id="@+id/email"
-                      style="@style/RecordField"
-                      android:autoLink="email"/>
-
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:autoLink="email"
+                android:textAppearance="@style/TextAppearance.Authorizer.Value"
+                android:textColorLink="?attr/colorPrimary"/>
         </LinearLayout>
 
+        <!-- Group -->
         <LinearLayout android:id="@+id/group_row"
-                      style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/group_header" />
-
-            <View style="@style/Separator"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/group_header"
+                android:textAppearance="@style/TextAppearance.Authorizer.Label"/>
 
             <TextView android:id="@+id/group"
-                      style="@style/RecordField"/>
-
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.Authorizer.Value"/>
         </LinearLayout>
 
+        <!-- Passkey (FIDO) -->
         <LinearLayout android:id="@+id/fido_row"
-            style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
 
-            <TextView style="@style/RecordHeader"
-                android:text="@string/fido_header" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="4dp"
+                android:text="@string/fido_header"
+                android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
 
-            <View style="@style/Separator"/>
+            <LinearLayout android:id="@+id/rp_id_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/rp_id"/>
+                <TextView android:id="@+id/rp_id" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-            <TableLayout style="@style/RecordField.Small"
-                android:shrinkColumns="1"
-                android:stretchColumns="1">
+            <LinearLayout android:id="@+id/rp_name_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/rp_name"/>
+                <TextView android:id="@+id/rp_name" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-                <TableRow android:id="@+id/rp_id_row">
+            <LinearLayout android:id="@+id/user_handle_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/user_handle"/>
+                <TextView android:id="@+id/user_handle" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/rp_id"/>
+            <LinearLayout android:id="@+id/user_name_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/username"/>
+                <TextView android:id="@+id/user_name" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-                    <TextView android:id="@+id/rp_id"
-                        android:layout_width="wrap_content"/>
+            <LinearLayout android:id="@+id/user_displayname_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/user_displayname"/>
+                <TextView android:id="@+id/user_displayname" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-                </TableRow>
+            <LinearLayout android:id="@+id/usage_counter_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/usage_counter"/>
+                <TextView android:id="@+id/usage_counter" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-                <TableRow android:id="@+id/rp_name_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/rp_name"/>
-
-                    <TextView android:id="@+id/rp_name"
-                        android:layout_width="wrap_content"/>
-                </TableRow>
-
-                <TableRow android:id="@+id/user_handle_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/user_handle"/>
-
-                    <TextView android:id="@+id/user_handle"
-                        android:layout_width="wrap_content"/>
-                </TableRow>
-
-                <TableRow android:id="@+id/user_name_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/username"/>
-
-                    <TextView android:id="@+id/user_name"
-                        android:layout_width="wrap_content"/>
-                </TableRow>
-
-                <TableRow android:id="@+id/user_displayname_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/user_displayname"/>
-
-                    <TextView android:id="@+id/user_displayname"
-                        android:layout_width="wrap_content"/>
-                </TableRow>
-
-                <TableRow android:id="@+id/usage_counter_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/usage_counter"/>
-
-                    <TextView android:id="@+id/usage_counter"
-                        android:layout_width="wrap_content"/>
-                </TableRow>
-
-                <TableRow android:id="@+id/u2f_handle_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                        android:text="@string/u2f_handle"/>
-
-                    <TextView android:id="@+id/u2f_handle"
-                        android:layout_width="wrap_content"/>
-                </TableRow>
-
-            </TableLayout>
-            <TextView style="@style/RecordRow"/>
-
+            <LinearLayout android:id="@+id/u2f_handle_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/u2f_handle"/>
+                <TextView android:id="@+id/u2f_handle" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
         </LinearLayout>
 
-
+        <!-- Dates -->
         <LinearLayout android:id="@+id/times_row"
-                      style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
 
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/times_header" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="4dp"
+                android:text="@string/times_header"
+                android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
 
-            <View style="@style/Separator"/>
+            <LinearLayout android:id="@+id/creation_time_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/created"/>
+                <TextView android:id="@+id/creation_time" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
 
-            <TableLayout style="@style/RecordField.Small"
-                         android:shrinkColumns="1"
-                         android:stretchColumns="1">
-
-                <TableRow android:id="@+id/creation_time_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                              android:text="@string/created"/>
-
-                    <TextView android:id="@+id/creation_time"
-                              android:layout_width="wrap_content"/>
-
-                </TableRow>
-
-                <TableRow android:id="@+id/last_mod_time_row">
-
-                    <TextView style="@style/TableLabelColumn"
-                              android:text="@string/modified"/>
-
-                    <TextView android:id="@+id/last_mod_time"
-                              android:layout_width="wrap_content"/>
-                </TableRow>
-
-            </TableLayout>
-
+            <LinearLayout android:id="@+id/last_mod_time_row" style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+                <TextView style="@style/Authorizer.DetailLabel" android:text="@string/modified"/>
+                <TextView android:id="@+id/last_mod_time" style="@style/Authorizer.DetailValue"/>
+            </LinearLayout>
         </LinearLayout>
 
+        <!-- Protected -->
         <LinearLayout android:id="@+id/protected_row"
-                      style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_card_high"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
 
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/protected_record_header" />
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_lock"
+                app:tint="?attr/colorOnSurfaceVariant"/>
 
-            <View style="@style/Separator"/>
-
-            <TextView style="@style/RecordField"
-                      android:text="@string/unprotect_to_modify"/>
-
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/unprotect_to_modify"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurface"/>
         </LinearLayout>
 
+        <!-- Referenced by -->
         <LinearLayout android:id="@+id/references_row"
-                      style="@style/RecordRow">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
 
-            <TextView style="@style/RecordHeader"
-                      android:text="@string/references_label" />
-
-            <View style="@style/Separator"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="4dp"
+                android:text="@string/references_label"
+                android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
 
             <ListView android:id="@+id/references"
-                      style="@style/RecordField"
-                      tools:ignore="NestedScrolling"/>
-
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                tools:ignore="NestedScrolling"/>
         </LinearLayout>
 
     </LinearLayout>

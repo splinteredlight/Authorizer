@@ -6,250 +6,350 @@
   ~ distributed with this code, or available from
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Bluetooth keyboard / FIDO settings and device pairing. The ViewFlipper
+     children keep their order: BluetoothFragment selects them by index. -->
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/flipperOverall"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:paddingBottom="@dimen/fragment_full_vertical_margin"
-    android:paddingLeft="0dp"
-    android:paddingRight="0dp"
-    android:paddingTop="@dimen/fragment_full_vertical_margin"
-    android:layout_marginEnd="0dp"
-    android:layout_marginLeft="0dp"
-    android:layout_marginRight="0dp"
-    android:layout_marginStart="0dp"
-    tools:context="net.tjado.passwdsafe.BluetoothFragment"
-    android:orientation="vertical">
+    android:layout_height="match_parent"
+    tools:context="net.tjado.passwdsafe.BluetoothFragment">
 
-    <ViewFlipper
-        android:id="@+id/flipperOverall"
+    <!-- flipper 0: the settings -->
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent"
+        android:clipToPadding="false">
 
-        <!-- flipper 0 -->
-        <androidx.core.widget.NestedScrollView
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="24dp">
+
+            <TextView
+                android:id="@+id/tv_headline_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/screen_gutter"
+                android:paddingTop="16dp"
+                android:paddingEnd="@dimen/screen_gutter"
+                android:paddingBottom="4dp"
+                android:text="@string/settings"
+                android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="@dimen/screen_gutter"
+                android:paddingEnd="@dimen/screen_gutter">
 
                 <TextView
-                    android:id="@+id/tv_headline_settings"
-                    android:layout_width="match_parent"
+                    android:id="@+id/tv_pref_bt"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="start"
-                    android:text="@string/settings"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:paddingTop="20dp" />
+                    android:layout_weight="1"
+                    android:text="@string/bt_feature_enable"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"/>
 
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/cb_pref_bt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="@dimen/screen_gutter"
+                android:paddingEnd="@dimen/screen_gutter">
+
+                <TextView
+                    android:id="@+id/tv_pref_bt_fido"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/bt_fido_enable"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/cb_pref_bt_fido"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:orientation="horizontal"
+                android:paddingStart="32dp"
+                android:paddingEnd="@dimen/screen_gutter">
+
+                <TextView
+                    android:id="@+id/tv_pref_bt_fido_auto_login"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/bt_fido_auto_approve_login"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/cb_pref_bt_fido_auto_login"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:orientation="horizontal"
+                android:paddingStart="32dp"
+                android:paddingEnd="@dimen/screen_gutter">
+
+                <TextView
+                    android:id="@+id/tv_pref_bt_fido_auto_register"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/bt_fido_auto_approve_register"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/cb_pref_bt_fido_auto_register"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_pref_bt_fido_auto_warning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="32dp"
+                android:paddingEnd="@dimen/screen_gutter"
+                android:paddingBottom="8dp"
+                android:text="@string/bt_fido_auto_approve_warning"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:orientation="horizontal"
+                android:paddingStart="32dp"
+                android:paddingEnd="@dimen/screen_gutter">
+
+                <TextView
+                    android:id="@+id/tv_pref_bt_fido_background"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/bt_fido_background_answer"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/cb_pref_bt_fido_background"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_pref_bt_fido_background_warning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="32dp"
+                android:paddingEnd="@dimen/screen_gutter"
+                android:paddingBottom="8dp"
+                android:text="@string/bt_fido_background_answer_warning"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+            <ViewFlipper
+                android:id="@+id/flipperSub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- sub flipper 0: devices -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="vertical">
 
                     <TextView
-                        android:id="@+id/tv_pref_bt"
-                        android:gravity="start"
-                        android:text="@string/bt_feature_enable"
-                        android:textSize="16sp"
-                        android:layout_width="fill_parent"
+                        android:id="@+id/tv_headline_paired_devices"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="2"
-                        android:paddingStart="20dp" />
-                    <CheckBox
-                        android:id="@+id/cb_pref_bt"
-                        android:layout_width="fill_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="8"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingTop="20dp"
+                        android:paddingEnd="@dimen/screen_gutter"
+                        android:paddingBottom="8dp"
+                        android:text="@string/bt_paired_devices"
+                        android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
 
                     <TextView
-                        android:id="@+id/tv_pref_bt_fido"
-                        android:gravity="start"
-                        android:text="@string/bt_fido_enable"
-                        android:textSize="16sp"
-                        android:layout_width="fill_parent"
+                        android:id="@+id/tv_no_paired_devices"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="2"
-                        android:paddingStart="20dp" />
-                    <CheckBox
-                        android:id="@+id/cb_pref_bt_fido"
-                        android:layout_width="fill_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="8"/>
-                </LinearLayout>
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingEnd="@dimen/screen_gutter"
+                        android:paddingBottom="8dp"
+                        android:text="@string/bt_no_paired_devices"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"/>
 
-                <ViewFlipper
-                    android:id="@+id/flipperSub"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rv_bluetooth_devices_paired"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingEnd="@dimen/screen_gutter"/>
+
+                    <TextView
+                        android:id="@+id/tv_headline_available_devices"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingTop="20dp"
+                        android:paddingEnd="@dimen/screen_gutter"
+                        android:paddingBottom="4dp"
+                        android:text="@string/bt_available_devices"
+                        android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
+
+                    <TextView
+                        android:id="@+id/scan_description"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingEnd="@dimen/screen_gutter"
+                        android:paddingBottom="8dp"
+                        android:text="@string/bt_scan_description"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                    <Button android:id="@+id/request_permissions"
+                        style="@style/Widget.Authorizer.Button.Tonal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/screen_gutter"
+                        android:text="@string/request_permission"
+                        android:visibility="gone"/>
+
+                    <Button android:id="@+id/app_settings"
+                        style="@style/Widget.Authorizer.Button.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/screen_gutter"
+                        android:text="@string/app_settings"
+                        android:visibility="gone"/>
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical">
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingEnd="@dimen/screen_gutter">
 
-                        <TextView
-                            android:id="@+id/tv_headline_paired_devices"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="start"
-                            android:text="@string/bt_paired_devices"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:paddingTop="20dp" />
-
-                        <TextView
-                            android:id="@+id/tv_no_paired_devices"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="start"
-                            android:text="@string/bt_no_paired_devices"
-                            android:textSize="18sp"
-                            android:paddingTop="5dp"
-                            android:paddingStart="30dp"/>
-
-                        <androidx.recyclerview.widget.RecyclerView
-                            android:id="@+id/rv_bluetooth_devices_paired"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
-
-                        <TextView
-                            android:id="@+id/tv_headline_available_devices"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="start"
-                            android:text="@string/bt_available_devices"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:paddingTop="20dp" />
-
-                        <TextView
-                            android:id="@+id/scan_description"
+                        <Button android:id="@+id/btn_scan"
+                            style="@style/Widget.Authorizer.Button.Tonal"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:padding="2dp"
-                            android:text="@string/bt_scan_description"/>
+                            android:text="@string/bt_start_scan"
+                            app:icon="@drawable/ic_bluetooth"/>
 
-                        <Button android:id="@+id/request_permissions"
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/scan_progress"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/request_permission"
-                            android:visibility="gone"/>
-
-                        <Button android:id="@+id/app_settings"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/app_settings"
-                            android:visibility="gone"/>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal">
-
-                            <Button android:id="@+id/btn_scan"
-                                style="@style/Widget.AppCompat.Button.Colored"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/bt_start_scan"/>
-
-
-                            <ProgressBar
-                                android:id="@+id/scan_progress"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:indeterminate="true"
-                                android:visibility="gone"/>
-
-                        </LinearLayout>
-
-                        <androidx.recyclerview.widget.RecyclerView
-                            android:id="@+id/rv_bluetooth_devices_scan"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp" />
+                            android:layout_marginStart="16dp"
+                            android:indeterminate="true"
+                            android:visibility="gone"
+                            app:indicatorSize="28dp"
+                            app:trackThickness="3dp"/>
 
                     </LinearLayout>
 
-                    <!-- sub flipper 1 -->
-                    <RelativeLayout
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rv_bluetooth_devices_scan"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:nestedScrollingEnabled="false"
+                        android:paddingStart="@dimen/screen_gutter"
+                        android:paddingEnd="@dimen/screen_gutter"/>
 
-                        <TextView
-                            android:id="@+id/bt_disabled_app"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_centerHorizontal="true"
-                            android:layout_centerVertical="true"
-                            android:gravity="center"
-                            android:text="@string/bt_feature_disabled"
-                            android:textSize="25sp" />
-                    </RelativeLayout>
+                </LinearLayout>
 
-                    <!-- sub flipper 2 -->
-                    <RelativeLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent">
+                <!-- sub flipper 1: feature switched off in the app -->
+                <TextView
+                    android:id="@+id/bt_disabled_app"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:padding="32dp"
+                    android:text="@string/bt_feature_disabled"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant"/>
 
-                        <TextView
-                            android:id="@+id/bt_disabled_os"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_centerHorizontal="true"
-                            android:layout_centerVertical="true"
-                            android:gravity="center"
-                            android:text="@string/bt_switched_off"
-                            android:textSize="25sp" />
-                    </RelativeLayout>
+                <!-- sub flipper 2: Bluetooth switched off in Android -->
+                <TextView
+                    android:id="@+id/bt_disabled_os"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:padding="32dp"
+                    android:text="@string/bt_switched_off"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant"/>
 
-                </ViewFlipper>
+            </ViewFlipper>
 
-            </LinearLayout>
-        </androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <!-- flipper 1 -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+    <!-- flipper 1: Android too old -->
+    <TextView
+        android:id="@+id/low_api_version"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/bt_api_too_old"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"/>
 
-            <TextView
-                android:id="@+id/low_api_version"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:layout_centerVertical="true"
-                android:gravity="center"
-                android:text="@string/bt_api_too_old"
-                android:textSize="25sp" />
-        </RelativeLayout>
+    <!-- flipper 2: no adapter -->
+    <TextView
+        android:id="@+id/no_adapter"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/bt_no_adapter"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"/>
 
-        <!-- flipper 2 -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:id="@+id/no_adapter"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:layout_centerVertical="true"
-                android:gravity="center"
-                android:text="@string/bt_no_adapter"
-                android:textSize="25sp" />
-        </RelativeLayout>
-    </ViewFlipper>
-
-</LinearLayout>
+</ViewFlipper>

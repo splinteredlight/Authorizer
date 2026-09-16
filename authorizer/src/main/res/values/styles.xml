@@ -6,265 +6,158 @@
   ~ distributed with this code, or available from
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
-<resources xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <!--
-        Base application themes, dependent on API level. This theme is replaced
-        by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
-    -->
-    <style name="PwsAppBaseTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Widgets -->
+
+    <style name="Widget.Authorizer.Toolbar" parent="Widget.Material3.Toolbar.Surface">
+        <item name="titleTextAppearance">?attr/textAppearanceTitleLarge</item>
+        <item name="titleCentered">false</item>
     </style>
 
-    <style name="PwsAppBaseTheme_Dialog" parent="Theme.AppCompat.Light.Dialog">
-        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    <style name="Widget.Authorizer.Button" parent="Widget.Material3.Button">
+        <item name="android:textAllCaps">false</item>
     </style>
 
-    <style name="PwsAppBaseThemeDark" parent="Theme.AppCompat">
-        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    <style name="Widget.Authorizer.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:textAllCaps">false</item>
     </style>
 
-    <style name="PwsAppBaseThemeDark_Dialog" parent="Theme.AppCompat.Dialog">
-        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    <style name="Widget.Authorizer.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textAllCaps">false</item>
     </style>
 
-    <!-- Light application theme -->
-    <style name="PwsAppTheme" parent="PwsAppBaseTheme">
-        <item name="android:listSeparatorTextViewStyle">@style/PwsAppTheme.ListSeparatorTextView</item>
-        <item name="navViewStyle">@style/PwsAppTheme_NavView</item>
-        <item name="drawableActionHome">@drawable/ic_action_home_dark</item>
-        <item name="drawableActionNavigationMoreVert">@drawable/ic_action_navigation_more_vert_dark</item>
-        <item name="drawableActionNewPassword">@drawable/ic_action_new_password</item>
-        <item name="drawableActionVisibility">@drawable/ic_action_visibility</item>
-        <item name="drawableCloseCancel">@drawable/ic_action_close_cancel_dark</item>
-        <item name="drawableFolder">@drawable/ic_folder</item>
-        <item name="drawableFolderUp">@drawable/ic_folder_up</item>
-        <item name="drawablePasswdsafe">@drawable/ic_action_file_dark</item>
-        <item name="drawablePersonOutline">@drawable/ic_action_person_outline</item>
-        <item name="colorError">@color/textinput_error_color_light</item>
-        <item name="textColorGreen">@color/text_color_green_dark</item>
-        <item name="textAppearanceSearchResultTitle">@style/PwsAppTheme.SearchResultTitle</item>
-        <item name="textAppearanceSearchResultSubtitle">@style/PwsAppTheme.SearchResultSubtitle</item>
-        <item name="android:navigationBarColor">@color/md_grey_100</item>
-        <item name="customNavigationBarColor">@color/md_grey_100</item>
+    <style name="Widget.Authorizer.Button.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textAllCaps">false</item>
     </style>
 
-    <style name="PwsAppTheme_Dialog" parent="PwsAppBaseTheme_Dialog">
-        <item name="android:listSeparatorTextViewStyle">@style/PwsAppTheme.ListSeparatorTextView</item>
-        <item name="navViewStyle">@style/PwsAppTheme_NavView</item>
-        <item name="drawableActionHome">@drawable/ic_action_home_dark</item>
-        <item name="drawableActionNavigationMoreVert">@drawable/ic_action_navigation_more_vert_dark</item>
-        <item name="drawableActionNewPassword">@drawable/ic_action_new_password</item>
-        <item name="drawableActionVisibility">@drawable/ic_action_visibility</item>
-        <item name="drawableCloseCancel">@drawable/ic_action_close_cancel_dark</item>
-        <item name="drawableFolder">@drawable/ic_folder</item>
-        <item name="drawableFolderUp">@drawable/ic_folder_up</item>
-        <item name="drawablePasswdsafe">@drawable/ic_action_file_dark</item>
-        <item name="drawablePersonOutline">@drawable/ic_action_person_outline</item>
-        <item name="colorError">@color/textinput_error_color_light</item>
-        <item name="textColorGreen">@color/text_color_green_dark</item>
+    <!-- Action buttons for typing a field to the computer: the one warm
+         (tertiary) element of the record screen. -->
+    <style name="Widget.Authorizer.Button.AutoType" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="backgroundTint">?attr/colorTertiaryContainer</item>
+        <item name="android:textColor">?attr/colorOnTertiaryContainer</item>
+        <item name="iconTint">?attr/colorOnTertiaryContainer</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconSize">18dp</item>
+        <item name="android:insetTop">2dp</item>
+        <item name="android:insetBottom">2dp</item>
     </style>
 
-    <style name="PwsAppTheme_NavView">
-        <!-- Nothing to override -->
+    <style name="Widget.Authorizer.Button.AutoType.Primary" parent="Widget.Material3.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="backgroundTint">?attr/colorTertiary</item>
+        <item name="android:textColor">?attr/colorOnTertiary</item>
+        <item name="iconTint">?attr/colorOnTertiary</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconSize">18dp</item>
+        <item name="android:insetTop">2dp</item>
+        <item name="android:insetBottom">2dp</item>
     </style>
 
-    <!-- Dark application theme -->
-    <style name="PwsAppThemeDark" parent="PwsAppBaseThemeDark">
-        <item name="android:listSeparatorTextViewStyle">@style/PwsAppTheme.ListSeparatorTextView</item>
-        <item name="navViewStyle">@style/PwsAppThemeDark_NavView</item>
-        <item name="drawableActionHome">@drawable/ic_action_home_light</item>
-        <item name="drawableActionNavigationMoreVert">@drawable/ic_action_navigation_more_vert_light</item>
-        <item name="drawableActionNewPassword">@drawable/ic_action_new_password_light</item>
-        <item name="drawableActionVisibility">@drawable/ic_action_visibility_light</item>
-        <item name="drawableCloseCancel">@drawable/ic_action_close_cancel</item>
-        <item name="drawableFolder">@drawable/ic_folder_light</item>
-        <item name="drawableFolderUp">@drawable/ic_folder_up_light</item>
-        <item name="drawablePasswdsafe">@drawable/ic_action_file</item>
-        <item name="drawablePersonOutline">@drawable/ic_action_person_outline_light</item>
-        <item name="colorError">@color/textinput_error_color_dark</item>
-        <item name="textColorGreen">@color/text_color_green_light</item>
-        <item name="textAppearanceSearchResultTitle">@style/PwsAppTheme.SearchResultTitle.Dark</item>
-        <item name="textAppearanceSearchResultSubtitle">@style/PwsAppTheme.SearchResultSubtitle.Dark</item>
-        <item name="android:navigationBarColor">@color/background_dark</item>
-        <item name="customNavigationBarColor">@color/background_dark</item>
+    <style name="Widget.Authorizer.IconButton" parent="Widget.Material3.Button.IconButton">
+        <item name="iconTint">?attr/colorOnSurfaceVariant</item>
     </style>
 
-    <style name="PwsAppThemeDark_Dialog" parent="PwsAppBaseThemeDark_Dialog">
-        <item name="android:listSeparatorTextViewStyle">@style/PwsAppTheme.ListSeparatorTextView</item>
-        <item name="navViewStyle">@style/PwsAppThemeDark_NavView</item>
-        <item name="drawableActionHome">@drawable/ic_action_home_light</item>
-        <item name="drawableActionNavigationMoreVert">@drawable/ic_action_navigation_more_vert_light</item>
-        <item name="drawableActionNewPassword">@drawable/ic_action_new_password_light</item>
-        <item name="drawableActionVisibility">@drawable/ic_action_visibility_light</item>
-        <item name="drawableCloseCancel">@drawable/ic_action_close_cancel</item>
-        <item name="drawableFolder">@drawable/ic_folder_light</item>
-        <item name="drawableFolderUp">@drawable/ic_folder_up_light</item>
-        <item name="drawablePasswdsafe">@drawable/ic_action_file</item>
-        <item name="drawablePersonOutline">@drawable/ic_action_person_outline_light</item>
-        <item name="colorError">@color/textinput_error_color_dark</item>
-        <item name="textColorGreen">@color/text_color_green_light</item>
+    <style name="Widget.Authorizer.Spinner" parent="Widget.AppCompat.Spinner">
+        <item name="android:background">@drawable/bg_spinner_outlined</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">40dp</item>
+        <item name="android:minHeight">48dp</item>
     </style>
 
-    <style name="PwsAppThemeDark_NavView">
-        <item name="itemTextColor">?android:attr/textColorPrimary</item>
-        <item name="itemIconTint">?android:attr/textColorPrimary</item>
+    <style name="Widget.Authorizer.ListView" parent="Widget.AppCompat.ListView">
+        <item name="android:divider">@null</item>
+        <item name="android:dividerHeight">0dp</item>
+        <item name="android:listSelector">?attr/selectableItemBackground</item>
+        <item name="android:scrollbarStyle">outsideOverlay</item>
     </style>
 
-    <!-- Other styles -->
-    <style name="PwsAppTheme.ListSeparatorTextView">
-        <item name="android:textSize">14sp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textColor">?colorAccent</item>
-        <item name="android:paddingTop">16dp</item>
-        <item name="android:layout_marginBottom">16dp</item>
+    <style name="Widget.Authorizer.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainer</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="contentPadding">0dp</item>
     </style>
 
-    <style name="PwsAppTheme.SearchResultTitle"
-        parent="TextAppearance.AppCompat.SearchResult.Title">
-        <item name="android:textColor">?android:attr/textColorPrimaryInverse</item>
-        <item name="android:textSize">14sp</item>
-    </style>
-    <style name="PwsAppTheme.SearchResultTitle.Dark">
-        <item name="android:textColor">?android:attr/textColorPrimary</item>
-    </style>
-    <style name="PwsAppTheme.SearchResultSubtitle"
-        parent="TextAppearance.AppCompat.SearchResult.Subtitle">
-        <item name="android:textColor">?android:attr/textColorSecondaryInverse</item>
-        <item name="android:textSize">12sp</item>
-    </style>
-    <style name="PwsAppTheme.SearchResultSubtitle.Dark">
-        <item name="android:textColor">?android:attr/textColorSecondary</item>
+    <!-- Text appearances -->
+
+    <!-- Section heading inside a screen: quiet, sentence case, primary tint. -->
+    <style name="TextAppearance.Authorizer.Section" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">?attr/colorPrimary</item>
     </style>
 
+    <style name="TextAppearance.Authorizer.Label" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <style name="TextAppearance.Authorizer.Value" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.Authorizer.Password" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.Authorizer.Otp" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:letterSpacing">0.12</item>
+    </style>
+
+    <!-- Screen structure -->
+
+    <!-- Rows of key/value information (times, FIDO details) -->
+    <style name="Authorizer.DetailRow" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+    </style>
+
+    <style name="Authorizer.DetailLabel" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">2</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">@style/TextAppearance.Authorizer.Label</item>
+        <item name="android:paddingEnd">12dp</item>
+    </style>
+
+    <style name="Authorizer.DetailValue" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">3</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <!-- Input method (keyboard) -->
     <style name="InputMethodText">
         <!-- Should match the keyboard view's keyTextColor -->
         <item name="android:textColor">#FFFFFFFF</item>
     </style>
 
-    <style name="RecordRow">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">6dp</item>
-        <item name="android:orientation">vertical</item>
-    </style>
-
-    <style name="RecordHeader">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginLeft">5dp</item>
-    </style>
-
-    <style name="RecordField">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginLeft">5dp</item>
-        <item name="android:minHeight">38dp</item>
-        <item name="android:textAppearance">?android:textAppearanceMedium</item>
-    </style>
-
-    <style name="RecordField.Small">
-        <item name="android:textAppearance">?android:textAppearanceSmall</item>
-    </style>
-
-    <style name="RecordField.Large">
-        <item name="android:textAppearance">?android:textAppearanceLarge</item>
-    </style>
-
-    <style name="TableLabelColumn">
-        <item name="android:paddingRight">3dp</item>
-    </style>
-
-    <style name="ListItem">
-        <item name="android:minHeight">?attr/listPreferredItemHeight</item>
-        <item name="android:paddingLeft">16dp</item>
-        <item name="android:paddingRight">16dp</item>
-    </style>
-
-    <style name="ListItemText">
-        <item name="android:textAppearance">?android:attr/textAppearanceLarge</item>
-    </style>
-
-    <style name="ListItemSeconday" parent="TextAppearance.AppCompat.Body1"/>
-
-
+    <!-- AndroidTreeView container: the node views bring their own padding -->
     <style name="TreeNodeStyleCustom">
         <item name="android:paddingLeft">0dp</item>
-    </style>
-
-    <style name="TreeNodeStyleDivided">
-        <item name="android:showDividers">middle</item>
-        <item name="android:divider">@android:drawable/divider_horizontal_bright</item>
     </style>
 
     <style name="Divider">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
         <item name="android:layout_weight">0</item>
-        <item name="android:background">?android:dividerHorizontal</item>
-    </style>
-
-    <style name="Dialog.Button.Layout">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_weight">0</item>
-        <item name="android:orientation">horizontal</item>
-        <item name="android:divider">?android:dividerHorizontal</item>
-        <item name="android:showDividers">middle</item>
-    </style>
-
-    <style name="Dialog.Button" parent="android:Widget.Holo.Light.Button.Borderless.Small">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">48dp</item>
-        <item name="android:paddingLeft">16dp</item>
-        <item name="android:paddingRight">16dp</item>
-        <item name="android:layout_weight">1</item>
-    </style>
-
-    <style name="BottomNavigation">
-        <item name="android:background">?attr/customNavigationBarColor</item>
-    </style>
-
-    <style name="GridLabel">
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_width">0dp</item>
-        <item name="android:layout_gravity">fill_horizontal</item>
-        <item name="layout_columnWeight">2</item>
-    </style>
-
-    <style name="GridLabelFixed">
-        <item name="android:layout_gravity">fill_horizontal</item>
-    </style>
-
-    <style name="GridField">
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_width">0dp</item>
-        <item name="android:layout_gravity">fill_horizontal</item>
-        <item name="layout_columnWeight">1</item>
-    </style>
-
-    <style name="GridField.W3">
-        <item name="layout_columnWeight">3</item>
-    </style>
-
-    <style name="Separator">
-        <item name="android:layout_width">fill_parent</item>
-        <item name="android:layout_height">1dp</item>
-        <item name="android:background">#FF404040</item>
-    </style>
-
-    <style name="Separator.Light">
-        <item name="android:background">#FF909090</item>
-    </style>
-
-    <style name="Separator.Accent">
-        <item name="android:background">?colorAccent</item>
+        <item name="android:background">?attr/colorOutlineVariant</item>
     </style>
 
     <style name="Preference_TextAppearanceMaterialBody2"
         tools:ignore="PrivateResource">
         <item name="android:textSize">14sp</item>
-        <item name="android:fontFamily" tools:targetApi="jelly_bean" tools:ignore="ObsoleteSdkInt">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">?android:attr/textColorPrimary</item>
     </style>

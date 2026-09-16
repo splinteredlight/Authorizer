@@ -136,12 +136,20 @@ public class HidDeviceApp
 
         this.inputHost = ((BluetoothHidDevice) inputHost);
 
-        if (mode == Constants.MODE_FIDO) {
-            return this.inputHost.registerApp(Constants.SDP_RECORD_FIDO, null, Constants.QOS_OUT_FIDO, Runnable::run, callback);
-        } else if (mode == Constants.MODE_KEYBOARD) {
-            return this.inputHost.registerApp(Constants.SDP_RECORD_KEYBOARD, null, Constants.QOS_OUT_KEYBOARD, Runnable::run, callback);
-        } else {
-            throw new IllegalArgumentException();
+        try {
+            if (mode == Constants.MODE_FIDO) {
+                return this.inputHost.registerApp(Constants.SDP_RECORD_FIDO, null, Constants.QOS_OUT_FIDO, Runnable::run, callback);
+            } else if (mode == Constants.MODE_KEYBOARD) {
+                return this.inputHost.registerApp(Constants.SDP_RECORD_KEYBOARD, null, Constants.QOS_OUT_KEYBOARD, Runnable::run, callback);
+            } else {
+                throw new IllegalArgumentException();
+            }
+        } catch (SecurityException e) {
+            // BLUETOOTH_CONNECT was denied. The profile callback runs on the
+            // main thread, so without this the whole process dies while the
+            // user is still looking at the permission prompt.
+            Log.w(TAG, "registerApp refused: " + e.getMessage());
+            return false;
         }
     }
 

@@ -3,22 +3,22 @@
 
     <item
         android:id="@+id/menu_records"
-        android:icon="@drawable/selector_menu_records"
-        android:title="@string/records"/>
+        android:icon="@drawable/ic_key"
+        android:title="@string/nav_entries"/>
 
     <item
         android:id="@+id/menu_expired_passwords"
-        android:icon="@drawable/selector_menu_expirations"
-        android:title="Expirations" />
+        android:icon="@drawable/ic_schedule"
+        android:title="@string/nav_expiry"/>
 
     <item
         android:id="@+id/menu_passwd_policies"
-        android:icon="@drawable/selector_menu_policies"
-        android:title="Policies" />
+        android:icon="@drawable/ic_verified_user"
+        android:title="@string/nav_policies"/>
 
     <item
         android:id="@+id/menu_preferences"
-        android:icon="@drawable/selector_menu_preferences"
-        android:title="@string/preferences" />
+        android:icon="@drawable/ic_settings"
+        android:title="@string/nav_settings"/>
 
 </menu>

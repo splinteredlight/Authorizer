@@ -8,6 +8,8 @@
 package net.tjado.passwdsafe;
 
 import android.app.Activity;
+import net.tjado.authorizer.hid.HidStatus;
+import net.tjado.authorizer.hid.HidGadgetSetup;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -24,6 +26,8 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
+
+import com.google.android.material.color.DynamicColors;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
@@ -274,6 +278,9 @@ public class PreferencesFragment extends PreferenceFragmentCompat
             itsThemePref = requirePreference(Preferences.PREF_DISPLAY_THEME);
             itsThemePref.setEntries(ThemePref.getDisplayNames(res));
             itsThemePref.setEntryValues(ThemePref.getValues());
+            if (!DynamicColors.isDynamicColorAvailable()) {
+                hidePreference(Preferences.PREF_DISPLAY_DYNAMIC_COLORS);
+            }
             updateThemePrefSummary(prefs);
 
             Preference pref =
@@ -341,6 +348,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                                               @Nullable String key)
         {
             boolean updateTheme = false;
+            boolean recreate = false;
             if (key == null) {
                 updateTheme = true;
             } else {
@@ -349,10 +357,19 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                         updateTheme = true;
                         break;
                     }
+                    case Preferences.PREF_DISPLAY_DYNAMIC_COLORS: {
+                        recreate = true;
+                        break;
+                    }
                 }
             }
             if (updateTheme) {
                 updateThemePrefSummary(prefs);
+                // AppCompat recreates the activity when the night mode
+                // actually changes
+                PasswdSafeApp.applyNightMode(prefs);
+            }
+            if (recreate) {
                 requireActivity().recreate();
             }
         }
@@ -537,6 +554,9 @@ public class PreferencesFragment extends PreferenceFragmentCompat
         private final ListPreference itsPasswdExpiryNotifPref;
         private final EditTextPreference itsPasswdDefaultSymsPref;
         private ListPreference itsAutoTypeLangPref;
+        private EditTextPreference itsUsbHidDevicePref;
+        private ListPreference itsUsbHidKeyDelayPref;
+        private Preference itsUsbHidPreparePref;
 
         /**
          * Constructor
@@ -593,6 +613,61 @@ public class PreferencesFragment extends PreferenceFragmentCompat
             List<String> myOptions = Arrays.asList((getResources().getStringArray(R.array.autotype_lang_values)));
             int value = myOptions.indexOf(pref.name());
             itsAutoTypeLangPref.setSummary(getResources().getStringArray(R.array.autotype_lang_titles)[value]);
+
+            itsUsbHidDevicePref = requirePreference(Preferences.PREF_USB_HID_DEVICE);
+            itsUsbHidKeyDelayPref = requirePreference(Preferences.PREF_USB_HID_KEY_DELAY);
+            updateUsbHidKeyDelaySummary();
+            itsUsbHidPreparePref = requirePreference(Preferences.PREF_USB_HID_PREPARE);
+            itsUsbHidPreparePref.setOnPreferenceClickListener(clicked -> {
+                prepareUsbHidDevice(prefs);
+                return true;
+            });
+            updateUsbHidSummary(prefs);
+        }
+
+        /** Show the selected key delay with its explanation */
+        private void updateUsbHidKeyDelaySummary()
+        {
+            CharSequence entry = itsUsbHidKeyDelayPref.getEntry();
+            if (entry == null) {
+                entry = getString(R.string.usb_hid_key_delay);
+            }
+            itsUsbHidKeyDelayPref.setSummary(
+                    getString(R.string.usb_hid_key_delay_summary, entry));
+        }
+
+        /** Show the device path and whether it is currently usable */
+        private void updateUsbHidSummary(SharedPreferences prefs)
+        {
+            String path = Preferences.getUsbHidDevicePath(prefs);
+            HidStatus st = HidStatus.probe(path);
+            int res = st.isReady() ? R.string.usb_hid_status_ready :
+                      st.exists ? R.string.usb_hid_status_no_access :
+                      R.string.usb_hid_status_missing;
+            itsUsbHidDevicePref.setSummary(getString(res, path));
+        }
+
+        /** Run the root setup and report the result */
+        private void prepareUsbHidDevice(SharedPreferences prefs)
+        {
+            String path = Preferences.getUsbHidDevicePath(prefs);
+            itsUsbHidPreparePref.setEnabled(false);
+            itsUsbHidPreparePref.setSummary(R.string.autotype_usb_preparing);
+            HidGadgetSetup.prepareAsync(path, result -> {
+                if (!isAdded()) {
+                    return;
+                }
+                itsUsbHidPreparePref.setEnabled(true);
+                if (result.success && (result.devicePath != null) &&
+                    !result.devicePath.equals(path)) {
+                    Preferences.setUsbHidDevicePath(prefs, result.devicePath);
+                    itsUsbHidDevicePref.setText(result.devicePath);
+                }
+                itsUsbHidPreparePref.setSummary(
+                        result.success ? result.message :
+                        (result.message + "\n" + TextUtils.join("\n", result.log)));
+                updateUsbHidSummary(prefs);
+            });
         }
 
         @Override
@@ -630,6 +705,14 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                 }
                 case Preferences.PREF_AUTOTYPE_LANG: {
                     updateAutoTypeLang = true;
+                    break;
+                }
+                case Preferences.PREF_USB_HID_DEVICE: {
+                    updateUsbHidSummary(prefs);
+                    break;
+                }
+                case Preferences.PREF_USB_HID_KEY_DELAY: {
+                    updateUsbHidKeyDelaySummary();
                     break;
                 }
                 }

@@ -13,22 +13,31 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 
+import com.google.android.material.color.DynamicColors;
 import com.mikepenz.iconics.Iconics;
-import com.mikepenz.material_design_iconic_typeface_library.MaterialDesignIconic;
+import com.mikepenz.iconics.typeface.library.devicon.DevIcon;
+import com.mikepenz.iconics.typeface.library.materialdesigniconic.MaterialDesignIconic;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.annotation.Nullable;
 
 import net.tjado.passwdsafe.file.PasswdExpiryFilter;
 import net.tjado.passwdsafe.file.PasswdFileUri;
 import net.tjado.passwdsafe.file.PasswdPolicy;
 import net.tjado.passwdsafe.file.PasswdRecordFilter;
+import net.tjado.passwdsafe.lib.ApiCompat;
 import net.tjado.passwdsafe.lib.PasswdSafeUtil;
+import net.tjado.webauthn.Authenticator;
+import net.tjado.webauthn.FidoKeyCache;
+import net.tjado.webauthn.PasswdSafeCredentialBackend;
+import net.tjado.webauthn.TransactionManager;
+import net.tjado.webauthn.fido.hid.Framing;
 
 import org.pwsafe.lib.file.PwsFile;
 
@@ -59,11 +68,19 @@ public final class PasswdSafeApp extends Application
 
     private PasswdSafe passwdSafeActivity;
 
-    private static final String TAG = "PasswdSafeApp";
+    /**
+     * FIDO authenticator state lives here, not in the activity, so the
+     * Bluetooth service can answer requests while the activity is paused,
+     * stopped, or gone. The resumed activity is handed to the transaction
+     * manager for prompts, and the activity that holds the open file is
+     * handed to it as FidoFileAccess; the two are tracked separately.
+     */
+    private TransactionManager itsTransactionManager;
+    private FidoFileAccess itsFidoFileAccess;
+    private FidoKeyCache itsFidoKeyCache;
+    private final FidoAuthListener itsFidoAuthListener = new FidoAuthListener();
 
-    static {
-        System.loadLibrary("PasswdSafe");
-    }
+    private static final String TAG = "PasswdSafeApp";
 
     /* (non-Javadoc)
      * @see android.app.Application#onCreate()
@@ -74,6 +91,7 @@ public final class PasswdSafeApp extends Application
         super.onCreate();
         PasswdRecordFilter.initMatches(getApplicationContext());
         SharedPreferences prefs = Preferences.getSharedPrefs(this);
+        applyNightMode(prefs);
 
         AlarmManager alarmMgr =
                 (AlarmManager)getSystemService(Context.ALARM_SERVICE);
@@ -101,7 +119,8 @@ public final class PasswdSafeApp extends Application
         }
         Preferences.upgrade(prefs, this);
 
-        Iconics.registerFont(new MaterialDesignIconic());
+        Iconics.registerFont(MaterialDesignIconic.INSTANCE);
+        Iconics.registerFont(DevIcon.INSTANCE);
 
         initPrefs(prefs);
 
@@ -120,6 +139,14 @@ public final class PasswdSafeApp extends Application
                 PasswdSafeUtil.dbginfo(TAG, "onActivityResumed: " + activity.getPackageName());
                 if(activity instanceof PasswdSafe) {
                     passwdSafeActivity = (PasswdSafe) activity;
+                    itsFidoFileAccess = (PasswdSafe) activity;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        TransactionManager tm = getTransactionManager();
+                        if (tm != null) {
+                            tm.updateActivity((PasswdSafe) activity);
+                            tm.setFileAccess(itsFidoFileAccess);
+                        }
+                    }
                 }
             }
             @Override
@@ -127,6 +154,12 @@ public final class PasswdSafeApp extends Application
                 PasswdSafeUtil.dbginfo(TAG, "onActivityPaused: " + activity.getPackageName());
                 if(activity instanceof PasswdSafe) {
                     passwdSafeActivity = null;
+                    // Prompts need a resumed activity; the file stays
+                    // reachable until the activity is destroyed.
+                    if (itsTransactionManager != null
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        itsTransactionManager.updateActivity(null);
+                    }
                 }
             }
             @Override
@@ -139,12 +172,109 @@ public final class PasswdSafeApp extends Application
             @Override
             public void onActivityDestroyed(Activity activity) {
                 PasswdSafeUtil.dbginfo(TAG, "onActivityDestroyed: " + activity.getPackageName());
+                if (activity == itsFidoFileAccess) {
+                    itsFidoFileAccess = null;
+                    if (itsTransactionManager != null
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        itsTransactionManager.setFileAccess(null);
+                    }
+                }
             }
         });
     }
 
     public PasswdSafe getActiveActivity(){
         return passwdSafeActivity;
+    }
+
+    /**
+     * The FIDO transaction manager, created on first use. Null when the
+     * device has no Bluetooth HID support or the authenticator failed to
+     * initialise (the next call tries again).
+     */
+    public synchronized TransactionManager getTransactionManager()
+    {
+        if (itsTransactionManager != null) {
+            return itsTransactionManager;
+        }
+        if (!ApiCompat.supportsBluetoothHid()
+            || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return null;
+        }
+        try {
+            PasswdSafeCredentialBackend backend =
+                    new PasswdSafeCredentialBackend(this, false, itsFidoFileAccess,
+                                                    getFidoKeyCache());
+            Authenticator authenticator = new Authenticator(this, false, backend);
+            TransactionManager tm = new TransactionManager(passwdSafeActivity, authenticator);
+            tm.registerListener((Framing.WebAuthnListener)itsFidoAuthListener);
+            tm.registerListener((Framing.U2fAuthnListener)itsFidoAuthListener);
+            itsTransactionManager = tm;
+        } catch (Exception e) {
+            PasswdSafeUtil.info(TAG, "Error initializing authenticator", e);
+        }
+        return itsTransactionManager;
+    }
+
+    /** The FIDO key cache (always present; empty and inert unless enabled) */
+    public synchronized FidoKeyCache getFidoKeyCache()
+    {
+        if (itsFidoKeyCache == null) {
+            itsFidoKeyCache = new FidoKeyCache(this);
+        }
+        return itsFidoKeyCache;
+    }
+
+    /**
+     * Rebuild the FIDO key cache from the given open file on a background
+     * thread. Called when a file opens and when the feature is switched on.
+     */
+    public void refreshFidoKeyCache(FidoFileAccess file)
+    {
+        if (!getFidoKeyCache().isEnabled()) {
+            return;
+        }
+        scheduleTask(() -> getFidoKeyCache().refreshFromFile(file), this);
+    }
+
+    /**
+     * Whether a FIDO request can be answered from the open file right now:
+     * a file is open and no record is being edited. The activity does not
+     * have to be in front.
+     */
+    public boolean isFidoFileReady()
+    {
+        FidoFileAccess file = itsFidoFileAccess;
+        return file != null && file.isFileOpen() && !file.isEditMode();
+    }
+
+    /** Log-only listener for completed FIDO operations */
+    private static final class FidoAuthListener
+            implements Framing.WebAuthnListener, Framing.U2fAuthnListener
+    {
+        @Override
+        public void onCompleteMakeCredential()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTREGISTERED");
+        }
+
+        @Override
+        public void onCompleteGetAssertion()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTLOGIN");
+        }
+
+        @Override
+        public void onRegistrationResponse()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_REGISTRATION");
+        }
+
+        @Override
+        public void onAuthenticationResponse()
+        {
+            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_AUTHENTICATION");
+        }
     }
 
     @Override
@@ -254,17 +384,15 @@ public final class PasswdSafeApp extends Application
     }
 
     /**
-     * Get a title for the application
+     * Get the app bar title for a screen: the screen's own title (file name,
+     * group, "Settings", ...) or the app name when there is none.
      */
     public static String getAppTitle(String title, Context ctx)
     {
-        StringBuilder builder = new StringBuilder();
         if (!TextUtils.isEmpty(title)) {
-            builder.append(title);
-            builder.append(" - ");
+            return title;
         }
-        builder.append(PasswdSafeUtil.getAppTitle(ctx));
-        return builder.toString();
+        return PasswdSafeUtil.getAppTitle(ctx);
     }
 
     /**
@@ -297,41 +425,46 @@ public final class PasswdSafeApp extends Application
     }
 
     /**
-     * Setup the theme on a normal or dialog activity
+     * Apply the theme preference: the app uses one Material 3 day/night
+     * theme, so the preference only selects the night mode. Called from the
+     * application and whenever the preference changes; AppCompat recreates
+     * the started activities itself when the mode differs.
      */
-    private static void setupActTheme(Activity act, boolean isDialog)
+    public static void applyNightMode(SharedPreferences prefs)
     {
-        int uimode = Configuration.UI_MODE_NIGHT_UNDEFINED;
-
-        SharedPreferences prefs = Preferences.getSharedPrefs(act);
+        int mode;
         switch (Preferences.getDisplayTheme(prefs)) {
-            case FOLLOW_SYSTEM: {
-                uimode = act.getResources().getConfiguration().uiMode &
-                         Configuration.UI_MODE_NIGHT_MASK;
-                break;
-            }
             case LIGHT: {
-                uimode = Configuration.UI_MODE_NIGHT_NO;
+                mode = AppCompatDelegate.MODE_NIGHT_NO;
                 break;
             }
             case DARK: {
-                uimode = Configuration.UI_MODE_NIGHT_YES;
+                mode = AppCompatDelegate.MODE_NIGHT_YES;
+                break;
+            }
+            case FOLLOW_SYSTEM:
+            default: {
+                mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
                 break;
             }
         }
+        if (AppCompatDelegate.getDefaultNightMode() != mode) {
+            AppCompatDelegate.setDefaultNightMode(mode);
+        }
+    }
 
-        switch (uimode) {
-            case Configuration.UI_MODE_NIGHT_NO:
-            case Configuration.UI_MODE_NIGHT_UNDEFINED: {
-                act.setTheme(isDialog ? R.style.PwsAppTheme_Dialog :
-                                     R.style.PwsAppTheme);
-                break;
-            }
-            case Configuration.UI_MODE_NIGHT_YES: {
-                act.setTheme(isDialog ? R.style.PwsAppThemeDark_Dialog :
-                                     R.style.PwsAppThemeDark);
-                break;
-            }
+    /**
+     * Setup the theme on a normal or dialog activity. The manifest already
+     * names the Material theme; this only layers the wallpaper-derived
+     * dynamic colours on top when the user has them enabled (Android 12+).
+     */
+    private static void setupActTheme(Activity act,
+                                      @SuppressWarnings("unused") boolean isDialog)
+    {
+        SharedPreferences prefs = Preferences.getSharedPrefs(act);
+        applyNightMode(prefs);
+        if (Preferences.getDisplayDynamicColors(prefs)) {
+            DynamicColors.applyToActivityIfAvailable(act);
         }
     }
 

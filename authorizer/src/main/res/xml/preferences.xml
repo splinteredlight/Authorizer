@@ -12,7 +12,7 @@
                   android:key="top_prefs">
 
     <PreferenceCategory android:key="currentFileOptions"
-        android:title="Current file">
+        android:title="@string/pref_category_current_file">
         <!--suppress AndroidElementNotAllowed -->
         <net.tjado.passwdsafe.lib.view.LongSwitchPreference
             android:name="fileWriteablePref Pref"
@@ -21,7 +21,7 @@
             android:title="@string/writable"
             android:summary="@string/writeable_summary"/>
 
-    </PreferenceCategory>>
+    </PreferenceCategory>
 
     <PreferenceScreen android:key="fileOptions"
         android:title="@string/files" app:allowDividerAbove="true">
@@ -152,12 +152,37 @@
                 android:title="@string/autotype_lang"/>
 
             <!--suppress AndroidElementNotAllowed -->
+            <net.tjado.passwdsafe.view.LongEditTextPreference
+                android:name="usbHidDevice Pref"
+                android:defaultValue="/dev/hidg0"
+                android:key="usbHidDevicePref"
+                android:dialogTitle="@string/usb_hid_device"
+                android:title="@string/usb_hid_device"/>
+
+            <!--suppress AndroidElementNotAllowed -->
             <net.tjado.passwdsafe.view.LongCheckBoxPreference
-                android:name="usbNativeMode Pref"
-                android:defaultValue="false"
-                android:key="usbNativeModePref"
-                android:title="@string/usb_native_mode"
-                android:summary="@string/usb_native_mode_summary"/>
+                android:name="usbHidAutoSetup Pref"
+                android:defaultValue="true"
+                android:key="usbHidAutoSetupPref"
+                android:title="@string/usb_hid_auto_setup"
+                android:summary="@string/usb_hid_auto_setup_summary"/>
+
+            <!--suppress AndroidElementNotAllowed -->
+            <net.tjado.passwdsafe.view.LongListPreference
+                android:name="usbHidKeyDelay Pref"
+                android:defaultValue="10"
+                android:key="usbHidKeyDelayPref"
+                android:entries="@array/usb_hid_key_delay_titles"
+                android:entryValues="@array/usb_hid_key_delay_values"
+                android:dialogTitle="@string/usb_hid_key_delay"
+                android:title="@string/usb_hid_key_delay"/>
+
+            <!--suppress AndroidElementNotAllowed -->
+            <net.tjado.passwdsafe.view.LongPreference
+                android:name="usbHidPrepare Pref"
+                android:key="usbHidPreparePref"
+                android:title="@string/usb_hid_prepare"
+                android:summary="@string/usb_hid_prepare_summary"/>
 
         </PreferenceCategory>
     </PreferenceScreen>
@@ -237,6 +262,14 @@
 
         <!--suppress AndroidElementNotAllowed -->
         <net.tjado.passwdsafe.view.LongCheckBoxPreference
+            android:name="displayDynamicColors Pref"
+            android:defaultValue="true"
+            android:key="displayDynamicColorsPref"
+            android:summary="@string/dynamic_colors_summary"
+            android:title="@string/dynamic_colors"/>
+
+        <!--suppress AndroidElementNotAllowed -->
+        <net.tjado.passwdsafe.view.LongCheckBoxPreference
             android:name="displayList Pref"
             android:defaultValue="true"
             android:key="displayListTreeViewPref"
@@ -252,7 +285,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:key="appOptions"
-        android:title="App">
+        android:title="@string/pref_category_app">
 
         <PreferenceScreen android:key="aboutOptions"
             android:title="@string/about_app"

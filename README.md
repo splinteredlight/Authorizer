@@ -72,11 +72,16 @@ For security and privacy reasons, the recommended device is any maintained Googl
 Other devices might work as well. But as a lot of smartphone vendors are not publishing its underyling kernel and Android source, they can't be recommended.
 
 ### Requirements
-Authorizer can run on every Android device with version 5 or higher (Lollipop: API/SDK level 21).  
+Authorizer runs on Android 8.0 or higher (Oreo: API/SDK level 26) and targets Android 17 (API 37).  
 For Bluetooth features, minimum version 9 is required (Pie: API/SDK level 28). Higher is recommended for stability reasons.
 
-For Auto-Type over USB, low-level root permissions are required to run **[USB Gadget Tool](https://github.com/tejado/android-usb-gadget)**.  
-Authorizer does not require root permissions when it is allowed to write to /dev/hidg1 natively (file permissions and selinux needs to be configured for this).
+Auto-Type over USB needs a **rooted device with a kernel that has
+`CONFIG_USB_CONFIGFS_F_HID`** (true for stock Pixel kernels) and **Magisk or
+KernelSU**. No custom kernel and no separate gadget app are required any more:
+Authorizer prepares the configfs HID keyboard function and patches the SELinux
+policy itself, once, with root, and then writes to `/dev/hidg0` as a normal app.
+See [doc/HID_SETUP.md](doc/HID_SETUP.md) for details, a manual test plan and a
+Magisk boot script. Auto-Type over Bluetooth does not need root.
 
 ### Compatibility
 
@@ -96,9 +101,19 @@ Authorizer is able to pretend to be an HID Keyboard so it can auto-type the cred
 There are Auto-Type buttons at the password entry view. If a button is pressed longer, a different keyboard layout can be choosen. Additional, there is a USB Quick Auto-Type button in the TreeView which auto-types the respective password on a long press.  
 There are different settings per password entry like delimiter and the password return suffix. In the general App preferences a default keyboard layout can be choosen.
 
-**Auto-Type over USB requires support of the USB HID device role. This can be enabled with my [USB Gadget Tool](https://github.com/tejado/android-usb-gadget).** 
+**Auto-Type over USB requires the USB HID device role.** On a rooted phone with
+a stock kernel Authorizer sets this up itself (Settings → Auto-Type → *Prepare
+USB HID device*); see [doc/HID_SETUP.md](doc/HID_SETUP.md). Root is only used
+for that preparation, never while typing.
 
 Auto-Type over Bluetooth is currently an experimental feature and only available on Android Pie (9.0) or higher.
+Pair the computer from inside Authorizer (drawer → Bluetooth → *Pair as Keyboard*). With a single
+paired keyboard host, the Bluetooth Auto-Type button sends immediately. With several, mark one as
+default from the menu on its card in the Bluetooth screen, or choose one in the dialog on each tap.
+Keyboard-only use shows no persistent notification; only the optional FIDO mode keeps a
+foreground service (with its notification) running so it can answer requests while the app is closed.
+An unrooted phone can auto-type over Bluetooth to any PC through the
+[Pico W bridge](hardware/pico-bt-bridge/README.md).
 
 #### Asymmetric encrypted backup on USB mass storage
 The concept behind Authorizer is to have an offline device. As a consequence, it can't create password file backups over the network. To create backups in a comfortable way, Authorizer will open a backup dialog if it detects a new connected mass-storage (e.g. an USB stick connected over an USB On-The-Go adapter). By pressing "Backup now" in this dialog, a backup folder can be selected. It must contain a GPG public key with the file name "pubkey.asc". The default password file will be encrypted with this GPG key and stored in the selected folder.  

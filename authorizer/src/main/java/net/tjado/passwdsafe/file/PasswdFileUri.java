@@ -576,11 +576,6 @@ public class PasswdFileUri
             return new Pair<>(false, extraMsgId);
         }
 
-        // Check mount state on kitkat or higher
-        if (ApiCompat.SDK_VERSION < ApiCompat.SDK_KITKAT) {
-            return new Pair<>(true, null);
-        }
-
         boolean writable = !EnvironmentCompat.getStorageState(itsFile).equals(
                 Environment.MEDIA_MOUNTED_READ_ONLY);
         return new Pair<>(writable,

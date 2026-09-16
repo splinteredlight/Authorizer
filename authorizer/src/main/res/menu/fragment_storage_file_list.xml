@@ -10,11 +10,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item android:id="@+id/menu_file_open"
-        android:icon="@drawable/ic_passwdsafe_light"
+        android:icon="@drawable/ic_key_on_dark"
         android:title="@string/open"/>
 
     <item android:id="@+id/menu_file_new"
-        android:icon="@drawable/ic_action_add"
+        android:icon="@drawable/ic_add"
         android:title="@string/new_file"
         app:showAsAction="ifRoom"/>
 

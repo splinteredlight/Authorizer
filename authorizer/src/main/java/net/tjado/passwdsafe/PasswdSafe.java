@@ -7,7 +7,15 @@
  */
 package net.tjado.passwdsafe;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
+import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
+import net.tjado.authorizer.hid.HidStatus;
+import net.tjado.authorizer.hid.HidGadgetSetup;
+import androidx.core.graphics.Insets;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.ViewCompat;
 import android.annotation.SuppressLint;
 import android.app.SearchManager;
 import android.bluetooth.BluetoothAdapter;
@@ -55,7 +63,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
 
 import net.tjado.authorizer.OutputInterface;
-import net.tjado.authorizer.OutputUsbKeyboardAsRoot;
+import net.tjado.authorizer.UsbAutoType;
 import net.tjado.passwdsafe.db.BackupFile;
 import net.tjado.passwdsafe.db.PasswdSafeDb;
 import net.tjado.passwdsafe.db.RecentFilesDao;
@@ -82,26 +90,21 @@ import net.tjado.passwdsafe.view.EditRecordResult;
 import net.tjado.passwdsafe.view.PasswdFileDataView;
 import net.tjado.passwdsafe.view.PasswdLocation;
 import net.tjado.passwdsafe.view.PasswdRecordListData;
-import net.tjado.webauthn.Authenticator;
-import net.tjado.webauthn.PasswdSafeCredentialBackend;
-import net.tjado.webauthn.TransactionManager;
-import net.tjado.webauthn.fido.hid.Framing;
 
 import org.pwsafe.lib.file.PwsRecord;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Date;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * The main PasswdSafe activity for showing a password file
  */
 public class PasswdSafe extends AppCompatActivity
         implements AbstractPasswdSafeRecordFragment.Listener,
+                   FidoFileAccess,
                    View.OnClickListener,
                    MenuItem.OnActionExpandListener,
                    ConfirmPromptDialog.Listener,
@@ -281,6 +284,7 @@ public class PasswdSafe extends AppCompatActivity
 
     /** The search menu item */
     private MenuItem itsSearchItem = null;
+    private Menu itsOptionsMenu = null;
 
     private final NavSelectListener itsNavSelectListener = new NavSelectListener();
     private View itsContent;
@@ -344,9 +348,6 @@ public class PasswdSafe extends AppCompatActivity
     private static final int MENU_BIT_HAS_RESTORE_ENABLED = 10;
 
     @Nullable
-    public static TransactionManager mTransactionManager;
-    public static Authenticator mAuthenticator;
-    private static final AuthListener authenticatorListener = new AuthListener();
     private static final Handler foregroundHandler = new Handler();
     public BluetoothForegroundService btService;
     private final ServiceConnection btServiceConnection = new ServiceConnection() {
@@ -382,6 +383,16 @@ public class PasswdSafe extends AppCompatActivity
     {
         PasswdSafeApp.setupTheme(this);
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        itsBackCallback = new OnBackPressedCallback(true)
+        {
+            @Override
+            public void handleOnBackPressed()
+            {
+                handleBack();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, itsBackCallback);
 
         itsIsDisplayListTreeView = PasswdSafeApp.getDisplayTreeView(this);
 
@@ -390,7 +401,11 @@ public class PasswdSafe extends AppCompatActivity
         }
 
         setContentView(R.layout.activity_passwdsafe);
+        setSupportActionBar(findViewById(R.id.toolbar));
         itsIsTwoPane = (findViewById(R.id.two_pane) != null);
+        applyEdgeToEdgeInsets(findViewById(R.id.drawer_layout),
+                              findViewById(R.id.app_bar),
+                              findViewById(R.id.bottom_navigation_view));
 
         itsContent = findViewById(R.id.content);
         itsNoPermGroup = findViewById(R.id.no_permission_group);
@@ -398,8 +413,8 @@ public class PasswdSafe extends AppCompatActivity
         itsPermissionMgr = new DynamicPermissionMgr(
                 this, REQUEST_STORAGE_PERM, REQUEST_APP_SETTINGS,
                 BuildConfig.APPLICATION_ID, R.id.reload, R.id.app_settings);
-        itsPermissionMgr.addPerm(Manifest.permission.WRITE_EXTERNAL_STORAGE, true);
-        itsPermissionMgr.addPerm(Manifest.permission.WRITE_EXTERNAL_STORAGE, true);
+        // Storage permissions are gone under scoped storage (API 30+); files
+        // are opened through the Storage Access Framework instead.
         itsPermissionMgr.addPerm(DynamicPermissionMgr.PERM_POST_NOTIFICATIONS, false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             itsPermissionMgr.addPerm(Manifest.permission.BLUETOOTH_SCAN, true);
@@ -566,18 +581,14 @@ public class PasswdSafe extends AppCompatActivity
 
         foregroundHandler.removeCallbacksAndMessages(null);
 
-        if (ApiCompat.supportsBluetoothHid() && mTransactionManager == null) {
-            try {
-                PasswdSafeCredentialBackend credentialBackend = new PasswdSafeCredentialBackend(this, false, this);
-                mAuthenticator = new Authenticator(this, false, credentialBackend);
-            } catch (Exception e) {
-                PasswdSafeUtil.info(TAG, "Error initializing authenticator", e);
-            }
+        // The FIDO authenticator and transaction manager are owned by
+        // PasswdSafeApp, which also tracks this activity's lifecycle for
+        // prompts and file access. Nothing to build here.
 
-            mTransactionManager = new TransactionManager(this, mAuthenticator);
-            mTransactionManager.registerListener((Framing.WebAuthnListener) authenticatorListener);
-            mTransactionManager.registerListener((Framing.U2fAuthnListener) authenticatorListener);
-        }
+        // Resumed is always foreground-safe: this both covers an onStart start
+        // that was deferred behind the lock screen and rebuilds the service
+        // (and its HID registration) after onStop stopped it on the way out.
+        startBtServiceForeground();
     }
 
     @Override
@@ -625,12 +636,12 @@ public class PasswdSafe extends AppCompatActivity
             return;
         }
 
-        if (mTransactionManager != null) {
-            mTransactionManager.updateActivity(this);
-        }
-
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-        registerReceiver(btStatusBroadcastReceiver, btStatusIntentFilter);
+        // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts are sent by the Bluetooth
+        // process, not the system uid, so Android drops them for non-exported receivers.
+        // They are protected broadcasts; no third-party app can send them.
+        ContextCompat.registerReceiver(this, btStatusBroadcastReceiver, btStatusIntentFilter,
+                                       ContextCompat.RECEIVER_EXPORTED);
 
         checkBluetoothState(null);
     }
@@ -642,6 +653,16 @@ public class PasswdSafe extends AppCompatActivity
         try {
             unbindService(btServiceConnection);
             unregisterReceiver(btStatusBroadcastReceiver);
+
+            // Keyboard mode only needs the HID service while the app is in
+            // front (auto-type is triggered from here), so stop it now. The
+            // foreground-service notification then lives only while the app is
+            // open, not as a persistent background banner. FIDO must keep
+            // answering with the app closed, so it is left running.
+            if (ApiCompat.supportsBluetoothHid()
+                    && !Preferences.getBluetoothFidoEnabled(Preferences.getSharedPrefs(this))) {
+                stopService(new Intent(this, BluetoothForegroundService.class));
+            }
         } catch (Exception ignored) {}
     }
 
@@ -649,6 +670,7 @@ public class PasswdSafe extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu)
     {
         getMenuInflater().inflate(R.menu.activity_passwdsafe, menu);
+        itsOptionsMenu = menu;
         restoreActionBar();
 
         // Get the SearchView and set the searchable configuration
@@ -656,7 +678,6 @@ public class PasswdSafe extends AppCompatActivity
                 (SearchManager)getSystemService(Context.SEARCH_SERVICE);
         itsSearchItem = menu.findItem(R.id.menu_search);
         itsSearchItem.setOnActionExpandListener(this);
-        collapseSearch();
         if (searchManager != null) {
             SearchView searchView = (SearchView)itsSearchItem.getActionView();
             if (searchView != null) {
@@ -761,11 +782,11 @@ public class PasswdSafe extends AppCompatActivity
         if (item != null) {
             if(isFileOpen()) {
                 if(isFileWritable()) {
-                    item.setIcon(R.drawable.ic_action_add );
+                    item.setIcon(R.drawable.ic_add );
                     item.setEnabled(true);
                     item.setVisible(options.get(MENU_BIT_CAN_ADD));
                 } else {
-                    item.setIcon(R.drawable.ic_action_read_only);
+                    item.setIcon(R.drawable.ic_edit_off);
                     item.setEnabled(false);
                     item.setVisible(true);
                 }
@@ -842,7 +863,7 @@ public class PasswdSafe extends AppCompatActivity
                 changeOpenView(new PasswdLocation(), OpenViewChange.VIEW);
                 return true;
             }
-            onBackPressed();
+            handleBack();
             return true;
         } else if (itemId == R.id.menu_add) {
             editRecord(itsLocation.selectRecord(null));
@@ -918,8 +939,22 @@ public class PasswdSafe extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onBackPressed()
+    private OnBackPressedCallback itsBackCallback;
+
+    /** Run the system default back behaviour (pop fragment or finish) */
+    private void defaultBack()
+    {
+        itsBackCallback.setEnabled(false);
+        getOnBackPressedDispatcher().onBackPressed();
+        itsBackCallback.setEnabled(true);
+    }
+
+    /**
+     * Back navigation. Registered with the OnBackPressedDispatcher because
+     * Activity.onBackPressed() is not called for predictive back gestures
+     * on API 33+.
+     */
+    private void handleBack()
     {
         if (itsCurrViewMode == ViewMode.VIEW_LIST) {
             if (itsIsConfirmBackClosed) {
@@ -941,7 +976,7 @@ public class PasswdSafe extends AppCompatActivity
         }*/
 
         checkNavigation(false, () -> {
-                super.onBackPressed();
+                defaultBack();
 
                 Fragment frag = this.getSupportFragmentManager().findFragmentById(R.id.content);
                 if(frag instanceof StorageFileListFragment) {
@@ -1016,15 +1051,59 @@ public class PasswdSafe extends AppCompatActivity
     @Override
     public boolean onMenuItemActionExpand(@NonNull MenuItem item)
     {
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
         return true;
     }
 
     @Override
     public boolean onMenuItemActionCollapse(@NonNull MenuItem item)
     {
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
         return true;
+    }
+
+    /**
+     * Re-run onPrepareOptionsMenu on the current menu. With a Toolbar-backed
+     * action bar, invalidateOptionsMenu() rebuilds the whole menu, which
+     * recreates the SearchView and collapses it again the moment it expands.
+     */
+    private void refreshOptionsMenu()
+    {
+        if (itsOptionsMenu != null) {
+            onPrepareOptionsMenu(itsOptionsMenu);
+        }
+    }
+
+    /**
+     * Pad the root view by the system bar insets. Apps targeting API 35+
+     * are always edge-to-edge; the AppCompat action bar consumes the top
+     * inset itself, so this mostly keeps the bottom panels above the
+     * navigation bar.
+     */
+    /**
+     * Lay the app bar and the bottom navigation out under the system bars so
+     * their colours run edge to edge, while their content stays clear of the
+     * status bar, navigation bar and any display cutout.
+     */
+    private static void applyEdgeToEdgeInsets(View root, View appBar,
+                                              View bottomNav)
+    {
+        if (root == null) {
+            return;
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() |
+                    WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(bars.left, 0, bars.right, 0);
+            if (appBar != null) {
+                appBar.setPadding(0, bars.top, 0, 0);
+            }
+            if (bottomNav != null) {
+                bottomNav.setPadding(0, 0, 0, bars.bottom);
+            }
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     /**
@@ -1250,6 +1329,9 @@ public class PasswdSafe extends AppCompatActivity
 
         PasswdSafeApp app = (PasswdSafeApp)getApplication();
         app.getNotifyMgr().cancelNotification(fileData.getUri());
+        // Copy the FIDO records into the encrypted key cache (if enabled) so
+        // the Bluetooth service can keep answering after this file closes.
+        app.refreshFidoKeyCache(this);
 
         if (fileData.getRecordErrors() != null) {
             showFileRecordErrors();
@@ -1320,51 +1402,61 @@ public class PasswdSafe extends AppCompatActivity
             return null;
         });
 
-        try {
-            OutputInterface ct = new OutputUsbKeyboardAsRoot(OutputInterface.Language.AppleMac_de_DE);
+        SharedPreferences prefs = Preferences.getSharedPrefs(this);
+        String devicePath = Preferences.getUsbHidDevicePath(prefs);
+        OutputInterface.Language lang = Preferences.getAutoTypeLanguagePref(prefs);
+        if (!HidStatus.probe(devicePath).isReady() &&
+            Preferences.getUsbHidAutoSetup(prefs)) {
+            Toast.makeText(this, R.string.autotype_usb_preparing,
+                           Toast.LENGTH_SHORT).show();
+            HidGadgetSetup.ensureReadyAsync(devicePath, new HidGadgetSetup.ReadyCallback()
+            {
+                @Override
+                public void onReady(@NonNull String readyPath)
+                {
+                    if (!readyPath.equals(devicePath)) {
+                        Preferences.setUsbHidDevicePath(prefs, readyPath);
+                    }
+                    sendCredentialOverUsbByRecordLocation(recUuid);
+                }
 
-            String SUB_OTP = getResources().getString(R.string.SUB_OTP);
-            String SUB_TAB = getResources().getString(R.string.SUB_TAB);
-            String SUB_RETURN = getResources().getString(R.string.SUB_RETURN);
-            String quoteSubReturn = Pattern.quote(SUB_RETURN);
-            String quoteSubTab = Pattern.quote(SUB_TAB);
+                @Override
+                public void onFailed(@NonNull String message)
+                {
+                    PasswdSafeUtil.showErrorMsg(
+                            getString(R.string.autotype_usb_prepare_failed, message),
+                            new ActContext(PasswdSafe.this));
+                }
+            });
+            return;
+        }
 
-            if (password.contains(SUB_OTP)) {
-                PasswdSafeUtil.showErrorMsg(
-                        "Password Quick Auto-Type not possible as it contains an OTP!",
-                        new ActContext(this));
+        if (password == null) {
+            return;
+        }
+        String SUB_OTP = getResources().getString(R.string.SUB_OTP);
+        String SUB_TAB = getResources().getString(R.string.SUB_TAB);
+        String SUB_RETURN = getResources().getString(R.string.SUB_RETURN);
+
+        if (password.contains(SUB_OTP)) {
+            PasswdSafeUtil.showErrorMsg(
+                    "Password Quick Auto-Type not possible as it contains an OTP!",
+                    new ActContext(this));
+            return;
+        }
+
+        UsbAutoType.Sequence seq =
+                new UsbAutoType.Sequence(SUB_RETURN, SUB_TAB).addField(password);
+        UsbAutoType.run(devicePath, lang, Preferences.getUsbHidKeyDelayMs(prefs),
+                        seq, (error, lostChars) -> {
+            if (isFinishing() || isDestroyed()) {
                 return;
             }
-
-            String[] passwordArray = password.split(String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))", quoteSubReturn, quoteSubTab));
-            PasswdSafeUtil.dbginfo(TAG, "Password Substitution Array: %s".format(Arrays.toString(passwordArray)));
-
-            int ret = 0;
-            for (String str : passwordArray){
-
-                if (str.equals(SUB_RETURN)) {
-                    ct.sendReturn();
-                } else if (str.equals(SUB_TAB)) {
-                    ct.sendTabulator();
-                } else {
-                    ret = ct.sendText(str);
-                }
-
-                if (ret == 1) {
-                    PasswdSafeUtil.showErrorMsg(
-                            "Lost characters in output due to missing mapping!",
-                            new ActContext(this));
-                }
+            String msg = UsbAutoType.errorMessage(this, error, lostChars);
+            if (msg != null) {
+                PasswdSafeUtil.showErrorMsg(msg, new ActContext(this));
             }
-        } catch (SecurityException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(
-                    R.string.autotype_usb_root_denied), new ActContext(this));
-        } catch (FileNotFoundException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(R.string.autotype_usb_hidg_not_found), new ActContext(this));
-        } catch (Exception e) {
-            PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
-            PasswdSafeUtil.showErrorMsg(String.format("PasswdSafeRecordBasicFragment Exception: %s", e.getLocalizedMessage()) ,new ActContext(this));
-        }
+        });
     }
 
     @Override
@@ -1574,6 +1666,13 @@ public class PasswdSafe extends AppCompatActivity
                    null, result.itsNewLocation, null);
     }
 
+    @Override
+    public boolean canPersistNow()
+    {
+        return itsIsResumed;
+    }
+
+    @Override
     public void finishEditFidoRecord(EditRecordResult result)
     {
         finishEdit(result.itsIsNewRecord ?
@@ -1817,7 +1916,7 @@ public class PasswdSafe extends AppCompatActivity
         if ((itsSearchItem != null) && itsSearchItem.isActionViewExpanded()) {
             itsSearchItem.collapseActionView();
         }
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
     }
 
     /**
@@ -2157,6 +2256,10 @@ public class PasswdSafe extends AppCompatActivity
             }
 
             FragmentTransaction txn = fragMgr.beginTransaction();
+            txn.setCustomAnimations(R.anim.fragment_fade_in,
+                                    R.anim.fragment_fade_out,
+                                    R.anim.fragment_fade_in,
+                                    R.anim.fragment_fade_out);
 
             if (clearBackStack) {
                 //noinspection StatementWithEmptyBody
@@ -2204,7 +2307,7 @@ public class PasswdSafe extends AppCompatActivity
                 }
                 navRun.run();
             };
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.continue_p)
                     .setMessage(R.string.any_changes_will_be_lost)
                     .setPositiveButton(R.string.continue_str, listener)
@@ -2277,7 +2380,7 @@ public class PasswdSafe extends AppCompatActivity
             }
             case VIEW_RECORD: {
                 showHomeNav = true;
-                returnIcon = R.drawable.ic_action_close_cancel;
+                returnIcon = R.drawable.ic_close;
                 showLeftList = true;
                 fileTimeoutPaused = false;
                 itsTitle = itsFileDataFrag.useFileData(fileData -> {
@@ -2296,7 +2399,7 @@ public class PasswdSafe extends AppCompatActivity
             }
             case EDIT_RECORD: {
                 showHomeNav = true;
-                returnIcon = R.drawable.ic_action_close_cancel;
+                returnIcon = R.drawable.ic_close;
                 itsTitle = itsFileDataFrag.useFileData(fileData -> {
                     if (itsLocation.isRecord()) {
                         PwsRecord rec = fileData.getRecord(itsLocation.getRecord());
@@ -2518,6 +2621,30 @@ public class PasswdSafe extends AppCompatActivity
         return false;
     }
 
+    /**
+     * Start the Bluetooth HID service as a foreground service. The foreground
+     * service is required for BluetoothHidDevice.registerApp() to succeed, and
+     * the notification only exists while the app is in the foreground because
+     * onStop stops the service again in keyboard mode. Guarded because
+     * startForegroundService() throws when the process is not foreground
+     * (e.g. onStart running behind the lock screen); onResume retries once the
+     * activity is definitely resumed.
+     */
+    private void startBtServiceForeground() {
+        if (!ApiCompat.supportsBluetoothHid()) {
+            return;
+        }
+        if (!Preferences.getBluetoothEnabled(Preferences.getSharedPrefs(this))) {
+            return;
+        }
+        try {
+            ContextCompat.startForegroundService(
+                    this, new Intent(this, BluetoothForegroundService.class));
+        } catch (Exception e) {
+            PasswdSafeUtil.dbginfo(TAG, "Deferring BT service foreground start: " + e.getMessage());
+        }
+    }
+
     public void checkBluetoothState() {
         checkBluetoothState(null);
     }
@@ -2558,10 +2685,14 @@ public class PasswdSafe extends AppCompatActivity
 
             SharedPreferences prefs = Preferences.getSharedPrefs(this);
             if(Preferences.getBluetoothEnabled(prefs)) {
+                // Binding is allowed from any state and gives us the binder for
+                // pairing/typing. The foreground start (which is what makes HID
+                // registration succeed) is deferred to startBtServiceForeground(),
+                // called from a foreground-safe point, because
+                // startForegroundService() throws when the activity is not yet
+                // foreground (e.g. launched behind the lock screen).
                 bindService(new Intent(this, BluetoothForegroundService.class), btServiceConnection, Context.BIND_AUTO_CREATE);
-
-                Intent serviceIntent = new Intent(this, BluetoothForegroundService.class);
-                ContextCompat.startForegroundService(this, serviceIntent);
+                startBtServiceForeground();
             }
         } else if (state == BluetoothAdapter.STATE_TURNING_ON) {
             PasswdSafeUtil.dbginfo(TAG, "BluetoothAdapter.STATE_TURNING_ON");
@@ -2704,8 +2835,7 @@ public class PasswdSafe extends AppCompatActivity
                 act.editFinished(itsSaveInfo);
             } else if (error != null) {
                 String msg = error.toString();
-                if ((error instanceof IOException) &&
-                    (ApiCompat.SDK_VERSION >= ApiCompat.SDK_KITKAT)) {
+                if (error instanceof IOException) {
                     msg = act.getString(R.string.kitkat_sdcard_warning, msg);
                 }
                 PasswdSafeUtil.showFatalMsg(error, msg, act);
@@ -2976,27 +3106,5 @@ public class PasswdSafe extends AppCompatActivity
     }
 
 
-    private static class AuthListener implements Framing.WebAuthnListener, Framing.U2fAuthnListener {
-
-        @Override
-        public void onCompleteMakeCredential() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTREGISTERED");
-        }
-
-        @Override
-        public void onCompleteGetAssertion() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_ACCOUNTLOGIN");
-        }
-
-        @Override
-        public void onRegistrationResponse() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_REGISTRATION");
-        }
-
-        @Override
-        public void onAuthenticationResponse() {
-            PasswdSafeUtil.dbginfo(TAG, "EVENT_U2F_AUTHENTICATION");
-        }
-    }
 }
 

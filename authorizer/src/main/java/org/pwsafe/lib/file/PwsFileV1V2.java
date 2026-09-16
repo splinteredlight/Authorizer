@@ -31,8 +31,7 @@ import java.util.Objects;
  */
 public abstract class PwsFileV1V2 extends PwsFile
 {
-    private static final Log LOG = Log.getInstance(Objects.requireNonNull(
-            PwsFileV1V2.class.getPackage()).getName());
+    private static final Log LOG = Log.getInstance("org.pwsafe.lib.file");
 
 
     /**

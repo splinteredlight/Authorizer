@@ -26,6 +26,7 @@ import net.tjado.passwdsafe.pref.RecordSortOrderPref;
 import net.tjado.passwdsafe.pref.ThemePref;;
 
 import net.tjado.authorizer.OutputInterface;
+import net.tjado.authorizer.OutputUsbKeyboard;
 
 import org.pwsafe.lib.file.PwsFile;
 
@@ -128,6 +129,8 @@ public class Preferences
 
     public static final String PREF_DISPLAY_THEME = "displayThemePref";
     private static final ThemePref PREF_DISPLAY_THEME_DEF = ThemePref.FOLLOW_SYSTEM;
+    public static final String PREF_DISPLAY_DYNAMIC_COLORS = "displayDynamicColorsPref";
+    private static final boolean PREF_DISPLAY_DYNAMIC_COLORS_DEF = true;
 
     public static final String PREF_DISPLAY_LIST_TREEVIEW = "displayListTreeViewPref";
     private static final boolean PREF_DISPLAY_LIST_TREEVIEW_DEF = true;
@@ -166,14 +169,31 @@ public class Preferences
     public static final String PREF_AUTOTYPE_LANG = "usbkbdLanguagePref";
     private static final OutputInterface.Language PREF_AUTOTYPE_LANG_DEF = OutputInterface.Language.en_US;
 
-    public static final String PREF_USB_NATIVE_MODE = "usbNativeModePref";
-    private static final boolean PREF_USB_NATIVE_MODE_DEF = false;
+    public static final String PREF_USB_HID_DEVICE = "usbHidDevicePref";
+    public static final String PREF_USB_HID_DEVICE_DEF = "/dev/hidg0";
+    public static final String PREF_USB_HID_AUTO_SETUP = "usbHidAutoSetupPref";
+    private static final boolean PREF_USB_HID_AUTO_SETUP_DEF = true;
+    public static final String PREF_USB_HID_PREPARE = "usbHidPreparePref";
+    public static final String PREF_USB_HID_KEY_DELAY = "usbHidKeyDelayPref";
+    private static final String PREF_USB_HID_KEY_DELAY_DEF =
+            String.valueOf(OutputUsbKeyboard.DEFAULT_KEY_DELAY_MS);
 
     public static final String PREF_BLUETOOTH_ENABLED = "bluetoothEnabledPref";
     private static final boolean PREF_BLUETOOTH_ENABLED_DEF = true;
 
     public static final String PREF_BLUETOOTH_FIDO_ENABLED = "bluetoothFidoPref";
-    private static final boolean PREF_BLUETOOTH_FIDO_ENABLED_DEF = true;
+    // Off by default: FIDO keeps a foreground service (and its persistent
+    // notification) alive. Keyboard auto-type needs neither.
+    private static final boolean PREF_BLUETOOTH_FIDO_ENABLED_DEF = false;
+    public static final String PREF_FIDO_AUTO_APPROVE_LOGIN =
+            "fidoAutoApproveLoginPref";
+    private static final boolean PREF_FIDO_AUTO_APPROVE_LOGIN_DEF = false;
+    public static final String PREF_FIDO_AUTO_APPROVE_REGISTER =
+            "fidoAutoApproveRegisterPref";
+    private static final boolean PREF_FIDO_AUTO_APPROVE_REGISTER_DEF = false;
+    public static final String PREF_FIDO_BACKGROUND_ANSWER =
+            "fidoBackgroundAnswerPref";
+    private static final boolean PREF_FIDO_BACKGROUND_ANSWER_DEF = false;
 
     public static final String PREF_USERNAMES = "usernamesPref";
     public static final String PREF_USERNAMES_DEFAULT = "usernamesDefaultPref";
@@ -494,6 +514,16 @@ public class Preferences
     }
 
     /**
+     * Get whether the wallpaper-derived (dynamic) colours are used on
+     * Android 12 and later
+     */
+    public static boolean getDisplayDynamicColors(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_DISPLAY_DYNAMIC_COLORS,
+                                PREF_DISPLAY_DYNAMIC_COLORS_DEF);
+    }
+
+    /**
      * Get whether to use the treeview list
      */
     public static boolean getDisplayListTreeView(SharedPreferences prefs)
@@ -560,12 +590,45 @@ public class Preferences
     }
 
     /**
-     * Get whether to enable USB Keyboard Output
+     * Get the USB HID gadget character device used for auto-type
      */
-    public static boolean getUsbNativeEnabled(SharedPreferences prefs)
+    public static String getUsbHidDevicePath(SharedPreferences prefs)
     {
-        return prefs.getBoolean(PREF_USB_NATIVE_MODE,
-                                PREF_USB_NATIVE_MODE_DEF);
+        String path = prefs.getString(PREF_USB_HID_DEVICE,
+                                      PREF_USB_HID_DEVICE_DEF);
+        return ((path == null) || path.trim().isEmpty()) ?
+               PREF_USB_HID_DEVICE_DEF : path.trim();
+    }
+
+    /** Persist the USB HID device path resolved by the root setup */
+    public static void setUsbHidDevicePath(SharedPreferences prefs, String path)
+    {
+        prefs.edit().putString(PREF_USB_HID_DEVICE, path).apply();
+    }
+
+    /**
+     * Get whether to run the root HID setup automatically when the device
+     * is not writable
+     */
+    public static boolean getUsbHidAutoSetup(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_USB_HID_AUTO_SETUP,
+                                PREF_USB_HID_AUTO_SETUP_DEF);
+    }
+
+    /**
+     * Get how long each USB auto-type key is held and how long to pause
+     * after it, in milliseconds. 0 sends reports back to back.
+     */
+    public static int getUsbHidKeyDelayMs(SharedPreferences prefs)
+    {
+        String val = prefs.getString(PREF_USB_HID_KEY_DELAY,
+                                     PREF_USB_HID_KEY_DELAY_DEF);
+        try {
+            return Math.max(0, Integer.parseInt(val.trim()));
+        } catch (NumberFormatException | NullPointerException e) {
+            return OutputUsbKeyboard.DEFAULT_KEY_DELAY_MS;
+        }
     }
 
     /**
@@ -601,6 +664,56 @@ public class Preferences
     public static void setBluetoothFidoEnabledPref(boolean enabled, SharedPreferences prefs)
     {
         prefs.edit().putBoolean(PREF_BLUETOOTH_FIDO_ENABLED, enabled).apply();
+    }
+
+    /**
+     * Get whether FIDO login requests (getAssertion, U2F authenticate) are
+     * approved without a confirmation on the phone. The signed response
+     * still carries the user-presence flag; the relying party cannot tell.
+     */
+    public static boolean getFidoAutoApproveLogin(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_AUTO_APPROVE_LOGIN,
+                                PREF_FIDO_AUTO_APPROVE_LOGIN_DEF);
+    }
+
+    public static void setFidoAutoApproveLoginPref(boolean enabled,
+                                                   SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_AUTO_APPROVE_LOGIN, enabled).apply();
+    }
+
+    /**
+     * Get whether FIDO registrations (makeCredential, U2F register) are
+     * approved without a confirmation on the phone. Kept separate from
+     * logins because a registration creates a lasting credential.
+     */
+    public static boolean getFidoAutoApproveRegister(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_AUTO_APPROVE_REGISTER,
+                                PREF_FIDO_AUTO_APPROVE_REGISTER_DEF);
+    }
+
+    public static void setFidoAutoApproveRegisterPref(boolean enabled,
+                                                      SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_AUTO_APPROVE_REGISTER, enabled).apply();
+    }
+
+    /**
+     * Get whether FIDO keys are cached (encrypted under a keystore key) so
+     * requests are answered with the file closed and the app not running.
+     */
+    public static boolean getFidoBackgroundAnswer(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_BACKGROUND_ANSWER,
+                                PREF_FIDO_BACKGROUND_ANSWER_DEF);
+    }
+
+    public static void setFidoBackgroundAnswerPref(boolean enabled,
+                                                   SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_BACKGROUND_ANSWER, enabled).apply();
     }
 
     /**

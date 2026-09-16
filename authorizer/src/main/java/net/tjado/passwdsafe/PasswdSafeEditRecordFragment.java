@@ -8,6 +8,7 @@
 package net.tjado.passwdsafe;
 
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -468,7 +469,7 @@ public class PasswdSafeEditRecordFragment
                 return true;
             }
 
-            AlertDialog.Builder alert = new AlertDialog.Builder(requireContext())
+            AlertDialog.Builder alert = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.confirm))
                 .setMessage("Save with empty password?")
                 .setPositiveButton(R.string.confirm,
@@ -1231,25 +1232,19 @@ public class PasswdSafeEditRecordFragment
      */
     private void initProtViews(View v)
     {
-        switch (v.getId()) {
-        case R.id.password_current_input:
-        case R.id.password_current: {
-            break;
-        }
-        case R.id.expire_date_date:
-        case R.id.expire_date_time:
-        case R.id.link_ref:
-        case R.id.password_generate: {
+        // Resource ids are not compile-time constants under AGP 9, so no switch
+        int id = v.getId();
+        if ((id == R.id.password_current_input) ||
+            (id == R.id.password_current)) {
+            // not protected
+        } else if ((id == R.id.expire_date_date) ||
+                   (id == R.id.expire_date_time) ||
+                   (id == R.id.link_ref) ||
+                   (id == R.id.password_generate)) {
             itsProtectViews.add(v);
-            break;
-        }
-        default: {
-            if ((v instanceof Spinner) || (v instanceof TextInputLayout) ||
-                (v instanceof EditText) || (v instanceof Button)) {
-                itsProtectViews.add(v);
-            }
-            break;
-        }
+        } else if ((v instanceof Spinner) || (v instanceof TextInputLayout) ||
+                   (v instanceof EditText) || (v instanceof Button)) {
+            itsProtectViews.add(v);
         }
 
         if (v instanceof ViewGroup) {
@@ -1278,8 +1273,8 @@ public class PasswdSafeEditRecordFragment
     {
         if (itsIsV3) {
             protItem.setChecked(itsIsProtected);
-            protItem.setIcon(itsIsProtected ? R.drawable.ic_action_lock :
-                                     R.drawable.ic_action_lock_open);
+            protItem.setIcon(itsIsProtected ? R.drawable.ic_lock :
+                                     R.drawable.ic_lock_open);
         } else {
             protItem.setVisible(false);
         }

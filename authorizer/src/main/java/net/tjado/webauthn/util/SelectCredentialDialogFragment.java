@@ -1,6 +1,8 @@
 package net.tjado.webauthn.util;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -72,24 +74,40 @@ public class SelectCredentialDialogFragment extends DialogFragment implements Cr
         }
         final String[] usernames_final = usernames.toArray(new String[0]);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(requireActivity());
         builder.setTitle(R.string.dialog_select_credential)
                 .setItems(usernames_final, (dialog, which) -> {
-                    for (PublicKeyCredentialSource credItr : credentialList) {
-                        if (credItr.userDisplayName.equals(usernames_final[which])) {
-                            if (exchanger != null) {
-                                try {
-                                    exchanger.exchange(credItr);
-                                    Log.d(TAG, "User selected " + credItr.userDisplayName + " with user handle: " + Arrays.toString(credItr.userHandle) + " and keyPairAlias: " + credItr.keyPairAlias);
-                                } catch (InterruptedException exception) {
-                                    Log.w(TAG, "exchange interrupted: " + exception.toString());
-                                }
-                            }
-                            break;
+                    // Select by the tapped position, not by matching the display
+                    // name: two credentials can share a userDisplayName, and the
+                    // name match would then always pick the first one (and NPE on
+                    // a null name).
+                    if (exchanger != null && which >= 0 && which < credentialList.size()) {
+                        try {
+                            exchanger.exchange(credentialList.get(which));
+                        } catch (InterruptedException exception) {
+                            Log.w(TAG, "exchange interrupted: " + exception.toString());
                         }
                     }
                 });
         return builder.create();
+    }
+
+    @Override
+    public void onCancel(@NotNull DialogInterface dialog) {
+        super.onCancel(dialog);
+        // The CTAP worker blocks in selectFrom() on exchange(); if the user
+        // dismisses the dialog without choosing, unblock it with null so the
+        // request fails cleanly instead of hanging forever. Do the exchange off
+        // the main thread so a stopped worker cannot ANR the UI.
+        final Exchanger<PublicKeyCredentialSource> ex = exchanger;
+        if (ex != null) {
+            new Thread(() -> {
+                try {
+                    ex.exchange(null);
+                } catch (InterruptedException ignored) {
+                }
+            }, "CredSelectCancel").start();
+        }
     }
 
 }

@@ -12,13 +12,13 @@
 
     <item
         android:id="@+id/menu_file_open"
-        android:icon="@drawable/ic_passwdsafe_light"
+        android:icon="@drawable/ic_key_on_dark"
         android:title="@string/open"
         app:showAsAction="ifRoom"/>
 
     <item
         android:id="@+id/menu_delete"
-        android:icon="@drawable/ic_action_delete"
+        android:icon="@drawable/ic_delete"
         android:title="@string/delete"
         app:showAsAction="ifRoom"/>
 </menu>

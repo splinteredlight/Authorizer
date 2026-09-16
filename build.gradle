@@ -6,29 +6,12 @@
  * http://www.opensource.org/licenses/artistic-license-2.0.php
  */
 
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
-}
-
-allprojects {
-    repositories {
-        maven { url 'https://jitpack.io' }
-        mavenCentral()
-        google()
-    }
+// Top-level build file. Plugin versions live here; repositories live in
+// settings.gradle (dependencyResolutionManagement).
+plugins {
+    id 'com.android.application' version '9.4.0' apply false
 }
 
 tasks.register('clean', Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }

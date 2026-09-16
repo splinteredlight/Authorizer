@@ -250,7 +250,7 @@ public class LauncherRecordShortcuts extends AppCompatActivity
                     ShortcutInfo shortcutInfo = new ShortcutInfo.Builder(this, UUID.randomUUID().toString())
                             .setShortLabel(rc.second)
                             .setLongLabel(rc.second)
-                            .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher_passwdsafe))
+                            .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
                             .setIntent(shortcutIntent)
                             .build();
                     ShortcutManager sm = this.getSystemService(ShortcutManager.class);
@@ -261,7 +261,7 @@ public class LauncherRecordShortcuts extends AppCompatActivity
                     intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, rc.second);
                     intent.putExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
                             Intent.ShortcutIconResource.fromContext(
-                                    this, R.mipmap.ic_launcher_passwdsafe));
+                                    this, R.mipmap.ic_launcher));
                 }
 
                 setResult(RESULT_OK, intent);

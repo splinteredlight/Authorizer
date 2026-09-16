@@ -1,8 +1,11 @@
 package net.tjado.passwdsafe;
 
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
+import androidx.core.content.ContextCompat;
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -23,7 +26,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -140,10 +143,34 @@ public class BluetoothFragment extends Fragment
 
         TextView tvBluetoothFeature = rootView.findViewById(R.id.tv_pref_bt);
         TextView tvBluetoothFido = rootView.findViewById(R.id.tv_pref_bt_fido);
-        CheckBox cbBluetoothFeature = rootView.findViewById(R.id.cb_pref_bt);
-        CheckBox cbBluetoothFido = rootView.findViewById(R.id.cb_pref_bt_fido);
+        CompoundButton cbBluetoothFeature = rootView.findViewById(R.id.cb_pref_bt);
+        CompoundButton cbBluetoothFido = rootView.findViewById(R.id.cb_pref_bt_fido);
+
+        TextView tvFidoAutoLogin = rootView.findViewById(R.id.tv_pref_bt_fido_auto_login);
+        CompoundButton cbFidoAutoLogin = rootView.findViewById(R.id.cb_pref_bt_fido_auto_login);
+        TextView tvFidoAutoRegister = rootView.findViewById(R.id.tv_pref_bt_fido_auto_register);
+        CompoundButton cbFidoAutoRegister = rootView.findViewById(R.id.cb_pref_bt_fido_auto_register);
+        TextView tvFidoBackground = rootView.findViewById(R.id.tv_pref_bt_fido_background);
+        CompoundButton cbFidoBackground = rootView.findViewById(R.id.cb_pref_bt_fido_background);
 
         prefs = Preferences.getSharedPrefs(getContext());
+
+        // The auto-approve rows only make sense while FIDO mode is on. They
+        // keep their stored values while disabled so turning FIDO off and on
+        // again does not silently re-enable them.
+        Runnable syncFidoAutoApprove = () -> {
+            boolean fidoOn = Preferences.getBluetoothEnabled(prefs)
+                    && Preferences.getBluetoothFidoEnabled(prefs);
+            cbFidoAutoLogin.setEnabled(fidoOn);
+            cbFidoAutoRegister.setEnabled(fidoOn);
+            tvFidoAutoLogin.setEnabled(fidoOn);
+            tvFidoAutoRegister.setEnabled(fidoOn);
+            cbFidoAutoLogin.setChecked(fidoOn && Preferences.getFidoAutoApproveLogin(prefs));
+            cbFidoAutoRegister.setChecked(fidoOn && Preferences.getFidoAutoApproveRegister(prefs));
+            cbFidoBackground.setEnabled(fidoOn);
+            tvFidoBackground.setEnabled(fidoOn);
+            cbFidoBackground.setChecked(fidoOn && Preferences.getFidoBackgroundAnswer(prefs));
+        };
 
         cbBluetoothFeature.setChecked(Preferences.getBluetoothEnabled(prefs));
         if(Preferences.getBluetoothEnabled(prefs)) {
@@ -153,9 +180,29 @@ public class BluetoothFragment extends Fragment
             cbBluetoothFido.setChecked(false);
             cbBluetoothFido.setEnabled(false);
         }
+        syncFidoAutoApprove.run();
 
         tvBluetoothFeature.setOnClickListener(item -> cbBluetoothFeature.performClick());
         tvBluetoothFido.setOnClickListener(item -> cbBluetoothFido.performClick());
+        tvFidoAutoLogin.setOnClickListener(item -> cbFidoAutoLogin.performClick());
+        tvFidoAutoRegister.setOnClickListener(item -> cbFidoAutoRegister.performClick());
+
+        cbFidoAutoLogin.setOnClickListener(item ->
+            Preferences.setFidoAutoApproveLoginPref(cbFidoAutoLogin.isChecked(), prefs));
+        cbFidoAutoRegister.setOnClickListener(item ->
+            Preferences.setFidoAutoApproveRegisterPref(cbFidoAutoRegister.isChecked(), prefs));
+        tvFidoBackground.setOnClickListener(item -> cbFidoBackground.performClick());
+        cbFidoBackground.setOnClickListener(item -> {
+            boolean on = cbFidoBackground.isChecked();
+            Preferences.setFidoBackgroundAnswerPref(on, prefs);
+            PasswdSafeApp app = (PasswdSafeApp) requireActivity().getApplication();
+            if (on) {
+                // Fill the cache from the file that is open right now, if any.
+                app.refreshFidoKeyCache((PasswdSafe) requireActivity());
+            } else {
+                app.getFidoKeyCache().clear();
+            }
+        });
 
         cbBluetoothFeature.setOnClickListener(item -> {
             Preferences.setBluetoothEnabledPref(cbBluetoothFeature.isChecked(), prefs);
@@ -174,12 +221,14 @@ public class BluetoothFragment extends Fragment
                     btService.stopForegroundService();
                 }
             }
+            syncFidoAutoApprove.run();
 
             checkBluetoothState(null);
         });
 
         cbBluetoothFido.setOnClickListener(item -> {
             Preferences.setBluetoothFidoEnabledPref(cbBluetoothFido.isChecked(), prefs);
+            syncFidoAutoApprove.run();
 
             if(cbBluetoothFido.isChecked()) {
                 rvDiscoveredDevicesAdapter.notifyDataSetChanged();
@@ -193,6 +242,8 @@ public class BluetoothFragment extends Fragment
                     btService.requireKeyboardMode();
                 }
             }
+            // Make sure the service is running and reflects the new mode.
+            itsListener.checkBluetoothState();
         });
 
 
@@ -304,7 +355,7 @@ public class BluetoothFragment extends Fragment
         final IntentFilter btStatusIntentFilter = new IntentFilter();
         btStatusIntentFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         btStatusIntentFilter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
-        requireContext().registerReceiver(btStateReceiver, btStatusIntentFilter);
+        ContextCompat.registerReceiver(requireContext(), btStateReceiver, btStatusIntentFilter, ContextCompat.RECEIVER_EXPORTED);
 
         registerScanReceiver();
 
@@ -365,7 +416,11 @@ public class BluetoothFragment extends Fragment
         intentFilter.addAction(BluetoothDevice.ACTION_FOUND);
         intentFilter.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
         intentFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
-        requireContext().registerReceiver(btScanReceiver, intentFilter);
+        // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts are sent by the Bluetooth
+        // process, not the system uid, so Android drops them for non-exported receivers
+        // (with RECEIVER_NOT_EXPORTED no scan result ever arrived here). They are
+        // protected broadcasts; no third-party app can send them.
+        ContextCompat.registerReceiver(requireContext(), btScanReceiver, intentFilter, ContextCompat.RECEIVER_EXPORTED);
     }
 
     private void unregisterScanReceiver() {
@@ -480,24 +535,30 @@ public class BluetoothFragment extends Fragment
             String displayType;
             String type = device.getType();
             holder.btnReconnect.setVisibility(View.GONE);
+            String okColor = String.format("#%06X", 0xFFFFFF & ContextCompat.getColor(
+                    requireContext(), R.color.status_ok));
+            String errColor = String.format("#%06X", 0xFFFFFF & MaterialColors.getColor(
+                    holder.itemView, R.attr.colorError));
             if (type.equals(BluetoothDeviceListing.HID_KEYBOARD_HOST)) {
-                displayType = "<font color=#008000><b>Keyboard</b></font>";
+                displayType = "<font color=" + okColor + "><b>Keyboard</b></font>";
             } else if (type.equals(BluetoothDeviceListing.HID_FIDO_HOST)) {
-                displayType = "<font color=#008000><b>FIDO (U2F/WebAuthn)</b></font>";
+                displayType = "<font color=" + okColor + "><b>FIDO (U2F/WebAuthn)</b></font>";
                 holder.btnReconnect.setVisibility(View.VISIBLE);
             } else {
-                displayType = "<font color=#ff0000><b>Unknown</b></font>";
+                displayType = "<font color=" + errColor + "><b>Unknown</b></font>";
             }
 
             holder.name.setText(device.getName());
             holder.address.setText(device.getAddress());
+            if (device.isDefault()) {
+                displayType += " (" + getString(R.string.bt_default) + ")";
+            }
             holder.state.setText(Html.fromHtml(String.format(getString(R.string.bt_paired_as), displayType)));
 
             holder.btnDeviceMenu.setOnClickListener(view -> showDeviceMenu(view, device));
 
             holder.btnReconnect.setEnabled(true);
             holder.btnReconnect.setText(R.string.bt_reconnect);
-            holder.btnReconnect.setTextAppearance(requireContext(), R.style.Widget_AppCompat_Button_Colored);
 
             BluetoothForegroundService btService = ((PasswdSafe) requireActivity()).btService;
             if(btService != null && btService.getConnectedDevice() != null)  {
@@ -505,7 +566,6 @@ public class BluetoothFragment extends Fragment
                 if(device.equals(connectedDevice)) {
                     holder.btnReconnect.setEnabled(false);
                     holder.btnReconnect.setText(R.string.bt_connected);
-                    holder.btnReconnect.setTextAppearance(requireContext(), R.style.Widget_AppCompat_Button);
                 }
             }
 
@@ -518,8 +578,7 @@ public class BluetoothFragment extends Fragment
                         if(device.equals(connectedDevice)) {
                             holder.btnReconnect.setEnabled(false);
                             holder.btnReconnect.setText(R.string.bt_connected);
-                            holder.btnReconnect.setTextAppearance(requireContext(), R.style.Widget_AppCompat_Button);
-
+        
                             Toast.makeText(getActivity(), "Already connected!", Toast.LENGTH_LONG).show();
                             return;
                         }
@@ -559,11 +618,11 @@ public class BluetoothFragment extends Fragment
             popup.getMenuInflater().inflate(R.menu.cardview_bluetooth_device, popup.getMenu());
 
             MenuItem defaultMenu = popup.getMenu().findItem(R.id.menu_default);
-            if(type.equals(BluetoothDeviceListing.HID_FIDO_HOST) && bluetoothDeviceListing.isHidDefaultDevice(device)) {
+            // Keyboard hosts can be default too: auto-type then sends to
+            // this device without asking which one to use.
+            if(bluetoothDeviceListing.isHidDefaultDevice(device)) {
                 defaultMenu.setEnabled(false);
-                defaultMenu.setTitle("Is default");
-            } else if(type.equals(BluetoothDeviceListing.HID_KEYBOARD_HOST)) {
-                defaultMenu.setVisible(false);
+                defaultMenu.setTitle(R.string.bt_is_default);
             } else {
                 defaultMenu.setEnabled(true);
             }
@@ -586,11 +645,12 @@ public class BluetoothFragment extends Fragment
                 PasswdSafeUtil.dbginfo(TAG, "Paired device menu: clicked set default");
                 if(!rvPairedDevices.isComputingLayout()) {
                     bluetoothDeviceListing.cacheHidDefaultDevice(device.getDevice());
+                    checkBluetoothState(null);
                 }
 
             } else if (itemId == R.id.menu_unpair) {
                 PasswdSafeUtil.dbginfo(TAG, "Paired device menu: clicked unpair");
-                AlertDialog.Builder alert = new AlertDialog.Builder(requireContext())
+                AlertDialog.Builder alert = new MaterialAlertDialogBuilder(requireContext())
                     .setTitle(getString(R.string.confirm))
                     .setMessage(getString(R.string.bt_unpair_info))
                     .setPositiveButton(R.string.confirm,
@@ -798,7 +858,9 @@ public class BluetoothFragment extends Fragment
                     btAppSettings.setVisibility(View.GONE);
 
                     IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-                    requireContext().registerReceiver(btStateReceiver, btStatusIntentFilter);
+                    // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts do not reach
+                    // non-exported receivers (they come from the Bluetooth uid, not system).
+                    ContextCompat.registerReceiver(requireContext(), btStateReceiver, btStatusIntentFilter, ContextCompat.RECEIVER_EXPORTED);
                     registerScanReceiver();
                     checkBluetoothState(null);
 

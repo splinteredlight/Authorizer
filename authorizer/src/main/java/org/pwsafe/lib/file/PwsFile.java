@@ -84,8 +84,8 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public abstract class PwsFile
 {
-    private static final Log LOG = Log.getInstance(
-            Objects.requireNonNull(PwsFile.class.getPackage()).getName());
+    // Literal name: Class.getPackage() is null once R8 repackages classes
+    private static final Log LOG = Log.getInstance("org.pwsafe.lib.file");
 
     /**
      * Length of RandStuff in bytes.
@@ -808,8 +808,7 @@ public abstract class PwsFile
      */
     private class FileIterator implements Iterator<PwsRecord>
     {
-        private final Log LOG = Log.getInstance(Objects.requireNonNull(
-                FileIterator.class.getPackage()).getName());
+        private final Log LOG = Log.getInstance("org.pwsafe.lib.file");
 
         private final PwsFile file;
         private final Iterator<PwsRecord> recDelegate;

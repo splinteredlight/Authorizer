@@ -7,6 +7,7 @@
  */
 package net.tjado.passwdsafe.view;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Context;
@@ -116,7 +117,7 @@ public class ConfirmPromptDialog extends AppCompatDialogFragment
         itsConfirmCb.setOnCheckedChangeListener(this);
 
         setCancelable(true);
-        AlertDialog.Builder alert = new AlertDialog.Builder(ctx)
+        AlertDialog.Builder alert = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(titleStr)
                 .setView(dlgView)
                 .setPositiveButton(confirmStr, this)

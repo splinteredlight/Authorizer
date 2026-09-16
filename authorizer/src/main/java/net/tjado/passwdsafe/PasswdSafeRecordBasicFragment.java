@@ -9,10 +9,14 @@
 package net.tjado.passwdsafe;
 
 
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
+import net.tjado.authorizer.hid.HidStatus;
+import net.tjado.authorizer.hid.HidGadgetSetup;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -38,7 +42,6 @@ import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Button;
@@ -52,7 +55,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.textfield.TextInputLayout;
 
-import net.tjado.authorizer.OutputUsbKeyboard;
+import net.tjado.authorizer.UsbAutoType;
 import net.tjado.authorizer.Utilities;
 import net.tjado.bluetooth.BluetoothDeviceListing;
 import net.tjado.bluetooth.BluetoothDeviceWrapper;
@@ -66,6 +69,7 @@ import net.tjado.passwdsafe.lib.ObjectHolder;
 import net.tjado.passwdsafe.lib.view.AbstractTextWatcher;
 import net.tjado.passwdsafe.lib.view.GuiUtils;
 import net.tjado.passwdsafe.lib.view.TextInputUtils;
+import net.tjado.passwdsafe.lib.view.PasswordSpans;
 import net.tjado.passwdsafe.lib.view.TypefaceUtils;
 import net.tjado.passwdsafe.otp.AddActivity;
 import net.tjado.passwdsafe.otp.ScanActivity;
@@ -77,7 +81,6 @@ import net.tjado.passwdsafe.view.CopyField;
 import net.tjado.passwdsafe.view.PasswdLocation;
 
 import net.tjado.authorizer.OutputInterface;
-import net.tjado.authorizer.OutputUsbKeyboardAsRoot;
 import net.tjado.authorizer.OutputBluetoothKeyboard;
 
 import org.pwsafe.lib.file.PwsRecord;
@@ -150,7 +153,7 @@ public class PasswdSafeRecordBasicFragment
     private Button itsAutoTypeBluetoothOtp;
     private Button itsAutoTypeBluetoothCredential;
     private CheckBox itsAutoTypeReturnSuffix;
-    private RadioGroup itsAutoTypeDelimiter;
+    private MaterialButtonToggleGroup itsAutoTypeDelimiter;
     private View itsUrlRow;
     private TextView itsUrl;
     private View itsEmailRow;
@@ -402,7 +405,7 @@ public class PasswdSafeRecordBasicFragment
 
         View.OnClickListener autotypeDelimiterOnClickListener = view -> {
             Integer ival = 2;
-            if (itsAutoTypeDelimiter.getCheckedRadioButtonId() ==
+            if (itsAutoTypeDelimiter.getCheckedButtonId() ==
                 R.id.autotype_delimiter_return) {
                 ival = 1;
             }
@@ -446,6 +449,9 @@ public class PasswdSafeRecordBasicFragment
         itsFidoU2fHandleRow = root.findViewById(R.id.u2f_handle_row);
         itsFidoU2fHandle = root.findViewById(R.id.u2f_handle);
 
+
+        root.findViewById(R.id.user_copy_btn).setOnClickListener(v -> copyUser());
+        root.findViewById(R.id.password_copy_btn).setOnClickListener(v -> copyPassword());
 
         registerForContextMenu(itsUserRow);
         registerForContextMenu(itsPasswordRow);
@@ -492,19 +498,13 @@ public class PasswdSafeRecordBasicFragment
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
                 saveOtpChange(data.getExtras().getString("uri"), false);
-                PasswdSafeUtil.dbginfo("OTP",
-                                       String.format("Store manual otp uri: %s",
-                                                     data.getExtras()
-                                                         .getString("uri")));
+                PasswdSafeUtil.dbginfo("OTP", "Store manual otp uri");
             }
         } else if (requestCode == REQUEST_SAVE_OTP_CAMERA) {
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
                 saveOtpChange(data.getExtras().getString("uri"), false);
-                PasswdSafeUtil.dbginfo("OTP",
-                                       String.format("Store camera otp uri: %s",
-                                                     data.getExtras()
-                                                         .getString("uri")));
+                PasswdSafeUtil.dbginfo("OTP", "Store camera otp uri");
             }
         } else if (requestCode == REQUEST_ENABLE_BT) {
             if (resultCode == RESULT_OK) {
@@ -815,7 +815,7 @@ public class PasswdSafeRecordBasicFragment
         String otp = getOtp();
         Token token = null;
         try {
-            PasswdSafeUtil.dbginfo("OTP", String.format("LOAD OTP: %s", otp));
+            PasswdSafeUtil.dbginfo("OTP", "Loading OTP token");
             token = new Token(otp, false);
             itsOtp = token.generateCodes();
 
@@ -830,6 +830,14 @@ public class PasswdSafeRecordBasicFragment
             itsOtpTimer.setProgress(itsOtp.getCurrentProgress());
         } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        if (itsOtp == null) {
+            // The token failed to parse above; the timer would NPE on every
+            // tick and take the whole process (and the HID service) with it.
+            setFieldText(itsOtpCode, null, "------");
+            itsOtpTimer.setProgress(0);
+            return;
         }
 
         CountDownTimer otpTimeCountDown;
@@ -951,8 +959,12 @@ public class PasswdSafeRecordBasicFragment
         }
         Activity act = requireActivity();
         GuiUtils.setKeyboardVisible(itsPasswordSubset, act, subsetShown);
-        itsPassword.setText(
-                (password != null) ? password : itsHiddenPasswordStr);
+        if (itsIsPasswordShown && (password != null)) {
+            itsPassword.setText(PasswordSpans.colorize(password, itsPassword));
+        } else {
+            itsPassword.setText(
+                    (password != null) ? password : itsHiddenPasswordStr);
+        }
         TypefaceUtils.enableMonospace(itsPassword, itsIsPasswordShown, act);
         itsPassword.removeCallbacks(itsPasswordHideRun);
         if (itsIsPasswordShown) {
@@ -1067,6 +1079,13 @@ public class PasswdSafeRecordBasicFragment
                 try {
                     outputStream.write(itsOutputBluetoothKeyboard.convertTextToScancode(
                                     itsOtp.getCurrentCode()));
+                    // The OTP is the last thing typed when it is sent on its
+                    // own, so the "Return after" setting applies to it too
+                    // (the code is usually the only field on an MFA page).
+                    if (!sendUsername && !sendPassword
+                        && itsAutoTypeReturnSuffix.isChecked()) {
+                        outputStream.write(itsOutputBluetoothKeyboard.getReturn());
+                    }
                 } catch (Exception e) {
                     PasswdSafeUtil.showErrorMsg(
                             "Invalid OTP token generated! - " +
@@ -1086,9 +1105,6 @@ public class PasswdSafeRecordBasicFragment
                 String[] usernameArray = username.split(
                         String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))",
                                       quoteSubReturn, quoteSubTab));
-                PasswdSafeUtil.dbginfo(TAG, String.format(
-                        "Username Substitution Array: %s",
-                        Arrays.toString(usernameArray)));
 
                 for (String str : usernameArray) {
 
@@ -1103,7 +1119,7 @@ public class PasswdSafeRecordBasicFragment
             }
 
             if (sendUsername && sendPassword) {
-                int checkedId = itsAutoTypeDelimiter.getCheckedRadioButtonId();
+                int checkedId = itsAutoTypeDelimiter.getCheckedButtonId();
                 if (checkedId == R.id.autotype_delimiter_return) {
                     outputStream.write(itsOutputBluetoothKeyboard.getReturn());
                 } else if (checkedId == R.id.autotype_delimiter_tab) {
@@ -1123,9 +1139,6 @@ public class PasswdSafeRecordBasicFragment
                 String[] passwordArray = password.split(
                         String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))",
                                       quoteSubReturn, quoteSubTab));
-                PasswdSafeUtil.dbginfo(TAG, String.format(
-                        "Password Substitution Array: %s",
-                        Arrays.toString(passwordArray)));
 
                 for (String str : passwordArray) {
 
@@ -1151,34 +1164,60 @@ public class PasswdSafeRecordBasicFragment
             PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
         }
 
-        List<BluetoothDeviceWrapper> bondedDevices = new BluetoothDeviceListing(requireContext()).getAvailableKeyboardHostDevices();
+        BluetoothDeviceListing listing = new BluetoothDeviceListing(requireContext());
+        List<BluetoothDeviceWrapper> bondedDevices = listing.getAvailableKeyboardHostDevices();
         if(bondedDevices.size() < 1) {
             Toast.makeText(getActivity(), getString(R.string.bt_autotype_no_devices), Toast.LENGTH_LONG).show();
             return;
+        }
+
+        final byte[] output = outputStream.toByteArray();
+
+        // No chooser when the target is unambiguous: a single paired keyboard
+        // host, or one marked as default in the Bluetooth screen.
+        if (bondedDevices.size() == 1) {
+            connectAndTypeBluetooth(btService, bondedDevices.get(0), output);
+            return;
+        }
+        for (BluetoothDeviceWrapper device : bondedDevices) {
+            if (listing.isHidDefaultDevice(device)) {
+                connectAndTypeBluetooth(btService, device, output);
+                return;
+            }
         }
 
         SortedMap<String, BluetoothDeviceWrapper> deviceList = new TreeMap<>();
         bondedDevices.forEach(device -> deviceList.put(device.getName(), device));
         CharSequence[] cs = deviceList.keySet().toArray(new CharSequence[deviceList.size()]);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
 
-        builder.setTitle(R.string.autotype_bluetooth_devices).setItems(cs, (dialog, which) -> {
-            btService.connectAndType(deviceList.get(cs[which]).getDevice(), outputStream.toByteArray());
-
-            new Handler().postDelayed(() -> {
-                if(btService.isAppRegistered()) {
-                    PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is TRUE");
-                } else {
-                    PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is FALSE");
-                    Toast.makeText(getActivity(), getString(R.string.bt_unclean_state_error), Toast.LENGTH_LONG).show();
-                }
-            }, 200);
-       });
+        builder.setTitle(R.string.autotype_bluetooth_devices).setItems(cs, (dialog, which) ->
+            connectAndTypeBluetooth(btService, deviceList.get(cs[which]), output));
 
         AlertDialog dialog = builder.create();
         // Display the alert dialog on interface
         dialog.show();
+    }
+
+    /**
+     * Hand the prepared HID output to the service for the given keyboard host
+     */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private void connectAndTypeBluetooth(BluetoothForegroundService btService,
+                                         BluetoothDeviceWrapper device,
+                                         byte[] output)
+    {
+        btService.connectAndType(device.getDevice(), output);
+
+        new Handler().postDelayed(() -> {
+            if(btService.isAppRegistered()) {
+                PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is TRUE");
+            } else {
+                PasswdSafeUtil.dbginfo(TAG, "btService.isAppRegistered is FALSE");
+                Toast.makeText(getActivity(), getString(R.string.bt_unclean_state_error), Toast.LENGTH_LONG).show();
+            }
+        }, 200);
     }
 
     /**
@@ -1212,7 +1251,7 @@ public class PasswdSafeRecordBasicFragment
                                             final Boolean sendOTP)
     {
         // Build an AlertDialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
 
         builder.setTitle(R.string.autotype_lang)
                .setItems(R.array.autotype_lang_titles, new DialogInterface.OnClickListener() {
@@ -1234,117 +1273,119 @@ public class PasswdSafeRecordBasicFragment
     private void autotypeUsb(OutputInterface.Language lang,
                              Boolean sendUsername, Boolean sendPassword, Boolean sendOTP)
     {
+        Context ctx = requireContext();
+        SharedPreferences prefs = Preferences.getSharedPrefs(ctx);
+        String devicePath = Preferences.getUsbHidDevicePath(prefs);
+        HidStatus status = HidStatus.probe(devicePath);
+        if (!status.isReady() && Preferences.getUsbHidAutoSetup(prefs)) {
+            // One-time root setup (SELinux + node ownership), then type
+            Toast.makeText(ctx, R.string.autotype_usb_preparing,
+                           Toast.LENGTH_SHORT).show();
+            HidGadgetSetup.ensureReadyAsync(devicePath, new HidGadgetSetup.ReadyCallback()
+            {
+                @Override
+                public void onReady(@NonNull String readyPath)
+                {
+                    if (isAdded()) {
+                        if (!readyPath.equals(devicePath)) {
+                            Preferences.setUsbHidDevicePath(prefs, readyPath);
+                        }
+                        autotypeUsbNow(readyPath, lang, sendUsername,
+                                       sendPassword, sendOTP);
+                    }
+                }
+
+                @Override
+                public void onFailed(@NonNull String message)
+                {
+                    if (isAdded()) {
+                        PasswdSafeUtil.showErrorMsg(
+                                getString(R.string.autotype_usb_prepare_failed,
+                                          message),
+                                new ActContext(requireContext()));
+                    }
+                }
+            });
+            return;
+        }
+        autotypeUsbNow(devicePath, lang, sendUsername, sendPassword, sendOTP);
+    }
+
+    /**
+     * Build the keystroke sequence from the record and the view state (main
+     * thread), then type it on the USB worker. Errors come back on the main
+     * thread once typing has finished.
+     */
+    private void autotypeUsbNow(String devicePath, OutputInterface.Language lang,
+                                Boolean sendUsername, Boolean sendPassword, Boolean sendOTP)
+    {
         String username = getUsername();
         String password = getPassword();
         String otp = getOtp();
-        String quoteSubReturn = Pattern.quote(SUB_RETURN);
-        String quoteSubTab = Pattern.quote(SUB_TAB);
+        boolean otpTokenGenerated = false;
 
-        try {
-            boolean nativeMode = Preferences.getUsbNativeEnabled(Preferences.getSharedPrefs(getContext()));
-            OutputInterface ct = nativeMode ? new OutputUsbKeyboard(lang) : new OutputUsbKeyboardAsRoot(lang);
-            boolean otpTokenGenerated = false;
+        UsbAutoType.Sequence seq = new UsbAutoType.Sequence(SUB_RETURN, SUB_TAB);
 
-            if(sendOTP && otp != null ) {
-                generateOtpToken();
-                otpTokenGenerated = true;
-
-                int ret = 0;
-                ret = ct.sendText(itsOtp.getCurrentCode());
-
-                if (ret == 1) {
-                    PasswdSafeUtil.showErrorMsg(
-                            "Unvalid OTP token generated!",
-                            new ActContext(getContext()));
-                }
+        if (sendOTP && otp != null) {
+            generateOtpToken();
+            otpTokenGenerated = true;
+            seq.addField(itsOtp.getCurrentCode());
+            // Same rule as the Bluetooth path: an OTP sent on its own gets
+            // the "Return after" suffix.
+            if (!sendUsername && !sendPassword
+                && itsAutoTypeReturnSuffix.isChecked()) {
+                seq.addReturn();
             }
-
-            if(sendUsername && username != null ) {
-                if (username.contains(SUB_OTP)){
-                    generateOtpToken();
-                    otpTokenGenerated = true;
-
-                    username = username.replace(SUB_OTP, itsOtp.getCurrentCode());
-                }
-
-                String[] usernameArray = username.split(String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))", quoteSubReturn, quoteSubTab));
-                PasswdSafeUtil.dbginfo(TAG, String.format("Username Substitution Array: %s", Arrays.toString(usernameArray)));
-
-                int ret = 0;
-                for (String str : usernameArray){
-
-                    if (str.equals(SUB_RETURN)) {
-                        ct.sendReturn();
-                    } else if (str.equals(SUB_TAB)) {
-                        ct.sendTabulator();
-                    } else {
-                        ret = ct.sendText(str);
-                    }
-
-                    if (ret == 1) {
-                        PasswdSafeUtil.showErrorMsg(
-                                "Lost characters in output due to missing mapping!",
-                                new ActContext(getContext()));
-                    }
-                }
-            }
-
-            if( sendUsername && sendPassword )
-            {
-                int checkedId = itsAutoTypeDelimiter.getCheckedRadioButtonId();
-                if (checkedId == R.id.autotype_delimiter_return) {
-                    ct.sendReturn();
-                } else if (checkedId == R.id.autotype_delimiter_tab) {
-                    ct.sendTabulator();
-                }
-            }
-
-            if( sendPassword && password != null ) {
-                if (password.contains(SUB_OTP)){
-                    if (!otpTokenGenerated) {
-                        generateOtpToken();
-                    }
-
-                    password = password.replace(SUB_OTP, itsOtp.getCurrentCode());
-                }
-
-                String[] passwordArray = password.split(String.format("((?<=(%1$s|%2$s))|(?=(%1$s|%2$s)))", quoteSubReturn, quoteSubTab));
-                PasswdSafeUtil.dbginfo(TAG, String.format("Password Substitution Array: %s", Arrays.toString(passwordArray)));
-
-                int ret = 0;
-                for (String str : passwordArray){
-
-                    if (str.equals(SUB_RETURN)) {
-                        ct.sendReturn();
-                    } else if (str.equals(SUB_TAB)) {
-                        ct.sendTabulator();
-                    } else {
-                        ret = ct.sendText(str);
-                    }
-
-                    if (ret == 1) {
-                        PasswdSafeUtil.showErrorMsg(
-                                "Lost characters in output due to missing mapping!",
-                                new ActContext(getContext()));
-                    }
-                }
-
-                if( itsAutoTypeReturnSuffix.isChecked() ) {
-                    ct.sendReturn();
-                }
-            }
-
-            ct.destruct();
-
-        } catch (SecurityException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(R.string.autotype_usb_root_denied), new ActContext(requireContext()));
-        } catch (FileNotFoundException e) {
-            PasswdSafeUtil.showErrorMsg(getResources().getString(R.string.autotype_usb_hidg_not_found), new ActContext(requireContext()));
-        } catch (Exception e) {
-            PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
-            PasswdSafeUtil.showErrorMsg(String.format("PasswdSafeRecordBasicFragment Exception: %s", e.getLocalizedMessage()), new ActContext(requireContext()));
         }
 
+        if (sendUsername && username != null) {
+            if (username.contains(SUB_OTP)) {
+                generateOtpToken();
+                otpTokenGenerated = true;
+                username = username.replace(SUB_OTP, itsOtp.getCurrentCode());
+            }
+            seq.addField(username);
+        }
+
+        if (sendUsername && sendPassword) {
+            int checkedId = itsAutoTypeDelimiter.getCheckedButtonId();
+            if (checkedId == R.id.autotype_delimiter_return) {
+                seq.addReturn();
+            } else if (checkedId == R.id.autotype_delimiter_tab) {
+                seq.addTab();
+            }
+        }
+
+        if (sendPassword && password != null) {
+            if (password.contains(SUB_OTP)) {
+                if (!otpTokenGenerated) {
+                    generateOtpToken();
+                }
+                password = password.replace(SUB_OTP, itsOtp.getCurrentCode());
+            }
+            seq.addField(password);
+
+            if (itsAutoTypeReturnSuffix.isChecked()) {
+                seq.addReturn();
+            }
+        }
+
+        if (seq.isEmpty()) {
+            return;
+        }
+
+        SharedPreferences prefs = Preferences.getSharedPrefs(requireContext());
+        UsbAutoType.run(devicePath, lang, Preferences.getUsbHidKeyDelayMs(prefs),
+                        seq, (error, lostChars) -> {
+            if (!isAdded()) {
+                return;
+            }
+            Context ctx = requireContext();
+            String msg = UsbAutoType.errorMessage(ctx, error, lostChars);
+            if (msg != null) {
+                PasswdSafeUtil.showErrorMsg(msg, new ActContext(ctx));
+            }
+        });
     }
 
     /**
@@ -1377,7 +1418,7 @@ public class PasswdSafeRecordBasicFragment
     {
 
         // Build an AlertDialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
 
         builder.setTitle(R.string.autotype_lang)
                .setItems(R.array.autotype_lang_titles,
@@ -1395,7 +1436,7 @@ public class PasswdSafeRecordBasicFragment
             View dlgView = factory.inflate(R.layout.confirm_prompt, null);
 
             final CheckBox itsConfirmCb = (CheckBox)dlgView.findViewById(R.id.confirm);
-            AlertDialog.Builder alert = new AlertDialog.Builder(ctx)
+            AlertDialog.Builder alert = new MaterialAlertDialogBuilder(ctx)
                     .setTitle(getString(R.string.otp_overwrite))
                     .setView(dlgView)
                     .setPositiveButton(R.string.replace,

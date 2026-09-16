@@ -42,7 +42,7 @@ import kotlin.NotImplementedError;
 
 import net.tjado.authorizer.Utilities;
 import net.tjado.passwdsafe.AbstractPasswdSafeLocationFragment;
-import net.tjado.passwdsafe.PasswdSafe;
+import net.tjado.passwdsafe.FidoFileAccess;
 import net.tjado.passwdsafe.file.PasswdFileData;
 import net.tjado.passwdsafe.view.EditRecordResult;
 import net.tjado.passwdsafe.view.PasswdLocation;
@@ -69,7 +69,18 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
 
     private final static String TAG = "CredentialSafe";
 
-    private PasswdSafe activity = null;
+    /**
+     * Whoever holds the open password file. Null while no file is open, in
+     * which case reads return nothing and writes fail; set by the
+     * application as activities come and go.
+     */
+    private volatile FidoFileAccess file = null;
+
+    /**
+     * Optional cache of the FIDO records, used when the file is not
+     * available (closed, or a record is being edited). Null disables it.
+     */
+    private final FidoKeyCache cache;
 
     /**
      * Construct a CredentialSafe that requires user authentication and strongbox backing.
@@ -78,7 +89,7 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      * @throws VirgilException
      */
     public PasswdSafeCredentialBackend(Context ctx) throws VirgilException {
-        this(ctx, true, null);
+        this(ctx, true, null, null);
     }
 
     /**
@@ -87,11 +98,15 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      * @param ctx                    The application context
      * @param strongboxRequired      Require keys to be backed by the "Strongbox Keymaster" HSM.
      *                               Requires hardware support.
+     * @param file                   Holder of the open file, may be null
+     * @param cache                  Key cache for answering with the file closed, may be null
      * @throws VirgilException
      */
-    public PasswdSafeCredentialBackend(Context ctx, boolean strongboxRequired, PasswdSafe activity) throws VirgilException {
+    public PasswdSafeCredentialBackend(Context ctx, boolean strongboxRequired, FidoFileAccess file,
+                                       FidoKeyCache cache) throws VirgilException {
 
-        this.activity = activity;
+        this.file = file;
+        this.cache = cache;
         this.biometricSigningSupported = false;
 
         if(strongboxRequired) {
@@ -171,9 +186,20 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
                                                         String userDisplayName, boolean generateHmacSecret,
                                                         String u2fRpId) throws VirgilException {
         Log.w(TAG, "generateCredential");
-        if(!activity.isFileWritable()) {
+        FidoFileAccess file = this.file;
+        if(file == null || !file.isFileOpen()) {
+            Log.w(TAG, "PasswdSafe File is not open... exit");
+            throw new VirgilException("PasswdSafe File is not open");
+        }
+        if(!file.isFileWritable()) {
             Log.w(TAG, "PasswdSafe File is not writeable... exit");
             throw new VirgilException("PasswdSafe File is not writeable");
+        }
+        if(!file.canPersistNow()) {
+            // Saving needs the activity in front; a registration with the
+            // screen locked cannot be stored, so refuse it cleanly.
+            Log.w(TAG, "App not in front, cannot save a new credential... exit");
+            throw new VirgilException("App not in front, cannot save a new credential");
         }
 
         KeyPair keyPair = generateNewES256KeyPairLocal();
@@ -211,7 +237,7 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
         });
 
         if (rc != null) {
-            activity.finishEditFidoRecord(rc);
+            file.finishEditFidoRecord(rc);
         }
 
         PublicKeyCredentialSource credentialSource;
@@ -224,6 +250,13 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             return null;
         }
 
+        if (cache != null) {
+            // The file record above has hmacSecret set; mirror it so a
+            // background hmac-secret request matches what the file holds.
+            credentialSource.hmacSecret = symmetricKey;
+            cache.put(credentialSource);
+        }
+
         return credentialSource;
     }
 
@@ -232,15 +265,48 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      */
     public boolean isEditMode()
     {
-        return activity.isEditMode();
+        FidoFileAccess file = this.file;
+        return file != null && file.isEditMode();
+    }
+
+    @Override
+    public void setFileAccess(FidoFileAccess fileAccess) {
+        this.file = fileAccess;
     }
 
     /**
-     * Use the file data with an optional record at the current location
+     * Use the open file data, or return null when no file is open. Every
+     * read below goes through here so a closed file degrades to "no
+     * credentials" instead of a crash.
      */
+    private <RetT> RetT useFileData(net.tjado.passwdsafe.file.PasswdFileDataUser<RetT> user)
+    {
+        FidoFileAccess file = this.file;
+        if (file == null) {
+            return null;
+        }
+        return file.useFileData(user);
+    }
+
+    /**
+     * Whether reads and counter writes should go to the file. While a record
+     * is being edited the file is left alone (the original gate) and the
+     * cache answers instead.
+     */
+    private boolean fileUsable()
+    {
+        FidoFileAccess file = this.file;
+        return file != null && file.isFileOpen() && !file.isEditMode();
+    }
+
+    private boolean cacheUsable()
+    {
+        return cache != null && cache.canServe();
+    }
+
     protected final <RetT> RetT useRecordFile(final AbstractPasswdSafeLocationFragment.RecordFileUser<RetT> user)
     {
-        return activity.useFileData(fileData -> user.useFile(null, fileData));
+        return useFileData(fileData -> user.useFile(null, fileData));
     }
 
     public String keyToString(Key key) {
@@ -350,8 +416,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
     public List<PublicKeyCredentialSource> getAllCredentials() {
         Log.d(TAG, "getAllCredentials");
 
+        if (!fileUsable()) {
+            return cacheUsable() ? cache.getAll() : new ArrayList<>();
+        }
+
         List<PublicKeyCredentialSource> credentialSources = new ArrayList<>();
-        activity.useFileData(fileData -> {
+        useFileData(fileData -> {
             for (PwsRecord rec: fileData.getRecords()) {
                 String rpId = fileData.getFidoRpId(rec);
                 if (rpId != null) {
@@ -374,8 +444,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
     public List<PublicKeyCredentialSource> getKeysForEntity(@NonNull String rpEntityId) {
         Log.d(TAG, "getKeysForEntity: " + rpEntityId);
 
+        if (!fileUsable()) {
+            return cacheUsable() ? cache.getForRp(rpEntityId) : new ArrayList<>();
+        }
+
         List<PublicKeyCredentialSource> credentialSources = new ArrayList<>();
-        activity.useFileData(fileData -> {
+        useFileData(fileData -> {
             for (PwsRecord rec: fileData.getRecords()) {
                 String rpId = fileData.getFidoRpId(rec);
                 if (rpId != null && rpId.equals(rpEntityId)) {
@@ -401,8 +475,12 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      */
     public PublicKeyCredentialSource getCredentialSourceById(@NonNull byte[] id) {
 
+        if (!fileUsable()) {
+            return cacheUsable() ? cache.getById(id) : null;
+        }
+
         final PublicKeyCredentialSource[] credentialSource = {null};
-        activity.useFileData(fileData -> {
+        useFileData(fileData -> {
             PwsRecord rec = fileData.getRecord(new String(id, StandardCharsets.UTF_8));
             credentialSource[0] = recordToCredential(fileData, rec);
 
@@ -511,7 +589,53 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
      */
     public int incrementCredentialUseCounter(PublicKeyCredentialSource credential) {
 
+        if (!fileUsable()) {
+            // File closed: advance the cached counter. It is merged back
+            // (max wins) the next time the file is used, see below.
+            if (cache == null) {
+                return 0;
+            }
+            int cnt = cache.getCounter(credential.id);
+            if (cnt < 0) {
+                return 0;
+            }
+            cache.setCounter(credential.id, cnt + 1);
+            return cnt;
+        }
+
+        // Never let the counter the relying party sees go down: a signature
+        // made from the cache while the file was closed may be ahead of the
+        // record.
+        final int cachedCounter = (cache != null) ? cache.getCounter(credential.id) : -1;
         final int[] currentCounter = {0};
+
+        FidoFileAccess fileNow = this.file;
+        if (fileNow == null || !fileNow.canPersistNow()) {
+            // File open but the activity is stopped (screen locked, app in
+            // the background): saving would throw after onSaveInstanceState.
+            // Bump the record in memory and the cache; the next foreground
+            // use writes the merged value to disk.
+            Integer cnt = useFileData(fileData -> {
+                PwsRecord rec = fileData.getRecord(new String(credential.id, StandardCharsets.UTF_8));
+                if (rec == null) {
+                    return null;
+                }
+                Integer c = fileData.getFidoKeyUseCounter(rec);
+                int base = (c == null) ? 0 : c;
+                if (cachedCounter > base) {
+                    base = cachedCounter;
+                }
+                fileData.setFidoKeyUseCounter(base + 1, rec);
+                return base;
+            });
+            if (cnt == null) {
+                cnt = Math.max(cachedCounter, 0);
+            }
+            if (cache != null) {
+                cache.setCounter(credential.id, cnt + 1);
+            }
+            return cnt;
+        }
         EditRecordResult rc = useRecordFile((info, fileData) -> {
             PwsRecord rec = fileData.getRecord(new String(credential.id, StandardCharsets.UTF_8));
 
@@ -519,14 +643,21 @@ public class PasswdSafeCredentialBackend implements ICredentialSafe {
             if(cnt == null) {
                 cnt = 0;
             }
+            if (cachedCounter > cnt) {
+                cnt = cachedCounter;
+            }
             fileData.setFidoKeyUseCounter(cnt + 1, rec);
 
             currentCounter[0] = cnt;
             return new EditRecordResult(false, rec.isModified(), new PasswdLocation(rec, fileData));
         });
 
-        if (rc != null) {
-            activity.finishEditFidoRecord(rc);
+        FidoFileAccess file = this.file;
+        if (rc != null && file != null) {
+            file.finishEditFidoRecord(rc);
+        }
+        if (cache != null) {
+            cache.setCounter(credential.id, currentCounter[0] + 1);
         }
 
         return currentCounter[0];

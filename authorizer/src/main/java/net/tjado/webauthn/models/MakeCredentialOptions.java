@@ -236,12 +236,25 @@ public class MakeCredentialOptions extends AuthenticatorOptions {
         }
     }
 
-    public boolean areDummys(FragmentActivity fragmentActivity) throws CtapException {
+    /**
+     * @param fragmentActivity activity to host the presence dialog, or null
+     *                         when none is in front
+     * @param autoApprove      skip the dialog and treat presence as given
+     */
+    public boolean areDummys(FragmentActivity fragmentActivity, boolean autoApprove) throws CtapException {
         final Semaphore sem = new Semaphore(0);
         final boolean[] permission = new boolean[1];
 
         if (dummy == null) {
             dummyCheck();
+        }
+
+        if (dummy && autoApprove) {
+            return true;
+        }
+
+        if (dummy && fragmentActivity == null) {
+            throw new CtapException(CtapError.OPERATION_DENIED);
         }
 
         if (dummy) {

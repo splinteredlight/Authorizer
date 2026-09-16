@@ -15,6 +15,7 @@ import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
 
@@ -175,7 +176,7 @@ public class AuthenticatorExtension {
                                                                 ((HmacSecretInput) input).saltEnc);
                     localSaltAuth = Arrays.copyOf(localSaltAuth, 16);
 
-                    if (!Arrays.equals(localSaltAuth, ((HmacSecretInput) input).saltAuth)) {
+                    if (!MessageDigest.isEqual(localSaltAuth, ((HmacSecretInput) input).saltAuth)) {
                         throw new CtapException(CtapError.INVALID_PARAMETER, "Invalid saltAuth");
                     }
 

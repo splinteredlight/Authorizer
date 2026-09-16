@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Night variants of the non-role colours in values/colors.xml. -->
+<resources>
+    <color name="status_ok">#81C784</color>
+    <color name="status_warning">#EAC16C</color>
+</resources>

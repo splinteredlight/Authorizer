@@ -7,6 +7,7 @@
  */
 package net.tjado.passwdsafe.lib;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
@@ -212,7 +213,7 @@ public class PasswdSafeUtil
             }
         };
 
-        AlertDialog.Builder dlg = new AlertDialog.Builder(activity)
+        AlertDialog.Builder dlg = new MaterialAlertDialogBuilder(activity)
                 .setTitle(getAppTitle(activity) + " - " +
                           activity.getString(R.string.error))
                 .setMessage(msg)
@@ -233,7 +234,7 @@ public class PasswdSafeUtil
         if (ctx == null) {
             return;
         }
-        AlertDialog.Builder dlg = new AlertDialog.Builder(ctx)
+        AlertDialog.Builder dlg = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(PasswdSafeUtil.getAppTitle(ctx) + " - " +
                           ctx.getString(R.string.error))
                 .setMessage(msg)
@@ -256,7 +257,7 @@ public class PasswdSafeUtil
 
     public static void showInfoMsg(String msg, Context context)
     {
-        AlertDialog.Builder dlg = new AlertDialog.Builder(context)
+        AlertDialog.Builder dlg = new MaterialAlertDialogBuilder(context)
                 .setTitle(PasswdSafeUtil.getAppTitle(context) + " - " +
                           context.getString(R.string.info))
                 .setMessage(msg)

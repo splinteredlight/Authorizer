@@ -225,10 +225,7 @@ public class DynamicPermissionMgr implements View.OnClickListener
         {
             itsIsRequired = required;
 
-            if (TextUtils.equals(permission, Manifest.permission.WRITE_EXTERNAL_STORAGE) &&
-                !ApiCompat.supportsWriteExternalStoragePermission()) {
-                itsIsGranted = true;
-            } else if (TextUtils.equals(permission, PERM_POST_NOTIFICATIONS) &&
+            if (TextUtils.equals(permission, PERM_POST_NOTIFICATIONS) &&
                        !ApiCompat.supportsPostNotificationsPermission()) {
                 itsIsGranted = true;
             } else {

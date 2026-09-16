@@ -8,6 +8,7 @@
 package net.tjado.passwdsafe;
 
 import android.app.Activity;
+import androidx.core.content.ContextCompat;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -55,7 +56,8 @@ public class FileTimeoutReceiver extends BroadcastReceiver
         IntentFilter filter =
                 new IntentFilter(PasswdSafeApp.FILE_TIMEOUT_INTENT);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
-        itsActivity.registerReceiver(this, filter);
+        ContextCompat.registerReceiver(itsActivity, this, filter,
+                                       ContextCompat.RECEIVER_NOT_EXPORTED);
 
         SharedPreferences prefs = Preferences.getSharedPrefs(itsActivity);
         prefs.registerOnSharedPreferenceChangeListener(this);
