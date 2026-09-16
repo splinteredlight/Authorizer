@@ -1,26 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright (©) 2015 Jeff Harris <jefftharris@gmail.com>
-  ~ All rights reserved. Use of the code is allowed under the
-  ~ Artistic License 2.0 terms, as specified in the LICENSE file
-  ~ distributed with this code, or available from
-  ~ http://www.opensource.org/licenses/artistic-license-2.0.php
-  -->
+<!-- Dialog activity: pick an entry for a launcher shortcut. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:tools="http://schemas.android.com/tools"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              tools:context="net.tjado.passwdsafe.LauncherRecordShortcuts">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="net.tjado.passwdsafe.LauncherRecordShortcuts">
 
     <TextView android:id="@+id/file"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:text="@string/file"
-              android:textAppearance="?android:attr/textAppearanceLarge"/>
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="8dp"
+        android:text="@string/file"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface"/>
 
     <FrameLayout android:id="@+id/contents"
-                 android:layout_width="match_parent"
-                 android:layout_height="match_parent"/>
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
 
 </LinearLayout>

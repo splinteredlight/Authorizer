@@ -7,15 +7,14 @@
 package net.tjado.passwdsafe.view;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.mikepenz.iconics.IconicsDrawable;
 import com.mikepenz.iconics.utils.IconicsDrawableExtensionsKt;
 import com.mikepenz.iconics.view.IconicsImageView;
@@ -103,14 +102,15 @@ public class PasswdRecordIconAdapter
     {
         String icon = itsShownIcons.get(position);
         Context ctx = holder.itemView.getContext();
-        int color = icon.equals(itsSelectedIcon) ?
-                Color.WHITE : ContextCompat.getColor(ctx, R.color.treeview_icons);
+        int color = MaterialColors.getColor(
+                holder.itemView, icon.equals(itsSelectedIcon) ?
+                        com.google.android.material.R.attr.colorOnPrimary :
+                        com.google.android.material.R.attr.colorOnSurfaceVariant);
 
         IconicsDrawable drawable = new IconicsDrawable(ctx, icon);
         IconicsDrawableExtensionsKt.setColorInt(drawable, color);
         drawable.setRespectFontBounds(true);
         holder.image.setIcon(drawable);
-        holder.image.setBackgroundColor(Color.TRANSPARENT);
         holder.itemView.setSelected(icon.equals(itsSelectedIcon));
         holder.itemView.setOnClickListener(v -> itsListener.onIconClicked(icon));
     }

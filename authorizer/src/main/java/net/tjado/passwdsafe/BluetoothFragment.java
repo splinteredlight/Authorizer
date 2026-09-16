@@ -1,5 +1,6 @@
 package net.tjado.passwdsafe;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
 import androidx.core.content.ContextCompat;
@@ -25,7 +26,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -142,15 +143,15 @@ public class BluetoothFragment extends Fragment
 
         TextView tvBluetoothFeature = rootView.findViewById(R.id.tv_pref_bt);
         TextView tvBluetoothFido = rootView.findViewById(R.id.tv_pref_bt_fido);
-        CheckBox cbBluetoothFeature = rootView.findViewById(R.id.cb_pref_bt);
-        CheckBox cbBluetoothFido = rootView.findViewById(R.id.cb_pref_bt_fido);
+        CompoundButton cbBluetoothFeature = rootView.findViewById(R.id.cb_pref_bt);
+        CompoundButton cbBluetoothFido = rootView.findViewById(R.id.cb_pref_bt_fido);
 
         TextView tvFidoAutoLogin = rootView.findViewById(R.id.tv_pref_bt_fido_auto_login);
-        CheckBox cbFidoAutoLogin = rootView.findViewById(R.id.cb_pref_bt_fido_auto_login);
+        CompoundButton cbFidoAutoLogin = rootView.findViewById(R.id.cb_pref_bt_fido_auto_login);
         TextView tvFidoAutoRegister = rootView.findViewById(R.id.tv_pref_bt_fido_auto_register);
-        CheckBox cbFidoAutoRegister = rootView.findViewById(R.id.cb_pref_bt_fido_auto_register);
+        CompoundButton cbFidoAutoRegister = rootView.findViewById(R.id.cb_pref_bt_fido_auto_register);
         TextView tvFidoBackground = rootView.findViewById(R.id.tv_pref_bt_fido_background);
-        CheckBox cbFidoBackground = rootView.findViewById(R.id.cb_pref_bt_fido_background);
+        CompoundButton cbFidoBackground = rootView.findViewById(R.id.cb_pref_bt_fido_background);
 
         prefs = Preferences.getSharedPrefs(getContext());
 
@@ -534,13 +535,17 @@ public class BluetoothFragment extends Fragment
             String displayType;
             String type = device.getType();
             holder.btnReconnect.setVisibility(View.GONE);
+            String okColor = String.format("#%06X", 0xFFFFFF & ContextCompat.getColor(
+                    requireContext(), R.color.status_ok));
+            String errColor = String.format("#%06X", 0xFFFFFF & MaterialColors.getColor(
+                    holder.itemView, R.attr.colorError));
             if (type.equals(BluetoothDeviceListing.HID_KEYBOARD_HOST)) {
-                displayType = "<font color=#008000><b>Keyboard</b></font>";
+                displayType = "<font color=" + okColor + "><b>Keyboard</b></font>";
             } else if (type.equals(BluetoothDeviceListing.HID_FIDO_HOST)) {
-                displayType = "<font color=#008000><b>FIDO (U2F/WebAuthn)</b></font>";
+                displayType = "<font color=" + okColor + "><b>FIDO (U2F/WebAuthn)</b></font>";
                 holder.btnReconnect.setVisibility(View.VISIBLE);
             } else {
-                displayType = "<font color=#ff0000><b>Unknown</b></font>";
+                displayType = "<font color=" + errColor + "><b>Unknown</b></font>";
             }
 
             holder.name.setText(device.getName());
@@ -554,7 +559,6 @@ public class BluetoothFragment extends Fragment
 
             holder.btnReconnect.setEnabled(true);
             holder.btnReconnect.setText(R.string.bt_reconnect);
-            holder.btnReconnect.setTextAppearance(requireContext(), R.style.Widget_AppCompat_Button_Colored);
 
             BluetoothForegroundService btService = ((PasswdSafe) requireActivity()).btService;
             if(btService != null && btService.getConnectedDevice() != null)  {
@@ -562,7 +566,6 @@ public class BluetoothFragment extends Fragment
                 if(device.equals(connectedDevice)) {
                     holder.btnReconnect.setEnabled(false);
                     holder.btnReconnect.setText(R.string.bt_connected);
-                    holder.btnReconnect.setTextAppearance(requireContext(), R.style.Widget_AppCompat_Button);
                 }
             }
 
@@ -575,8 +578,7 @@ public class BluetoothFragment extends Fragment
                         if(device.equals(connectedDevice)) {
                             holder.btnReconnect.setEnabled(false);
                             holder.btnReconnect.setText(R.string.bt_connected);
-                            holder.btnReconnect.setTextAppearance(requireContext(), R.style.Widget_AppCompat_Button);
-
+        
                             Toast.makeText(getActivity(), "Already connected!", Toast.LENGTH_LONG).show();
                             return;
                         }

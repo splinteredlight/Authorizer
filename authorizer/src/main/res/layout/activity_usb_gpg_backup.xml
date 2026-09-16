@@ -1,39 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright (©) 2018 Jeff Harris <jefftharris@gmail.com>
-  ~ All rights reserved. Use of the code is allowed under the
-  ~ Artistic License 2.0 terms, as specified in the LICENSE file
-  ~ distributed with this code, or available from
-  ~ http://www.opensource.org/licenses/artistic-license-2.0.php
-  -->
+<!-- Started when a GPG-capable USB drive is attached: back the file up. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto"
-              xmlns:tools="http://schemas.android.com/tools"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              android:padding="10dp"
-              tools:context="net.tjado.passwdsafe.UsbGpgBackupActivity">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical"
+    android:padding="24dp"
+    tools:context="net.tjado.passwdsafe.UsbGpgBackupActivity">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/file_backup_usb_gpg"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:textColor="?attr/colorOnSurface"/>
 
     <Button
         android:id="@+id/btn_create_backup"
+        style="@style/Widget.Authorizer.Button"
         android:layout_width="match_parent"
-        android:layout_height="95dp"
-        android:text="Backup now!"/>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minHeight="56dp"
+        android:text="@string/usb_backup_now"
+        app:icon="@drawable/ic_backup"
+        app:iconGravity="textStart"/>
 
     <Button
         android:id="@+id/btn_exit"
+        style="@style/Widget.Authorizer.Button.Text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Exit"/>
+        android:text="@string/close"/>
+
     <ScrollView
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent">
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1">
 
         <TextView
             android:id="@+id/info"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"/>
 
     </ScrollView>
 

@@ -485,9 +485,11 @@ public class PasswdSafeListFragmentTree extends ListFragment
             list.clearChoices();
         }
 
-        if (itsEmptyText.getText().length() == 0 && data.size() == 0) {
+        boolean empty = data.isEmpty();
+        if (empty && (itsEmptyText.getText().length() == 0)) {
             itsEmptyText.setText(itsIsContents ? R.string.no_records : R.string.no_groups);
         }
+        itsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
 
     }
 

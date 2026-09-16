@@ -4,21 +4,21 @@
     <item
         android:id="@+id/menu_records"
         android:icon="@drawable/ic_key"
-        android:title="@string/records"/>
+        android:title="@string/nav_entries"/>
 
     <item
         android:id="@+id/menu_expired_passwords"
         android:icon="@drawable/ic_schedule"
-        android:title="Expirations" />
+        android:title="@string/nav_expiry"/>
 
     <item
         android:id="@+id/menu_passwd_policies"
         android:icon="@drawable/ic_verified_user"
-        android:title="Policies" />
+        android:title="@string/nav_policies"/>
 
     <item
         android:id="@+id/menu_preferences"
         android:icon="@drawable/ic_settings"
-        android:title="@string/preferences" />
+        android:title="@string/nav_settings"/>
 
 </menu>

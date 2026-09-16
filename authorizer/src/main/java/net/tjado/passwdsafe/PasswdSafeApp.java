@@ -384,17 +384,15 @@ public final class PasswdSafeApp extends Application
     }
 
     /**
-     * Get a title for the application
+     * Get the app bar title for a screen: the screen's own title (file name,
+     * group, "Settings", ...) or the app name when there is none.
      */
     public static String getAppTitle(String title, Context ctx)
     {
-        StringBuilder builder = new StringBuilder();
         if (!TextUtils.isEmpty(title)) {
-            builder.append(title);
-            builder.append(" - ");
+            return title;
         }
-        builder.append(PasswdSafeUtil.getAppTitle(ctx));
-        return builder.toString();
+        return PasswdSafeUtil.getAppTitle(ctx);
     }
 
     /**

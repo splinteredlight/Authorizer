@@ -1,110 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+<!-- Read-only summary of a password policy (merged into PasswdPolicyView). -->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.LinearLayout"
+    tools:orientation="vertical">
 
-    <TableLayout
-        android:layout_width="fill_parent"
+    <LinearLayout android:id="@+id/policy_view_location_row"
+        style="@style/Authorizer.DetailRow"
+        android:orientation="horizontal"
+        android:visibility="gone">
+        <TextView style="@style/Authorizer.DetailLabel" android:text="@string/location"/>
+        <TextView android:id="@+id/policy_view_location" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_length_label" style="@style/Authorizer.DetailLabel" android:text="@string/length"/>
+        <TextView android:id="@+id/policy_view_length" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_type_label" style="@style/Authorizer.DetailLabel" android:text="@string/type"/>
+        <TextView android:id="@+id/policy_view_type" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_lowercase_label" style="@style/Authorizer.DetailLabel" android:text="@string/use_lowercase"/>
+        <TextView android:id="@+id/policy_view_lowercase" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_uppercase_label" style="@style/Authorizer.DetailLabel" android:text="@string/use_uppercase"/>
+        <TextView android:id="@+id/policy_view_uppercase" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_digits_label" style="@style/Authorizer.DetailLabel" android:text="@string/use_digits"/>
+        <TextView android:id="@+id/policy_view_digits" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_symbols_label" style="@style/Authorizer.DetailLabel" android:text="@string/use_symbols"/>
+        <TextView android:id="@+id/policy_view_symbols" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout style="@style/Authorizer.DetailRow" android:orientation="horizontal">
+        <TextView android:id="@+id/policy_view_use_count_label" style="@style/Authorizer.DetailLabel" android:text="@string/use_count"/>
+        <TextView android:id="@+id/policy_view_use_count" style="@style/Authorizer.DetailValue"/>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/policy_view_generate_row"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:shrinkColumns="1"
-        android:stretchColumns="1">
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-        <TableRow
-            android:id="@+id/policy_view_location_row"
-            android:visibility="gone">
+        <Button android:id="@+id/policy_view_generate"
+            style="@style/Widget.Authorizer.Button.Tonal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/generate"/>
 
-            <TextView
-                style="@style/TableLabelColumn"
-                android:text="@string/location"/>
+        <TextView android:id="@+id/policy_view_generated_passwd"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_field_outlined"
+            android:fontFamily="monospace"
+            android:minHeight="40dp"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurface"
+            android:textIsSelectable="true"/>
 
-            <TextView android:id="@+id/policy_view_location"/>
-        </TableRow>
+    </LinearLayout>
 
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_length_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/length"/>
-
-            <TextView android:id="@+id/policy_view_length"/>
-        </TableRow>
-
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_type_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/type"/>
-
-            <TextView android:id="@+id/policy_view_type"/>
-        </TableRow>
-
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_lowercase_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/use_lowercase"/>
-
-            <TextView android:id="@+id/policy_view_lowercase"/>
-        </TableRow>
-
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_uppercase_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/use_uppercase"/>
-
-            <TextView android:id="@+id/policy_view_uppercase"/>
-        </TableRow>
-
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_digits_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/use_digits"/>
-
-            <TextView android:id="@+id/policy_view_digits"/>
-        </TableRow>
-
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_symbols_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/use_symbols"/>
-
-            <TextView android:id="@+id/policy_view_symbols"/>
-        </TableRow>
-
-        <TableRow>
-
-            <TextView
-                android:id="@+id/policy_view_use_count_label"
-                style="@style/TableLabelColumn"
-                android:text="@string/use_count"/>
-
-            <TextView android:id="@+id/policy_view_use_count"/>
-        </TableRow>
-
-        <TableRow android:id="@+id/policy_view_generate_row">
-
-            <Button
-                android:id="@+id/policy_view_generate"
-                android:text="@string/generate"/>
-
-            <TextView
-                android:id="@+id/policy_view_generated_passwd"
-                style="@android:style/Widget.EditText"
-                android:textAppearance="?android:textAppearanceSmall"
-                android:typeface="monospace"/>
-
-        </TableRow>
-
-
-    </TableLayout>
-
-</ScrollView>
+</merge>

@@ -9,6 +9,7 @@
 package net.tjado.passwdsafe;
 
 
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
 import net.tjado.authorizer.hid.HidStatus;
@@ -41,7 +42,6 @@ import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Button;
@@ -69,6 +69,7 @@ import net.tjado.passwdsafe.lib.ObjectHolder;
 import net.tjado.passwdsafe.lib.view.AbstractTextWatcher;
 import net.tjado.passwdsafe.lib.view.GuiUtils;
 import net.tjado.passwdsafe.lib.view.TextInputUtils;
+import net.tjado.passwdsafe.lib.view.PasswordSpans;
 import net.tjado.passwdsafe.lib.view.TypefaceUtils;
 import net.tjado.passwdsafe.otp.AddActivity;
 import net.tjado.passwdsafe.otp.ScanActivity;
@@ -152,7 +153,7 @@ public class PasswdSafeRecordBasicFragment
     private Button itsAutoTypeBluetoothOtp;
     private Button itsAutoTypeBluetoothCredential;
     private CheckBox itsAutoTypeReturnSuffix;
-    private RadioGroup itsAutoTypeDelimiter;
+    private MaterialButtonToggleGroup itsAutoTypeDelimiter;
     private View itsUrlRow;
     private TextView itsUrl;
     private View itsEmailRow;
@@ -404,7 +405,7 @@ public class PasswdSafeRecordBasicFragment
 
         View.OnClickListener autotypeDelimiterOnClickListener = view -> {
             Integer ival = 2;
-            if (itsAutoTypeDelimiter.getCheckedRadioButtonId() ==
+            if (itsAutoTypeDelimiter.getCheckedButtonId() ==
                 R.id.autotype_delimiter_return) {
                 ival = 1;
             }
@@ -448,6 +449,9 @@ public class PasswdSafeRecordBasicFragment
         itsFidoU2fHandleRow = root.findViewById(R.id.u2f_handle_row);
         itsFidoU2fHandle = root.findViewById(R.id.u2f_handle);
 
+
+        root.findViewById(R.id.user_copy_btn).setOnClickListener(v -> copyUser());
+        root.findViewById(R.id.password_copy_btn).setOnClickListener(v -> copyPassword());
 
         registerForContextMenu(itsUserRow);
         registerForContextMenu(itsPasswordRow);
@@ -955,8 +959,12 @@ public class PasswdSafeRecordBasicFragment
         }
         Activity act = requireActivity();
         GuiUtils.setKeyboardVisible(itsPasswordSubset, act, subsetShown);
-        itsPassword.setText(
-                (password != null) ? password : itsHiddenPasswordStr);
+        if (itsIsPasswordShown && (password != null)) {
+            itsPassword.setText(PasswordSpans.colorize(password, itsPassword));
+        } else {
+            itsPassword.setText(
+                    (password != null) ? password : itsHiddenPasswordStr);
+        }
         TypefaceUtils.enableMonospace(itsPassword, itsIsPasswordShown, act);
         itsPassword.removeCallbacks(itsPasswordHideRun);
         if (itsIsPasswordShown) {
@@ -1111,7 +1119,7 @@ public class PasswdSafeRecordBasicFragment
             }
 
             if (sendUsername && sendPassword) {
-                int checkedId = itsAutoTypeDelimiter.getCheckedRadioButtonId();
+                int checkedId = itsAutoTypeDelimiter.getCheckedButtonId();
                 if (checkedId == R.id.autotype_delimiter_return) {
                     outputStream.write(itsOutputBluetoothKeyboard.getReturn());
                 } else if (checkedId == R.id.autotype_delimiter_tab) {
@@ -1340,7 +1348,7 @@ public class PasswdSafeRecordBasicFragment
         }
 
         if (sendUsername && sendPassword) {
-            int checkedId = itsAutoTypeDelimiter.getCheckedRadioButtonId();
+            int checkedId = itsAutoTypeDelimiter.getCheckedButtonId();
             if (checkedId == R.id.autotype_delimiter_return) {
                 seq.addReturn();
             } else if (checkedId == R.id.autotype_delimiter_tab) {

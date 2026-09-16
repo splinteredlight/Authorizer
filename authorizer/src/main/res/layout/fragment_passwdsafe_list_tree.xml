@@ -1,27 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout
+<!-- Entry tree (AndroidTreeView is added to the container from code). -->
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <RelativeLayout
+    <FrameLayout
         android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginEnd="-5dp"
-        tools:ignore="NegativeMargin" />
+        android:paddingTop="4dp"
+        android:paddingBottom="16dp"
+        android:clipToPadding="false"/>
 
     <TextView android:id="@+id/empty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:textAppearance="?android:attr/textAppearanceLarge"/>
+        android:drawablePadding="16dp"
+        android:gravity="center"
+        android:padding="32dp"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        app:drawableTopCompat="@drawable/ic_empty_entries"/>
 
     <ListView android:id="@android:id/list"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:drawSelectorOnTop="false"
-              android:fastScrollEnabled="true"
-              android:choiceMode="singleChoice"
-              android:visibility="gone"/>
-</RelativeLayout>
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:choiceMode="singleChoice"
+        android:drawSelectorOnTop="false"
+        android:fastScrollEnabled="true"
+        android:visibility="gone"
+        tools:ignore="UnusedIds"/>
+</FrameLayout>

@@ -1,47 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Flat entry list with a "parent group" row at the top. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto"
-              xmlns:tools="http://schemas.android.com/tools"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              tools:context="net.tjado.passwdsafe.PasswdSafeListFragment">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="net.tjado.passwdsafe.PasswdSafeListFragment">
 
     <LinearLayout android:id="@+id/current_group_panel"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:orientation="vertical"
-                  android:background="?attr/selectableItemBackground"
-                  android:clickable="true"
-                  android:focusable="true">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical">
 
         <TextView android:id="@+id/current_group_label"
-                  android:layout_width="fill_parent"
-                  android:layout_height="wrap_content"
-                  android:drawablePadding="8dp"
-                  android:gravity="center_vertical"
-                  android:minHeight="?android:attr/listPreferredItemHeight"
-                  android:text="@string/group"
-                  android:textAppearance="?android:attr/textAppearanceLarge"
-                  app:drawableLeftCompat="?attr/drawableFolderUp"
-                  app:drawableStartCompat="?attr/drawableFolderUp" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="16dp"
+            android:ellipsize="start"
+            android:gravity="center_vertical"
+            android:maxLines="1"
+            android:minHeight="56dp"
+            android:paddingStart="@dimen/screen_gutter"
+            android:paddingEnd="@dimen/screen_gutter"
+            android:text="@string/group"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnSurface"
+            app:drawableStartCompat="?attr/drawableFolderUp"
+            app:drawableTint="?attr/colorOnSurfaceVariant"/>
 
-        <View style="@style/Separator.Accent"/>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="@dimen/screen_gutter"
+            android:layout_marginEnd="@dimen/screen_gutter"
+            android:background="?attr/colorOutlineVariant"/>
 
-     </LinearLayout>
+    </LinearLayout>
 
     <ListView android:id="@android:id/list"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:layout_weight="1"
-              android:choiceMode="singleChoice"
-              android:fastScrollAlwaysVisible="false"
-              android:fastScrollEnabled="true"/>
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:choiceMode="singleChoice"
+        android:clipToPadding="false"
+        android:fastScrollAlwaysVisible="false"
+        android:fastScrollEnabled="true"
+        android:paddingBottom="16dp"/>
 
     <TextView android:id="@android:id/empty"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:layout_weight="1"
-              android:textAppearance="?android:attr/textAppearanceLarge"/>
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:drawablePadding="16dp"
+        android:gravity="center"
+        android:padding="32dp"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        app:drawableTopCompat="@drawable/ic_empty_entries"/>
 
 </LinearLayout>
