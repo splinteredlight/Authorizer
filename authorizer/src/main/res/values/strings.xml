@@ -418,6 +418,15 @@
 
     <string name="release_notes">
         \n
+        &lt;b&gt;0.7.0&lt;/b&gt;\n
+        - New look: Material 3 throughout, light and dark, with optional wallpaper (dynamic) colours on Android 12+\n
+        - Entry screen: copy buttons, colour-coded revealed passwords, a "Type to computer" block for USB and Bluetooth, one-time code with countdown ring\n
+        - Entry list with tonal icons and group counts; recent files, unlock, new file and edit screens rebuilt\n
+        - Bottom navigation: Entries, Expiry, Policies, Settings; screen titles no longer repeat the app name\n
+        - Adaptive launcher icon with a themed (monochrome) variant\n
+        - Master and entry password fields no longer trigger the system password manager\n
+        - Fixed: a denied Bluetooth permission crashed the app at start
+        \n\n
         &lt;b&gt;0.6.0&lt;/b&gt;\n
         - Android 17 (API 37) target, minimum Android 8.0\n
         - USB Auto-Type writes directly to /dev/hidg0 on stock kernels; root is only used once to prepare the device (configfs HID function, SELinux via magiskpolicy/ksud). No custom kernel or gadget app needed\n

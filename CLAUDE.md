@@ -26,7 +26,9 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   (`Class.getPackage()` returning null). Anything reflective needs a keep rule
   in `authorizer/proguard-rules.pro` or a literal.
 - `./gradlew :authorizer:lintDebug` must report 0 errors. SARIF output is
-  disabled because Lint 9.4 crashes writing it.
+  disabled because Lint 9.4 crashes writing it. `assembleRelease` also runs
+  `lintVitalRelease`, which fails on API-gated theme attributes without
+  `tools:targetApi`.
 - Signing: `sign/sign.gradle` + `sign/keystore.jks` (gitignored). Debug and
   release share the key so `adb install -r` replaces either in place.
 
@@ -57,11 +59,32 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   `HidStatus` (non-root probe), `HidNotReadyException`.
 - `net/tjado/webauthn/` — FIDO2/U2F authenticator over Bluetooth HID.
 - `doc/MODERNIZATION_ASSESSMENT.md` — the 2026 audit and plan.
+- `doc/UI_DESIGN.md` — the Material 3 redesign: colour roles, icons,
+  components, and the traps (menu rebuild loop, preference icon space).
 - `doc/HID_SETUP.md` — how the HID path works, manual test, troubleshooting.
 - `doc/magisk/service.sh` — Magisk module script that re-applies HID access at boot.
 - `hardware/pico-bt-bridge/` — Raspberry Pi Pico W firmware that turns the
   phone's Bluetooth auto-type into a USB keyboard on any PC (works with an
   unrooted phone). Separate toolchain, see below.
+
+## UI rules
+
+- One theme, `Theme.Authorizer` (Material 3 DayNight, no window action
+  bar). Colour roles are generated into `values/colors_m3.xml` and
+  `values-night/colors_m3.xml`; regenerate both, never hand-edit one.
+  The theme preference only sets AppCompat's night mode; dynamic colour is
+  a separate switch, default on.
+- Icons are tinted vectors in `drawable/ic_*.xml`. No PNG icon variants,
+  no `_light`/`_dark` pairs. Record icons remain Iconics fonts (names are
+  stored in the file).
+- The activity owns the `MaterialToolbar`. `invalidateOptionsMenu()`
+  rebuilds the whole menu with a Toolbar action bar; use
+  `refreshOptionsMenu()` from menu callbacks or the SearchView collapses
+  the moment it opens (this happened).
+- Password forms set `importantForAutofill="noExcludeDescendants"`.
+- New screens follow `doc/UI_DESIGN.md`: 16 dp `screen_gutter`,
+  `TextAppearance.Authorizer.Section` headings, `Authorizer.DetailRow`
+  label/value pairs, `MaterialAlertDialogBuilder` for dialogs.
 
 ## HID design rules
 
@@ -162,6 +185,15 @@ and what was learned on hardware (verified 2026-09-12, Pico W + Pixel 11).
 - Never log typed characters, HID reports, usernames, or passwords, even
   behind `BuildConfig.DEBUG`.
 - Clipboard copies of secrets must set `EXTRA_IS_SENSITIVE`.
+
+## Testing on the emulator
+
+The AVD `Medium_Phone_API_36` (`~/Android/Sdk/emulator/emulator -avd
+Medium_Phone_API_36`) is enough for layout work. Grant
+`BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` and `POST_NOTIFICATIONS` with
+`pm grant` (denying Bluetooth used to crash the app; now it just disables
+HID). `adb shell cmd uimode night yes|no` switches dark mode, and
+`adb exec-out screencap -p > shot.png` gives a screenshot to read.
 
 ## Testing on the device
 

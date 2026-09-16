@@ -33,6 +33,8 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <include layout="@layout/include_no_permission"/>
+
     <LinearLayout android:id="@+id/two_pane"
         android:layout_width="match_parent"
         android:layout_height="0dp"

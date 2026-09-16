@@ -2256,6 +2256,10 @@ public class PasswdSafe extends AppCompatActivity
             }
 
             FragmentTransaction txn = fragMgr.beginTransaction();
+            txn.setCustomAnimations(R.anim.fragment_fade_in,
+                                    R.anim.fragment_fade_out,
+                                    R.anim.fragment_fade_in,
+                                    R.anim.fragment_fade_out);
 
             if (clearBackStack) {
                 //noinspection StatementWithEmptyBody

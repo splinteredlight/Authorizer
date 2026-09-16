@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shown in place of the content when a required permission is missing.
+     DynamicPermissionMgr binds the two buttons by id. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/no_permission_group"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/screen_gutter">
+
+    <TextView android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/no_file_permission"
+        android:textAppearance="?attr/textAppearanceBodyLarge"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/reload"
+        style="@style/Widget.Authorizer.Button.Tonal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/reload"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/app_settings"
+        style="@style/Widget.Authorizer.Button.Text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_settings"/>
+
+</LinearLayout>

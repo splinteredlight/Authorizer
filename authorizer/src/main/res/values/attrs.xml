@@ -21,7 +21,4 @@
 
     <!-- Colour for "good" states (saved password available, device paired). -->
     <attr name="textColorGreen" format="reference"/>
-
-    <attr name="customNavigationBarColor" format="reference"/>
-    <attr name="layout_columnWeight" format="float"/>
 </resources>

@@ -23,22 +23,7 @@
     <color name="record_icon">@color/m3_primary</color>
     <color name="record_icon_background">@color/m3_primary_container</color>
 
-    <!-- Copied from the design compat library for the error text colour of
-         plain (non-Material) widgets. -->
-    <color name="textinput_error_color_light">#FFD50000</color>
-    <color name="textinput_error_color_dark">#FFFF6E6E</color>
-
-    <!-- Legacy names still referenced by layouts that have not moved to the
-         Material 3 roles yet; aliases so both resolve to the same palette. -->
-    <color name="text_lgray">@color/m3_on_surface_variant</color>
-    <color name="treeview_icons">@color/record_icon</color>
-    <color name="treeview_icons_background">@color/record_icon_background</color>
+    <!-- Tint for the YubiKey glyph that replaces the overflow icon on the
+         unlock screen. -->
     <color name="menu_icon_color">@color/m3_on_surface_variant</color>
-    <color name="primary">@color/m3_primary</color>
-    <color name="accent">@color/m3_primary</color>
-    <color name="colorAccent">@color/m3_primary</color>
-    <color name="colorPrimary">@color/m3_primary</color>
-    <color name="md_grey_100">#FFF5F5F5</color>
-    <color name="md_grey_700">#FF616161</color>
-    <color name="md_white_1000">#FFFFFFFF</color>
 </resources>
