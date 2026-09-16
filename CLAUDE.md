@@ -7,9 +7,12 @@ Guidance for working in this repository. Read this before touching code.
 Authorizer is a fork of Jeff Harris's PasswdSafe for Android with Tjado Mäcke's
 auto-type layer: a Password Safe (`.psafe3`) manager that acts as a USB or
 Bluetooth HID keyboard and types credentials into a connected computer.
-This fork (`splinteredlight/Authorizer`, branch `modernize-2026`) modernised it
-for Android 17 and replaced the custom-kernel HID assumption with configfs +
-runtime SELinux patching. Upstream is `tejado/Authorizer`.
+This fork (`splinteredlight/Authorizer`) modernised it for Android 17 and
+replaced the custom-kernel HID assumption with configfs + runtime SELinux
+patching. Upstream is `tejado/Authorizer` (remote `upstream`, dormant since
+2023; `git fetch upstream` and `git log master..upstream/master` show whether
+that has changed). `master` is the main line; do new work on short-lived
+branches off it and merge them back with a merge commit.
 
 Licensing: PasswdSafe code is Artistic License 2.0, Authorizer additions are
 GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
