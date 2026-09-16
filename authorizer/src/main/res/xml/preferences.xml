@@ -262,6 +262,14 @@
 
         <!--suppress AndroidElementNotAllowed -->
         <net.tjado.passwdsafe.view.LongCheckBoxPreference
+            android:name="displayDynamicColors Pref"
+            android:defaultValue="true"
+            android:key="displayDynamicColorsPref"
+            android:summary="@string/dynamic_colors_summary"
+            android:title="@string/dynamic_colors"/>
+
+        <!--suppress AndroidElementNotAllowed -->
+        <net.tjado.passwdsafe.view.LongCheckBoxPreference
             android:name="displayList Pref"
             android:defaultValue="true"
             android:key="displayListTreeViewPref"

@@ -62,7 +62,7 @@
                 android:layout_height="40dp"
                 android:contentDescription="@string/menu"
                 android:layout_gravity="end"
-                android:src="@drawable/ic_menu"/>
+                android:src="@drawable/ic_more_vert"/>
 
             <Button
                 android:id="@+id/btn_reconnect"

@@ -72,7 +72,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:contentDescription="@string/open"
-        android:src="@drawable/ic_action_file"
+        android:src="@drawable/ic_description"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

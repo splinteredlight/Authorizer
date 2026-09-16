@@ -7,6 +7,7 @@
  */
 package net.tjado.passwdsafe.view;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Context;
@@ -83,7 +84,7 @@ public class NewGroupDialog extends DialogFragment
                 };
 
         Context ctx = requireContext();
-        AlertDialog.Builder builder = new AlertDialog.Builder(ctx)
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(PasswdSafeUtil.getAppTitle(ctx))
                 .setView(view)
                 .setPositiveButton(R.string.ok, dlgClick)

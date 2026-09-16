@@ -49,7 +49,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/close"
-                android:src="@drawable/ic_action_close_cancel_dark"
+                android:src="@drawable/ic_close"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/help_text"
                 app:layout_constraintTop_toTopOf="parent" />

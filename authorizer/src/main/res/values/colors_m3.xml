@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Authorizer Material 3 colour roles, generated from seed #1F6F8B (teal)
+  ~ with a brass (#8A6A1E) tertiary. Regenerate with material-color-utilities
+  ~ rather than editing by hand; both values/ and values-night/ come from
+  ~ the same script (see doc/UI_DESIGN.md).
+  -->
+<resources>
+    <color name="m3_primary">#116682</color>
+    <color name="m3_on_primary">#FFFFFF</color>
+    <color name="m3_primary_container">#BDE9FF</color>
+    <color name="m3_on_primary_container">#004D64</color>
+    <color name="m3_secondary">#4D616C</color>
+    <color name="m3_on_secondary">#FFFFFF</color>
+    <color name="m3_secondary_container">#D0E6F2</color>
+    <color name="m3_on_secondary_container">#354A53</color>
+    <color name="m3_tertiary">#785A0B</color>
+    <color name="m3_on_tertiary">#FFFFFF</color>
+    <color name="m3_tertiary_container">#FFDF9F</color>
+    <color name="m3_on_tertiary_container">#5C4300</color>
+    <color name="m3_error">#BA1A1A</color>
+    <color name="m3_on_error">#FFFFFF</color>
+    <color name="m3_error_container">#FFDAD6</color>
+    <color name="m3_on_error_container">#93000A</color>
+    <color name="m3_background">#F6FAFD</color>
+    <color name="m3_on_background">#171C1F</color>
+    <color name="m3_surface">#F6FAFD</color>
+    <color name="m3_on_surface">#171C1F</color>
+    <color name="m3_surface_variant">#DCE4E9</color>
+    <color name="m3_on_surface_variant">#40484C</color>
+    <color name="m3_outline">#70787D</color>
+    <color name="m3_outline_variant">#C0C8CD</color>
+    <color name="m3_inverse_surface">#2C3134</color>
+    <color name="m3_inverse_on_surface">#EDF1F5</color>
+    <color name="m3_inverse_primary">#8BD0EF</color>
+    <color name="m3_surface_tint">#116682</color>
+    <color name="m3_surface_dim">#D6DBDE</color>
+    <color name="m3_surface_bright">#F6FAFD</color>
+    <color name="m3_surface_container_lowest">#FFFFFF</color>
+    <color name="m3_surface_container_low">#F0F4F8</color>
+    <color name="m3_surface_container">#EAEEF2</color>
+    <color name="m3_surface_container_high">#E4E9EC</color>
+    <color name="m3_surface_container_highest">#DFE3E7</color>
+    <color name="m3_scrim">#000000</color>
+    <color name="m3_primary_fixed">#BDE9FF</color>
+    <color name="m3_primary_fixed_dim">#8BD0EF</color>
+    <color name="m3_on_primary_fixed">#001F2A</color>
+    <color name="m3_on_primary_fixed_variant">#004D64</color>
+    <color name="m3_secondary_fixed">#D0E6F2</color>
+    <color name="m3_secondary_fixed_dim">#B4CAD6</color>
+    <color name="m3_on_secondary_fixed">#081E27</color>
+    <color name="m3_on_secondary_fixed_variant">#354A53</color>
+    <color name="m3_tertiary_fixed">#FFDF9F</color>
+    <color name="m3_tertiary_fixed_dim">#EAC16C</color>
+    <color name="m3_on_tertiary_fixed">#261A00</color>
+    <color name="m3_on_tertiary_fixed_variant">#5C4300</color>
+</resources>

@@ -5,6 +5,9 @@ import androidx.core.content.ContextCompat;
 import android.content.pm.ServiceInfo;
 import androidx.core.app.ServiceCompat;
 import android.app.Notification;
+import android.os.Build;
+import android.content.pm.PackageManager;
+import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -138,6 +141,15 @@ public class BluetoothForegroundService extends Service {
 
         showBroadcastNotification();
 
+        if (!hasConnectPermission()) {
+            // Nothing can be registered without BLUETOOTH_CONNECT; stay quiet
+            // until the activity asks again once the permission is granted.
+            PasswdSafeUtil.dbginfo(TAG, "BLUETOOTH_CONNECT not granted, not registering HID");
+            stopForegroundService();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         if (!hidRegistered && !isInitPhase) {
             registrationAttempts = 0;
             setHid();
@@ -151,6 +163,16 @@ public class BluetoothForegroundService extends Service {
         super.onDestroy();
 
         stopForegroundService();
+    }
+
+    /** Whether the runtime permission the HID profile needs is granted */
+    private boolean hasConnectPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true;
+        }
+        return ContextCompat.checkSelfPermission(
+                this, Manifest.permission.BLUETOOTH_CONNECT) ==
+               PackageManager.PERMISSION_GRANTED;
     }
 
     public void stopForegroundService() {
@@ -193,12 +215,12 @@ public class BluetoothForegroundService extends Service {
         Intent notificationIntent = new Intent(this, PasswdSafe.class);
         notificationIntent.setAction(Intent.ACTION_MAIN);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, (int) System.currentTimeMillis(), notificationIntent, FLAG_UPDATE_CURRENT + ApiCompat.getPendingIntentImmutableFlag());
-        //NotificationCompat.Action action = new NotificationCompat.Action(R.drawable.ic_action_lock, "START/STOP", pendingIntent);
+        //NotificationCompat.Action action = new NotificationCompat.Action(R.drawable.ic_lock, "START/STOP", pendingIntent);
 
         serviceNotificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(getString(R.string.notification_body_init))
-                .setSmallIcon(R.drawable.selector_menu_policies)
+                .setSmallIcon(R.drawable.ic_verified_user)
                 .setContentIntent(pendingIntent)
                 //.addAction(action)
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -296,7 +318,7 @@ public class BluetoothForegroundService extends Service {
         intent.setAction(Intent.ACTION_MAIN);
         PendingIntent pendingIntent = PendingIntent.getActivity(this,0, intent, FLAG_UPDATE_CURRENT + ApiCompat.getPendingIntentImmutableFlag());
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.selector_menu_policies)
+                .setSmallIcon(R.drawable.ic_verified_user)
                 .setContentTitle(getString(R.string.notification_title_actionrequired))
                 .setContentText(getString(R.string.notification_body_actionrequired))
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

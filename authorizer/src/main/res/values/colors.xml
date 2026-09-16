@@ -1,41 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <color name="text_lgray">#808080</color>
-    <color name="text_gray">#323232</color>
-    <color name="treeview_icons">#259AC0</color>
-    <color name="treeview_icons_background">#323232</color>
+<!--
+  ~ Authorizer colours that are not Material 3 roles. The role table is in
+  ~ colors_m3.xml. Names that appear here and in values-night/colors.xml are
+  ~ theme-aware; keep the two files in step.
+  -->
+<resources>
+    <!-- Adaptive launcher icon backdrop (brand teal, the M3 light primary). -->
+    <color name="ic_launcher_background">#116682</color>
 
-    <color name="accent">#259AC0</color>
-    <color name="accentDark">#259AC0</color>
-    <color name="colorAccent">#259AC0</color>
-    <color name="colorPrimary">#259AC0</color>
-    <color name="colorPrimaryDark">#259AC0</color>
-    <color name="colorBackground">#259AC0</color>
+    <!-- Status colours: "ok" is used for saved-password and paired-device
+         states, "warning" for passwords that expire soon. -->
+    <color name="status_ok">#2E7D32</color>
+    <color name="status_warning">#8A6A1E</color>
 
-    <color name="primary">#259AC0</color>
-    <color name="background_light">#FAFAFA</color>
-    <color name="background_dark">#212121</color>
+    <!-- Password rendering: digits and symbols are tinted so a revealed
+         password can be read without mistaking 0/O or l/1. -->
+    <color name="password_letter">@color/m3_on_surface</color>
+    <color name="password_digit">@color/m3_primary</color>
+    <color name="password_symbol">@color/m3_tertiary</color>
 
-    <color name="menu_icon_color">#F0F0F0</color>
+    <!-- Record icons stored in the .psafe3 file (Iconics fonts). -->
+    <color name="record_icon">@color/m3_primary</color>
+    <color name="record_icon_background">@color/m3_primary_container</color>
 
-    <color name="accent_material_light" tools:override="true">@color/accent</color>
-    <color name="accent_material_dark" tools:override="true">@color/accentDark</color>
-    <color name="primary_dark_material_dark" tools:override="true">@color/colorPrimary</color>
-    <color name="primary_material_dark" tools:override="true">@color/colorPrimary</color>
-
-    <!-- this is needed as preference_category_material layout uses this color as the text color -->
-    <color name="preference_fallback_accent_color" tools:ignore="PrivateResource">@color/accent</color>
-
-
-    <!-- Copied from design compat library -->
+    <!-- Copied from the design compat library for the error text colour of
+         plain (non-Material) widgets. -->
     <color name="textinput_error_color_light">#FFD50000</color>
     <color name="textinput_error_color_dark">#FFFF6E6E</color>
 
-    <color name="text_color_green_light">#FF99CC00</color>
-    <color name="text_color_green_dark">#FF669900</color>
-
-    <!-- Material palette values formerly provided by the removed
-         com.mikepenz:materialize library -->
+    <!-- Legacy names still referenced by layouts that have not moved to the
+         Material 3 roles yet; aliases so both resolve to the same palette. -->
+    <color name="text_lgray">@color/m3_on_surface_variant</color>
+    <color name="treeview_icons">@color/record_icon</color>
+    <color name="treeview_icons_background">@color/record_icon_background</color>
+    <color name="menu_icon_color">@color/m3_on_surface_variant</color>
+    <color name="primary">@color/m3_primary</color>
+    <color name="accent">@color/m3_primary</color>
+    <color name="colorAccent">@color/m3_primary</color>
+    <color name="colorPrimary">@color/m3_primary</color>
     <color name="md_grey_100">#FFF5F5F5</color>
     <color name="md_grey_700">#FF616161</color>
     <color name="md_white_1000">#FFFFFFFF</color>

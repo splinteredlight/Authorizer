@@ -32,6 +32,6 @@
         android:clickable="true"
         android:contentDescription="@string/close"
         android:focusable="true"
-        android:src="@drawable/ic_action_close_cancel"/>
+        android:src="@drawable/ic_close"/>
 
 </LinearLayout>

@@ -9,12 +9,13 @@
 package net.tjado.passwdsafe;
 
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
 import net.tjado.authorizer.hid.HidStatus;
 import net.tjado.authorizer.hid.HidGadgetSetup;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -1181,7 +1182,7 @@ public class PasswdSafeRecordBasicFragment
         bondedDevices.forEach(device -> deviceList.put(device.getName(), device));
         CharSequence[] cs = deviceList.keySet().toArray(new CharSequence[deviceList.size()]);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
 
         builder.setTitle(R.string.autotype_bluetooth_devices).setItems(cs, (dialog, which) ->
             connectAndTypeBluetooth(btService, deviceList.get(cs[which]), output));
@@ -1242,7 +1243,7 @@ public class PasswdSafeRecordBasicFragment
                                             final Boolean sendOTP)
     {
         // Build an AlertDialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
 
         builder.setTitle(R.string.autotype_lang)
                .setItems(R.array.autotype_lang_titles, new DialogInterface.OnClickListener() {
@@ -1409,7 +1410,7 @@ public class PasswdSafeRecordBasicFragment
     {
 
         // Build an AlertDialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
 
         builder.setTitle(R.string.autotype_lang)
                .setItems(R.array.autotype_lang_titles,
@@ -1427,7 +1428,7 @@ public class PasswdSafeRecordBasicFragment
             View dlgView = factory.inflate(R.layout.confirm_prompt, null);
 
             final CheckBox itsConfirmCb = (CheckBox)dlgView.findViewById(R.id.confirm);
-            AlertDialog.Builder alert = new AlertDialog.Builder(ctx)
+            AlertDialog.Builder alert = new MaterialAlertDialogBuilder(ctx)
                     .setTitle(getString(R.string.otp_overwrite))
                     .setView(dlgView)
                     .setPositiveButton(R.string.replace,

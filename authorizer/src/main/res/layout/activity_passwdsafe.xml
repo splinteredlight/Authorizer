@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ Copyright (©) 2015 Jeff Harris <jefftharris@gmail.com>
   ~ All rights reserved. Use of the code is allowed under the
@@ -6,39 +7,55 @@
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
 
-<androidx.constraintlayout.widget.ConstraintLayout
-    android:id="@+id/drawer_layout"
+<!-- Phone shell: top app bar, one content pane, the filter/expiry banners
+     and the bottom navigation. Window insets are applied by the activity
+     (app bar top, navigation bar bottom) so the bars extend edge to edge. -->
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     tools:context="net.tjado.passwdsafe.PasswdSafe">
 
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:liftOnScroll="false">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            style="@style/Widget.Authorizer.Toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"/>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
     <LinearLayout android:id="@+id/no_permission_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="@dimen/activity_vertical_margin"
-        android:paddingLeft="@dimen/activity_horizontal_margin"
-        android:paddingRight="@dimen/activity_horizontal_margin"
-        android:paddingTop="@dimen/activity_vertical_margin"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_navigation_view"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:padding="@dimen/screen_gutter">
 
         <TextView android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/no_file_permission"/>
+            android:text="@string/no_file_permission"
+            android:textAppearance="?attr/textAppearanceBodyLarge"/>
 
-        <Button android:id="@+id/reload"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reload"
+            style="@style/Widget.Authorizer.Button.Tonal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="@string/reload"/>
 
-        <Button android:id="@+id/app_settings"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/app_settings"
+            style="@style/Widget.Authorizer.Button.Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/app_settings"/>
@@ -46,46 +63,21 @@
     </LinearLayout>
 
     <FrameLayout android:id="@+id/content"
-                android:layout_width="match_parent"
-       android:layout_height="0dp"
-       android:layout_alignParentEnd="true"
-       android:layout_alignParentStart="true"
-       android:layout_alignParentTop="true"
-       android:paddingBottom="8dp"
-       android:layout_marginEnd="16dp"
-       android:layout_marginLeft="16dp"
-       android:layout_marginRight="16dp"
-       android:layout_marginStart="16dp"
-       app:layout_constraintBottom_toTopOf="@+id/bottom_panels"
-       app:layout_constraintLeft_toLeftOf="parent"
-       app:layout_constraintRight_toRightOf="parent"
-       app:layout_constraintTop_toTopOf="parent"/>
-
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
     <include android:id="@+id/bottom_panels"
         layout="@layout/activity_passwdsafe_bottom_panels"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@+id/content"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_navigation_view"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"/>
+        android:layout_height="wrap_content"/>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
-       android:id="@+id/bottom_navigation_view"
-       android:layout_width="match_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="bottom"
-       style="@style/BottomNavigation"
-       app:labelVisibilityMode="labeled"
-       app:layout_constraintBottom_toBottomOf="parent"
-       app:layout_constraintEnd_toEndOf="parent"
-       app:layout_constraintStart_toStartOf="parent"
-       app:menu="@menu/bottom_nav_passwdsafe"
-       app:elevation="8dp"
-       app:itemIconSize="26dp"
-       app:itemBackground="@color/tab_bg_color"
-       app:itemIconTint="@color/tab_color"
-       app:itemTextColor="@color/tab_color"/>
+        android:id="@+id/bottom_navigation_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_passwdsafe"
+        app:paddingBottomSystemWindowInsets="false"/>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

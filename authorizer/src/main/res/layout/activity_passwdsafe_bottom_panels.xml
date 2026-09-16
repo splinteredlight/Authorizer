@@ -7,82 +7,101 @@
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
 
+<!-- Banners shown above the bottom navigation: the active search filter and
+     the expired-password notice. Both are dismissable; the expiry one opens
+     the expiry view when tapped. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/bottom_panels"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <androidx.cardview.widget.CardView
+    <LinearLayout
         android:id="@+id/query_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardPreventCornerOverlap="true"
-        app:cardUseCompatPadding="true"
-        app:contentPadding="4dp">
-        <RelativeLayout android:layout_width="fill_parent"
-                        android:layout_height="wrap_content"
-                        android:visibility="visible">
-            <ImageButton android:id="@+id/query_clear_btn"
-                         style="@style/Widget.AppCompat.ActionButton"
-                         android:layout_width="wrap_content"
-                         android:layout_height="wrap_content"
-                         android:layout_alignParentEnd="true"
-                         android:layout_alignParentRight="true"
-                         android:layout_centerVertical="true"
-                         android:contentDescription="@string/clear"
-                         android:src="?attr/drawableCloseCancel"/>
+        android:layout_marginStart="@dimen/screen_gutter"
+        android:layout_marginEnd="@dimen/screen_gutter"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_banner_filter"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp">
 
-            <TextView android:id="@+id/query"
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_alignParentLeft="true"
-                      android:layout_alignParentStart="true"
-                      android:layout_centerVertical="true"
-                      android:layout_toLeftOf="@id/query_clear_btn"
-                      android:layout_toStartOf="@id/query_clear_btn"
-                      android:gravity="center_vertical"
-                      android:textAppearance="?android:attr/textAppearanceMedium"/>
-        </RelativeLayout>
-    </androidx.cardview.widget.CardView>
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_search"
+            app:tint="?attr/colorOnSecondaryContainer"
+            xmlns:app="http://schemas.android.com/apk/res-auto"/>
 
-    <androidx.cardview.widget.CardView
+        <TextView android:id="@+id/query"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSecondaryContainer"/>
+
+        <ImageButton android:id="@+id/query_clear_btn"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/clear"
+            android:src="@drawable/ic_close"
+            app:tint="?attr/colorOnSecondaryContainer"
+            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/expiry_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/screen_gutter"
+        android:layout_marginEnd="@dimen/screen_gutter"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_banner_expiry"
         android:clickable="true"
         android:focusable="true"
-        android:foreground="?selectableItemBackground"
-        app:cardPreventCornerOverlap="true"
-        app:cardUseCompatPadding="true"
-        app:contentPadding="4dp">
-        <RelativeLayout android:layout_width="fill_parent"
-                        android:layout_height="wrap_content"
-                        android:visibility="visible">
-            <ImageButton android:id="@+id/expiry_clear_btn"
-                         style="@style/Widget.AppCompat.ActionButton"
-                         android:layout_width="wrap_content"
-                         android:layout_height="wrap_content"
-                         android:layout_alignParentEnd="true"
-                         android:layout_alignParentRight="true"
-                         android:layout_centerVertical="true"
-                         android:contentDescription="@string/clear"
-                         android:src="?attr/drawableCloseCancel"/>
+        android:foreground="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp">
 
-            <TextView android:id="@+id/expiry"
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_alignParentLeft="true"
-                      android:layout_alignParentStart="true"
-                      android:layout_centerVertical="true"
-                      android:layout_toLeftOf="@id/expiry_clear_btn"
-                      android:layout_toStartOf="@id/expiry_clear_btn"
-                      android:gravity="center_vertical"
-                      android:textAppearance="?android:attr/textAppearanceMedium"/>
-        </RelativeLayout>
-    </androidx.cardview.widget.CardView>
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_schedule"
+            app:tint="?attr/colorOnErrorContainer"
+            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+
+        <TextView android:id="@+id/expiry"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnErrorContainer"/>
+
+        <ImageButton android:id="@+id/expiry_clear_btn"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/clear"
+            android:src="@drawable/ic_close"
+            app:tint="?attr/colorOnErrorContainer"
+            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+    </LinearLayout>
 
 </LinearLayout>
-

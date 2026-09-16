@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ Copyright (©) 2015 Jeff Harris <jefftharris@gmail.com>
   ~ All rights reserved. Use of the code is allowed under the
@@ -6,54 +7,68 @@
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
 
-<androidx.drawerlayout.widget.DrawerLayout
-    android:id="@+id/drawer_layout"
+<!-- Wide-screen shell (large landscape, 1024dp+): the entry list stays on the
+     left while a record or edit form opens on the right. -->
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context="net.tjado.passwdsafe.PasswdSafe">
 
-    <RelativeLayout android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:liftOnScroll="false">
 
-        <include android:id="@+id/bottom_panels"
-                 layout="@layout/activity_passwdsafe_bottom_panels"
-                 android:layout_width="match_parent"
-                 android:layout_height="wrap_content"/>
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            style="@style/Widget.Authorizer.Toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"/>
 
-        <LinearLayout android:id="@+id/two_pane"
-                      android:layout_width="match_parent"
-                      android:layout_height="match_parent"
-                      android:layout_above="@id/bottom_panels"
-                      android:layout_alignParentEnd="true"
-                      android:layout_alignParentLeft="true"
-                      android:layout_alignParentRight="true"
-                      android:layout_alignParentStart="true"
-                      android:layout_alignParentTop="true"
-                      android:layout_marginEnd="16dp"
-                      android:layout_marginLeft="16dp"
-                      android:layout_marginRight="16dp"
-                      android:layout_marginStart="16dp"
-                      android:baselineAligned="false"
-                      android:divider="?android:attr/dividerHorizontal"
-                      android:orientation="horizontal"
-                      android:showDividers="middle"
-                      tools:ignore="UnusedAttribute">
+    </com.google.android.material.appbar.AppBarLayout>
 
-            <fragment android:id="@+id/content_list"
-                      android:name="net.tjado.passwdsafe.PasswdSafeListFragment"
-                      android:layout_width="0dp"
-                      android:layout_height="match_parent"
-                      android:layout_weight="1"
-                      tools:layout="@android:layout/list_content"/>
+    <LinearLayout android:id="@+id/two_pane"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
 
-            <FrameLayout android:id="@+id/content"
-                         android:layout_width="0dp"
-                         android:layout_height="match_parent"
-                         android:layout_marginLeft="16dp"
-                         android:layout_marginStart="16dp"
-                         android:layout_weight="2"/>
-        </LinearLayout>
-    </RelativeLayout>
-</androidx.drawerlayout.widget.DrawerLayout>
+        <fragment android:id="@+id/content_list"
+            android:name="net.tjado.passwdsafe.PasswdSafeListFragment"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            tools:layout="@android:layout/list_content"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="?attr/colorOutlineVariant"/>
+
+        <FrameLayout android:id="@+id/content"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"/>
+    </LinearLayout>
+
+    <include android:id="@+id/bottom_panels"
+        layout="@layout/activity_passwdsafe_bottom_panels"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_passwdsafe"
+        app:paddingBottomSystemWindowInsets="false"/>
+
+</LinearLayout>

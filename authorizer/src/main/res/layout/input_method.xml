@@ -25,9 +25,9 @@
             android:layout_alignParentRight="true"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:drawableLeft="@drawable/ic_passwdsafe_light"
+            android:drawableLeft="@drawable/ic_key_on_dark"
             android:drawablePadding="6dp"
-            android:drawableStart="@drawable/ic_passwdsafe_light"
+            android:drawableStart="@drawable/ic_key_on_dark"
             android:textAppearance="?android:attr/textAppearanceSmall"
             tools:ignore="UseCompatTextViewDrawableXml"/>
 

@@ -12,12 +12,12 @@
     <item android:id="@+id/menu_protect"
           android:checkable="true"
           android:title="@string/protected_record"
-          android:icon="@drawable/ic_action_lock_open"
+          android:icon="@drawable/ic_lock_open"
           android:checked="false"
           app:showAsAction="ifRoom"/>
 
     <item android:id="@+id/menu_save"
-        android:icon="@drawable/ic_action_save"
+        android:icon="@drawable/ic_save"
         android:title="@string/save"
         app:showAsAction="ifRoom"/>
 

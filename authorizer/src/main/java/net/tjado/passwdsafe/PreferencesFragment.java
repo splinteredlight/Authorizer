@@ -26,6 +26,8 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
+
+import com.google.android.material.color.DynamicColors;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
@@ -276,6 +278,9 @@ public class PreferencesFragment extends PreferenceFragmentCompat
             itsThemePref = requirePreference(Preferences.PREF_DISPLAY_THEME);
             itsThemePref.setEntries(ThemePref.getDisplayNames(res));
             itsThemePref.setEntryValues(ThemePref.getValues());
+            if (!DynamicColors.isDynamicColorAvailable()) {
+                hidePreference(Preferences.PREF_DISPLAY_DYNAMIC_COLORS);
+            }
             updateThemePrefSummary(prefs);
 
             Preference pref =
@@ -343,6 +348,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                                               @Nullable String key)
         {
             boolean updateTheme = false;
+            boolean recreate = false;
             if (key == null) {
                 updateTheme = true;
             } else {
@@ -351,10 +357,19 @@ public class PreferencesFragment extends PreferenceFragmentCompat
                         updateTheme = true;
                         break;
                     }
+                    case Preferences.PREF_DISPLAY_DYNAMIC_COLORS: {
+                        recreate = true;
+                        break;
+                    }
                 }
             }
             if (updateTheme) {
                 updateThemePrefSummary(prefs);
+                // AppCompat recreates the activity when the night mode
+                // actually changes
+                PasswdSafeApp.applyNightMode(prefs);
+            }
+            if (recreate) {
                 requireActivity().recreate();
             }
         }

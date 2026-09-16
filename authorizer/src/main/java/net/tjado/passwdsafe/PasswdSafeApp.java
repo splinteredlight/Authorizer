@@ -13,17 +13,18 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 
+import com.google.android.material.color.DynamicColors;
 import com.mikepenz.iconics.Iconics;
 import com.mikepenz.iconics.typeface.library.devicon.DevIcon;
 import com.mikepenz.iconics.typeface.library.materialdesigniconic.MaterialDesignIconic;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.annotation.Nullable;
 
 import net.tjado.passwdsafe.file.PasswdExpiryFilter;
@@ -90,6 +91,7 @@ public final class PasswdSafeApp extends Application
         super.onCreate();
         PasswdRecordFilter.initMatches(getApplicationContext());
         SharedPreferences prefs = Preferences.getSharedPrefs(this);
+        applyNightMode(prefs);
 
         AlarmManager alarmMgr =
                 (AlarmManager)getSystemService(Context.ALARM_SERVICE);
@@ -425,41 +427,46 @@ public final class PasswdSafeApp extends Application
     }
 
     /**
-     * Setup the theme on a normal or dialog activity
+     * Apply the theme preference: the app uses one Material 3 day/night
+     * theme, so the preference only selects the night mode. Called from the
+     * application and whenever the preference changes; AppCompat recreates
+     * the started activities itself when the mode differs.
      */
-    private static void setupActTheme(Activity act, boolean isDialog)
+    public static void applyNightMode(SharedPreferences prefs)
     {
-        int uimode = Configuration.UI_MODE_NIGHT_UNDEFINED;
-
-        SharedPreferences prefs = Preferences.getSharedPrefs(act);
+        int mode;
         switch (Preferences.getDisplayTheme(prefs)) {
-            case FOLLOW_SYSTEM: {
-                uimode = act.getResources().getConfiguration().uiMode &
-                         Configuration.UI_MODE_NIGHT_MASK;
-                break;
-            }
             case LIGHT: {
-                uimode = Configuration.UI_MODE_NIGHT_NO;
+                mode = AppCompatDelegate.MODE_NIGHT_NO;
                 break;
             }
             case DARK: {
-                uimode = Configuration.UI_MODE_NIGHT_YES;
+                mode = AppCompatDelegate.MODE_NIGHT_YES;
+                break;
+            }
+            case FOLLOW_SYSTEM:
+            default: {
+                mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
                 break;
             }
         }
+        if (AppCompatDelegate.getDefaultNightMode() != mode) {
+            AppCompatDelegate.setDefaultNightMode(mode);
+        }
+    }
 
-        switch (uimode) {
-            case Configuration.UI_MODE_NIGHT_NO:
-            case Configuration.UI_MODE_NIGHT_UNDEFINED: {
-                act.setTheme(isDialog ? R.style.PwsAppTheme_Dialog :
-                                     R.style.PwsAppTheme);
-                break;
-            }
-            case Configuration.UI_MODE_NIGHT_YES: {
-                act.setTheme(isDialog ? R.style.PwsAppThemeDark_Dialog :
-                                     R.style.PwsAppThemeDark);
-                break;
-            }
+    /**
+     * Setup the theme on a normal or dialog activity. The manifest already
+     * names the Material theme; this only layers the wallpaper-derived
+     * dynamic colours on top when the user has them enabled (Android 12+).
+     */
+    private static void setupActTheme(Activity act,
+                                      @SuppressWarnings("unused") boolean isDialog)
+    {
+        SharedPreferences prefs = Preferences.getSharedPrefs(act);
+        applyNightMode(prefs);
+        if (Preferences.getDisplayDynamicColors(prefs)) {
+            DynamicColors.applyToActivityIfAvailable(act);
         }
     }
 

@@ -1,9 +1,10 @@
 package net.tjado.passwdsafe;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
 import androidx.core.content.ContextCompat;
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -647,7 +648,7 @@ public class BluetoothFragment extends Fragment
 
             } else if (itemId == R.id.menu_unpair) {
                 PasswdSafeUtil.dbginfo(TAG, "Paired device menu: clicked unpair");
-                AlertDialog.Builder alert = new AlertDialog.Builder(requireContext())
+                AlertDialog.Builder alert = new MaterialAlertDialogBuilder(requireContext())
                     .setTitle(getString(R.string.confirm))
                     .setMessage(getString(R.string.bt_unpair_info))
                     .setPositiveButton(R.string.confirm,

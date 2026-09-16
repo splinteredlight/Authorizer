@@ -81,7 +81,7 @@ public class LauncherFileShortcuts extends AppCompatActivity
                 ShortcutInfo shortcutInfo = new ShortcutInfo.Builder(this, UUID.randomUUID().toString())
                         .setShortLabel(fileName)
                         .setLongLabel(fileName)
-                        .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher_passwdsafe))
+                        .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
                         .setIntent(openIntent)
                         .build();
                 ShortcutManager sm = this.getSystemService(ShortcutManager.class);
@@ -92,7 +92,7 @@ public class LauncherFileShortcuts extends AppCompatActivity
                 intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, fileName);
                 intent.putExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
                                 Intent.ShortcutIconResource.fromContext(
-                                        this, R.mipmap.ic_launcher_passwdsafe));
+                                        this, R.mipmap.ic_launcher));
             }
 
             setResult(RESULT_OK, intent);
