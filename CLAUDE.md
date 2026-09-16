@@ -200,9 +200,16 @@ HID). `adb shell cmd uimode night yes|no` switches dark mode, and
 
 ## Testing on the device
 
-Target hardware: Pixel 9 Pro XL ("komodo"), Android 17, Magisk, SELinux
-enforcing. `adb` and root shell work; the phone locks after 30 s so UI
-automation needs it unlocked.
+Two phones, one per HID path:
+
+- Pixel 9 Pro XL ("komodo"), Android 17, Magisk, SELinux enforcing: rooted,
+  so it is the device for the USB HID gadget path (`adb` and root shell work).
+- Pixel 11 Pro XL ("kodiak"): not rooted, so it types through the Pico
+  Bluetooth bridge; use it to check the unrooted experience (no `su`, USB
+  auto-type unavailable).
+
+Both lock after 30 s, so UI automation needs them unlocked. Pick the device
+with `adb -s <serial>` when both are plugged in.
 
 ```sh
 adb install -r authorizer/build/outputs/apk/release/authorizer-release.apk
