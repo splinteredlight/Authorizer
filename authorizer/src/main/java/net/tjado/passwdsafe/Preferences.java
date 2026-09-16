@@ -129,6 +129,8 @@ public class Preferences
 
     public static final String PREF_DISPLAY_THEME = "displayThemePref";
     private static final ThemePref PREF_DISPLAY_THEME_DEF = ThemePref.FOLLOW_SYSTEM;
+    public static final String PREF_DISPLAY_DYNAMIC_COLORS = "displayDynamicColorsPref";
+    private static final boolean PREF_DISPLAY_DYNAMIC_COLORS_DEF = true;
 
     public static final String PREF_DISPLAY_LIST_TREEVIEW = "displayListTreeViewPref";
     private static final boolean PREF_DISPLAY_LIST_TREEVIEW_DEF = true;
@@ -509,6 +511,16 @@ public class Preferences
         } catch (IllegalArgumentException e) {
             return PREF_DISPLAY_THEME_DEF;
         }
+    }
+
+    /**
+     * Get whether the wallpaper-derived (dynamic) colours are used on
+     * Android 12 and later
+     */
+    public static boolean getDisplayDynamicColors(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_DISPLAY_DYNAMIC_COLORS,
+                                PREF_DISPLAY_DYNAMIC_COLORS_DEF);
     }
 
     /**

@@ -26,7 +26,7 @@
     <Row>
         <Key android:codes="-201"
              android:keyEdgeFlags="left"
-             android:keyIcon="@drawable/ic_passwdsafe_light"
+             android:keyIcon="@drawable/ic_key_on_dark"
              android:keyWidth="15%p"/>
         <Key android:codes="-104"
              android:keyLabel="@string/title"

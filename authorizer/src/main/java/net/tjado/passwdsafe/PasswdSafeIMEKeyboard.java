@@ -60,7 +60,7 @@ public final class PasswdSafeIMEKeyboard extends Keyboard
             break;
         }
         case EditorInfo.IME_ACTION_SEARCH: {
-            enterIcon = R.drawable.ic_action_search;
+            enterIcon = R.drawable.ic_search;
             break;
         }
         case EditorInfo.IME_ACTION_SEND: {

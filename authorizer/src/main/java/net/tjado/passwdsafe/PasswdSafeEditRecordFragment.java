@@ -8,6 +8,7 @@
 package net.tjado.passwdsafe;
 
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -468,7 +469,7 @@ public class PasswdSafeEditRecordFragment
                 return true;
             }
 
-            AlertDialog.Builder alert = new AlertDialog.Builder(requireContext())
+            AlertDialog.Builder alert = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.confirm))
                 .setMessage("Save with empty password?")
                 .setPositiveButton(R.string.confirm,
@@ -1272,8 +1273,8 @@ public class PasswdSafeEditRecordFragment
     {
         if (itsIsV3) {
             protItem.setChecked(itsIsProtected);
-            protItem.setIcon(itsIsProtected ? R.drawable.ic_action_lock :
-                                     R.drawable.ic_action_lock_open);
+            protItem.setIcon(itsIsProtected ? R.drawable.ic_lock :
+                                     R.drawable.ic_lock_open);
         } else {
             protItem.setVisible(false);
         }

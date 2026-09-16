@@ -12,7 +12,7 @@
                   android:key="top_prefs">
 
     <PreferenceCategory android:key="currentFileOptions"
-        android:title="Current file">
+        android:title="@string/pref_category_current_file">
         <!--suppress AndroidElementNotAllowed -->
         <net.tjado.passwdsafe.lib.view.LongSwitchPreference
             android:name="fileWriteablePref Pref"
@@ -21,7 +21,7 @@
             android:title="@string/writable"
             android:summary="@string/writeable_summary"/>
 
-    </PreferenceCategory>>
+    </PreferenceCategory>
 
     <PreferenceScreen android:key="fileOptions"
         android:title="@string/files" app:allowDividerAbove="true">
@@ -262,6 +262,14 @@
 
         <!--suppress AndroidElementNotAllowed -->
         <net.tjado.passwdsafe.view.LongCheckBoxPreference
+            android:name="displayDynamicColors Pref"
+            android:defaultValue="true"
+            android:key="displayDynamicColorsPref"
+            android:summary="@string/dynamic_colors_summary"
+            android:title="@string/dynamic_colors"/>
+
+        <!--suppress AndroidElementNotAllowed -->
+        <net.tjado.passwdsafe.view.LongCheckBoxPreference
             android:name="displayList Pref"
             android:defaultValue="true"
             android:key="displayListTreeViewPref"
@@ -277,7 +285,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:key="appOptions"
-        android:title="App">
+        android:title="@string/pref_category_app">
 
         <PreferenceScreen android:key="aboutOptions"
             android:title="@string/about_app"

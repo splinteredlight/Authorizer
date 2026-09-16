@@ -90,7 +90,7 @@
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-2"
              android:keyEdgeFlags="left"
-             android:keyIcon="@drawable/ic_passwdsafe_light"
+             android:keyIcon="@drawable/ic_key_on_dark"
              android:keyWidth="15%p"/>
         <Key android:codes="44"
              android:keyLabel=","/>

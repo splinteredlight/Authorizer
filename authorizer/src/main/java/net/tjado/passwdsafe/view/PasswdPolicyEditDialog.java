@@ -7,6 +7,7 @@
  */
 package net.tjado.passwdsafe.view;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Context;
@@ -183,7 +184,7 @@ public class PasswdPolicyEditDialog extends AppCompatDialogFragment
                     }
                 };
 
-        AlertDialog.Builder alert = new AlertDialog.Builder(ctx)
+        AlertDialog.Builder alert = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(titleId)
                 .setView(itsView)
                 .setPositiveButton(R.string.ok, dlgClick)

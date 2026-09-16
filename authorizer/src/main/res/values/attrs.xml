@@ -7,8 +7,8 @@
   ~ http://www.opensource.org/licenses/artistic-license-2.0.php
   -->
 <resources>
-    <attr name="navViewStyle" format="reference"/>
-
+    <!-- Theme-resolved drawables used from code and layouts. Every value is a
+         tinted vector, so there are no light/dark variants any more. -->
     <attr name="drawableActionHome" format="reference"/>
     <attr name="drawableActionNavigationMoreVert" format="reference"/>
     <attr name="drawableActionNewPassword" format="reference"/>
@@ -19,9 +19,6 @@
     <attr name="drawablePasswdsafe" format="reference"/>
     <attr name="drawablePersonOutline" format="reference"/>
 
+    <!-- Colour for "good" states (saved password available, device paired). -->
     <attr name="textColorGreen" format="reference"/>
-
-    <attr name="customNavigationBarColor" format="reference" />
-    <attr name="layout_columnWeight" format="float" />"
-    <attr name="preferenceTheme" format="reference" />"
 </resources>

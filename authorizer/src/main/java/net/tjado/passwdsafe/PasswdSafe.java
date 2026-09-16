@@ -7,7 +7,9 @@
  */
 package net.tjado.passwdsafe;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.Manifest;
+import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import net.tjado.authorizer.hid.HidStatus;
 import net.tjado.authorizer.hid.HidGadgetSetup;
@@ -282,6 +284,7 @@ public class PasswdSafe extends AppCompatActivity
 
     /** The search menu item */
     private MenuItem itsSearchItem = null;
+    private Menu itsOptionsMenu = null;
 
     private final NavSelectListener itsNavSelectListener = new NavSelectListener();
     private View itsContent;
@@ -380,6 +383,7 @@ public class PasswdSafe extends AppCompatActivity
     {
         PasswdSafeApp.setupTheme(this);
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         itsBackCallback = new OnBackPressedCallback(true)
         {
             @Override
@@ -397,8 +401,11 @@ public class PasswdSafe extends AppCompatActivity
         }
 
         setContentView(R.layout.activity_passwdsafe);
+        setSupportActionBar(findViewById(R.id.toolbar));
         itsIsTwoPane = (findViewById(R.id.two_pane) != null);
-        applyEdgeToEdgeInsets(findViewById(R.id.drawer_layout));
+        applyEdgeToEdgeInsets(findViewById(R.id.drawer_layout),
+                              findViewById(R.id.app_bar),
+                              findViewById(R.id.bottom_navigation_view));
 
         itsContent = findViewById(R.id.content);
         itsNoPermGroup = findViewById(R.id.no_permission_group);
@@ -663,6 +670,7 @@ public class PasswdSafe extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu)
     {
         getMenuInflater().inflate(R.menu.activity_passwdsafe, menu);
+        itsOptionsMenu = menu;
         restoreActionBar();
 
         // Get the SearchView and set the searchable configuration
@@ -670,7 +678,6 @@ public class PasswdSafe extends AppCompatActivity
                 (SearchManager)getSystemService(Context.SEARCH_SERVICE);
         itsSearchItem = menu.findItem(R.id.menu_search);
         itsSearchItem.setOnActionExpandListener(this);
-        collapseSearch();
         if (searchManager != null) {
             SearchView searchView = (SearchView)itsSearchItem.getActionView();
             if (searchView != null) {
@@ -775,11 +782,11 @@ public class PasswdSafe extends AppCompatActivity
         if (item != null) {
             if(isFileOpen()) {
                 if(isFileWritable()) {
-                    item.setIcon(R.drawable.ic_action_add );
+                    item.setIcon(R.drawable.ic_add );
                     item.setEnabled(true);
                     item.setVisible(options.get(MENU_BIT_CAN_ADD));
                 } else {
-                    item.setIcon(R.drawable.ic_action_read_only);
+                    item.setIcon(R.drawable.ic_edit_off);
                     item.setEnabled(false);
                     item.setVisible(true);
                 }
@@ -1044,15 +1051,27 @@ public class PasswdSafe extends AppCompatActivity
     @Override
     public boolean onMenuItemActionExpand(@NonNull MenuItem item)
     {
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
         return true;
     }
 
     @Override
     public boolean onMenuItemActionCollapse(@NonNull MenuItem item)
     {
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
         return true;
+    }
+
+    /**
+     * Re-run onPrepareOptionsMenu on the current menu. With a Toolbar-backed
+     * action bar, invalidateOptionsMenu() rebuilds the whole menu, which
+     * recreates the SearchView and collapses it again the moment it expands.
+     */
+    private void refreshOptionsMenu()
+    {
+        if (itsOptionsMenu != null) {
+            onPrepareOptionsMenu(itsOptionsMenu);
+        }
     }
 
     /**
@@ -1061,7 +1080,13 @@ public class PasswdSafe extends AppCompatActivity
      * inset itself, so this mostly keeps the bottom panels above the
      * navigation bar.
      */
-    private static void applyEdgeToEdgeInsets(View root)
+    /**
+     * Lay the app bar and the bottom navigation out under the system bars so
+     * their colours run edge to edge, while their content stays clear of the
+     * status bar, navigation bar and any display cutout.
+     */
+    private static void applyEdgeToEdgeInsets(View root, View appBar,
+                                              View bottomNav)
     {
         if (root == null) {
             return;
@@ -1070,7 +1095,13 @@ public class PasswdSafe extends AppCompatActivity
             Insets bars = windowInsets.getInsets(
                     WindowInsetsCompat.Type.systemBars() |
                     WindowInsetsCompat.Type.displayCutout());
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            v.setPadding(bars.left, 0, bars.right, 0);
+            if (appBar != null) {
+                appBar.setPadding(0, bars.top, 0, 0);
+            }
+            if (bottomNav != null) {
+                bottomNav.setPadding(0, 0, 0, bars.bottom);
+            }
             return WindowInsetsCompat.CONSUMED;
         });
     }
@@ -1885,7 +1916,7 @@ public class PasswdSafe extends AppCompatActivity
         if ((itsSearchItem != null) && itsSearchItem.isActionViewExpanded()) {
             itsSearchItem.collapseActionView();
         }
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
     }
 
     /**
@@ -2225,6 +2256,10 @@ public class PasswdSafe extends AppCompatActivity
             }
 
             FragmentTransaction txn = fragMgr.beginTransaction();
+            txn.setCustomAnimations(R.anim.fragment_fade_in,
+                                    R.anim.fragment_fade_out,
+                                    R.anim.fragment_fade_in,
+                                    R.anim.fragment_fade_out);
 
             if (clearBackStack) {
                 //noinspection StatementWithEmptyBody
@@ -2272,7 +2307,7 @@ public class PasswdSafe extends AppCompatActivity
                 }
                 navRun.run();
             };
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.continue_p)
                     .setMessage(R.string.any_changes_will_be_lost)
                     .setPositiveButton(R.string.continue_str, listener)
@@ -2345,7 +2380,7 @@ public class PasswdSafe extends AppCompatActivity
             }
             case VIEW_RECORD: {
                 showHomeNav = true;
-                returnIcon = R.drawable.ic_action_close_cancel;
+                returnIcon = R.drawable.ic_close;
                 showLeftList = true;
                 fileTimeoutPaused = false;
                 itsTitle = itsFileDataFrag.useFileData(fileData -> {
@@ -2364,7 +2399,7 @@ public class PasswdSafe extends AppCompatActivity
             }
             case EDIT_RECORD: {
                 showHomeNav = true;
-                returnIcon = R.drawable.ic_action_close_cancel;
+                returnIcon = R.drawable.ic_close;
                 itsTitle = itsFileDataFrag.useFileData(fileData -> {
                     if (itsLocation.isRecord()) {
                         PwsRecord rec = fileData.getRecord(itsLocation.getRecord());

@@ -1,79 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Home when no file is open: the recently used files and the "Open file"
+     action. Also embedded (without the action) by the launcher shortcut
+     chooser, which sets the root to wrap its content. -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin">
+    android:layout_height="match_parent">
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/no_default"
+        style="@style/Widget.Authorizer.Button.Text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:text="@string/none_paren"
-        app:layout_constraintBottom_toTopOf="@+id/recent_label"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed" />
+        app:layout_constraintTop_toTopOf="parent"/>
 
     <TextView
         android:id="@+id/recent_label"
-        style="@android:style/TextAppearance.Medium"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:paddingStart="@dimen/screen_gutter"
+        android:paddingTop="16dp"
+        android:paddingEnd="@dimen/screen_gutter"
+        android:paddingBottom="4dp"
         android:text="@string/recent_files"
-        app:layout_constraintBottom_toTopOf="@+id/separator"
+        android:textAppearance="@style/TextAppearance.Authorizer.Section"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/no_default" />
-
-    <View
-        android:id="@+id/separator"
-        style="@style/Separator.Light"
-        android:layout_width="0dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/empty"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/recent_label" />
+        app:layout_constraintTop_toBottomOf="@+id/no_default"/>
 
     <TextView
         android:id="@+id/empty"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:drawablePadding="16dp"
+        android:gravity="center"
+        android:paddingStart="32dp"
+        android:paddingTop="48dp"
+        android:paddingEnd="32dp"
+        android:paddingBottom="24dp"
         android:text="@string/no_files_select_to_open"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/files"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        app:drawableTopCompat="@drawable/ic_empty_files"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/separator" />
+        app:layout_constraintTop_toBottomOf="@+id/recent_label"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/files"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:paddingBottom="96dp"
         android:scrollbars="vertical"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/empty" />
+        app:layout_constraintTop_toBottomOf="@+id/empty"/>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:contentDescription="@string/open"
-        android:src="@drawable/ic_action_file"
+        android:layout_margin="@dimen/screen_gutter"
+        android:contentDescription="@string/open_file_title"
+        android:text="@string/open_file_title"
+        app:icon="@drawable/ic_file_open"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

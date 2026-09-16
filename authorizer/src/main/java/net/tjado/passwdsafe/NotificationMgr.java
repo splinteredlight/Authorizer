@@ -490,7 +490,7 @@ public class NotificationMgr implements PasswdFileDataObserver
         GuiUtils.showNotification(
                 itsNotifyMgr, itsCtx, R.drawable.ic_stat_app,
                 itsCtx.getString(R.string.expiring_password),
-                title, R.mipmap.ic_launcher_passwdsafe,
+                title, R.mipmap.ic_launcher,
                 passwdUri.getIdentifier(itsCtx, false),
                 strs, intent, info.getNotifId(), null, false);
         return true;

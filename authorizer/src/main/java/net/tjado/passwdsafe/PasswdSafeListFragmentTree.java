@@ -96,6 +96,8 @@ public class PasswdSafeListFragmentTree extends ListFragment
     private boolean itsIsContents = false;
     private Listener itsListener;
     private TextView itsEmptyText;
+    /** Whether the tree built in onCreateView has any node at all */
+    private boolean itsTreeHasNodes;
     private ItemListAdapter itsAdapter;
     private String itsSelectedRecord;
     private View tvView;
@@ -186,6 +188,7 @@ public class PasswdSafeListFragmentTree extends ListFragment
 
         final TreeNode itsTreeNodeRoot = TreeNode.root();
         addGroup(itsTreeNodeRoot, itsRootLocation, 0);
+        itsTreeHasNodes = !itsTreeNodeRoot.getChildren().isEmpty();
 
         final AndroidTreeView itsAndroidTreeView = new AndroidTreeView(getActivity(), itsTreeNodeRoot);
         itsAndroidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyleCustom, true);
@@ -485,9 +488,13 @@ public class PasswdSafeListFragmentTree extends ListFragment
             list.clearChoices();
         }
 
-        if (itsEmptyText.getText().length() == 0 && data.size() == 0) {
+        // The loader only carries the records of the current location; the
+        // tree itself may still show groups, so only report an empty tree.
+        boolean empty = data.isEmpty() && !itsTreeHasNodes;
+        if (empty && (itsEmptyText.getText().length() == 0)) {
             itsEmptyText.setText(itsIsContents ? R.string.no_records : R.string.no_groups);
         }
+        itsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
 
     }
 

@@ -132,6 +132,7 @@ public class PasswdPolicyView extends LinearLayout
     /** Initialize the view */
     private void init(Context context)
     {
+        setOrientation(VERTICAL);
         inflate(context, R.layout.passwd_policy_view, this);
         if (isInEditMode()) {
             return;

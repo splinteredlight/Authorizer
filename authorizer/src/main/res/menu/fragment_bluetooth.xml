@@ -3,6 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/menu_bluetooth_help"
         android:title="@string/help"
-        android:icon="@drawable/ic_action_help"
+        android:icon="@drawable/ic_help"
         app:showAsAction="always"/>
 </menu>

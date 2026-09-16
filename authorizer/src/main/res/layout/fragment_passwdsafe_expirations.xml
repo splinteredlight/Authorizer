@@ -1,40 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright (©) 2015 Jeff Harris <jefftharris@gmail.com>
-  ~ All rights reserved. Use of the code is allowed under the
-  ~ Artistic License 2.0 terms, as specified in the LICENSE file
-  ~ distributed with this code, or available from
-  ~ http://www.opensource.org/licenses/artistic-license-2.0.php
-  -->
+<!-- Expiry view: notification switch and the list of expiry filters. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:tools="http://schemas.android.com/tools"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              android:paddingLeft="@dimen/fragment_full_horizontal_margin"
-              android:paddingRight="@dimen/fragment_full_horizontal_margin"
-              android:paddingTop="@dimen/fragment_full_vertical_margin"
-              tools:context="net.tjado.passwdsafe.PasswdSafeExpirationsFragment">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="net.tjado.passwdsafe.PasswdSafeExpirationsFragment">
 
     <CheckBox android:id="@+id/enable_expiry_notifs"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:paddingTop="8dp"
-              android:paddingBottom="8dp"
-              android:text="@string/enable_expiration_notifications"/>
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="56dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="@dimen/screen_gutter"
+        android:layout_marginStart="8dp"
+        android:text="@string/enable_expiration_notifications"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurface"/>
 
-    <View style="@style/Separator.Accent"/>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="@dimen/screen_gutter"
+        android:layout_marginEnd="@dimen/screen_gutter"
+        android:background="?attr/colorOutlineVariant"/>
 
     <TextView android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:paddingTop="8dp"
-              android:paddingBottom="4dp"
-              android:text="@string/view_password_expirations"/>
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/screen_gutter"
+        android:paddingTop="16dp"
+        android:paddingEnd="@dimen/screen_gutter"
+        android:paddingBottom="4dp"
+        android:text="@string/view_password_expirations"
+        android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
 
     <ListView android:id="@+id/expirations"
-              android:layout_width="match_parent"
-              android:layout_height="0dp"
-              android:layout_weight="1"
-              android:entries="@array/expire_filters"/>
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:entries="@array/expire_filters"/>
 
 </LinearLayout>

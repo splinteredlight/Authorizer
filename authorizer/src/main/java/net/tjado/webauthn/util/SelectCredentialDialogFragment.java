@@ -1,5 +1,6 @@
 package net.tjado.webauthn.util;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
@@ -73,7 +74,7 @@ public class SelectCredentialDialogFragment extends DialogFragment implements Cr
         }
         final String[] usernames_final = usernames.toArray(new String[0]);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(requireActivity());
         builder.setTitle(R.string.dialog_select_credential)
                 .setItems(usernames_final, (dialog, which) -> {
                     // Select by the tapped position, not by matching the display
