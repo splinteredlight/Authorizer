@@ -2,5 +2,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- androidx.preference reserves icon space from sw360dp up; the settings
          rows carry no icons, so do not indent them for one. -->
-    <bool name="config_materialPreferenceIconSpaceReserved" tools:ignore="PrivateResource">false</bool>
+    <bool name="config_materialPreferenceIconSpaceReserved" tools:ignore="MissingDefaultResource,PrivateResource">false</bool>
 </resources>

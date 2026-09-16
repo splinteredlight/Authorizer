@@ -4,7 +4,7 @@
   ~ Colour roles live in colors_m3.xml (values/ and values-night/). Both themes
   ~ below are generated from the same role table; keep them in sync.
   -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Main theme: no window action bar, the activity provides a MaterialToolbar. -->
     <style name="Theme.Authorizer" parent="Theme.Material3.DayNight.NoActionBar">
@@ -54,7 +54,7 @@
         <item name="colorSurfaceContainer">@color/m3_surface_container</item>
         <item name="colorSurfaceContainerHigh">@color/m3_surface_container_high</item>
         <item name="colorSurfaceContainerHighest">@color/m3_surface_container_highest</item>
-        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
         <item name="android:windowBackground">?attr/colorSurface</item>
         <item name="preferenceTheme">@style/ThemeOverlay.Authorizer.Preference</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Authorizer.Dialog</item>
@@ -124,7 +124,7 @@
         <item name="colorSurfaceContainer">@color/m3_surface_container</item>
         <item name="colorSurfaceContainerHigh">@color/m3_surface_container_high</item>
         <item name="colorSurfaceContainerHighest">@color/m3_surface_container_highest</item>
-        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
         <item name="android:windowBackground">?attr/colorSurface</item>
         <item name="preferenceTheme">@style/ThemeOverlay.Authorizer.Preference</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Authorizer.Dialog</item>
@@ -152,7 +152,7 @@
     <style name="Theme.Authorizer.Scan" parent="Theme.Authorizer">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:windowFullscreen">true</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="o_mr1">shortEdges</item>
     </style>
 
     <style name="ThemeOverlay.Authorizer.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">

@@ -284,6 +284,7 @@ public class PasswdSafe extends AppCompatActivity
 
     /** The search menu item */
     private MenuItem itsSearchItem = null;
+    private Menu itsOptionsMenu = null;
 
     private final NavSelectListener itsNavSelectListener = new NavSelectListener();
     private View itsContent;
@@ -669,6 +670,7 @@ public class PasswdSafe extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu)
     {
         getMenuInflater().inflate(R.menu.activity_passwdsafe, menu);
+        itsOptionsMenu = menu;
         restoreActionBar();
 
         // Get the SearchView and set the searchable configuration
@@ -676,7 +678,6 @@ public class PasswdSafe extends AppCompatActivity
                 (SearchManager)getSystemService(Context.SEARCH_SERVICE);
         itsSearchItem = menu.findItem(R.id.menu_search);
         itsSearchItem.setOnActionExpandListener(this);
-        collapseSearch();
         if (searchManager != null) {
             SearchView searchView = (SearchView)itsSearchItem.getActionView();
             if (searchView != null) {
@@ -1050,15 +1051,27 @@ public class PasswdSafe extends AppCompatActivity
     @Override
     public boolean onMenuItemActionExpand(@NonNull MenuItem item)
     {
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
         return true;
     }
 
     @Override
     public boolean onMenuItemActionCollapse(@NonNull MenuItem item)
     {
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
         return true;
+    }
+
+    /**
+     * Re-run onPrepareOptionsMenu on the current menu. With a Toolbar-backed
+     * action bar, invalidateOptionsMenu() rebuilds the whole menu, which
+     * recreates the SearchView and collapses it again the moment it expands.
+     */
+    private void refreshOptionsMenu()
+    {
+        if (itsOptionsMenu != null) {
+            onPrepareOptionsMenu(itsOptionsMenu);
+        }
     }
 
     /**
@@ -1903,7 +1916,7 @@ public class PasswdSafe extends AppCompatActivity
         if ((itsSearchItem != null) && itsSearchItem.isActionViewExpanded()) {
             itsSearchItem.collapseActionView();
         }
-        invalidateOptionsMenu();
+        refreshOptionsMenu();
     }
 
     /**
