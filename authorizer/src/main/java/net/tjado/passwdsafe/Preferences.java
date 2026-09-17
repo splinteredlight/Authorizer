@@ -191,6 +191,9 @@ public class Preferences
     public static final String PREF_FIDO_AUTO_APPROVE_REGISTER =
             "fidoAutoApproveRegisterPref";
     private static final boolean PREF_FIDO_AUTO_APPROVE_REGISTER_DEF = false;
+    public static final String PREF_FIDO_AUTO_RECONNECT =
+            "fidoAutoReconnectPref";
+    private static final boolean PREF_FIDO_AUTO_RECONNECT_DEF = true;
     public static final String PREF_FIDO_BACKGROUND_ANSWER =
             "fidoBackgroundAnswerPref";
     private static final boolean PREF_FIDO_BACKGROUND_ANSWER_DEF = false;
@@ -714,6 +717,22 @@ public class Preferences
                                                    SharedPreferences prefs)
     {
         prefs.edit().putBoolean(PREF_FIDO_BACKGROUND_ANSWER, enabled).apply();
+    }
+
+    /**
+     * Get whether the service keeps reconnecting to the default FIDO host
+     * after the link drops (PC asleep, phone out of range).
+     */
+    public static boolean getFidoAutoReconnect(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_FIDO_AUTO_RECONNECT,
+                                PREF_FIDO_AUTO_RECONNECT_DEF);
+    }
+
+    public static void setFidoAutoReconnectPref(boolean enabled,
+                                                SharedPreferences prefs)
+    {
+        prefs.edit().putBoolean(PREF_FIDO_AUTO_RECONNECT, enabled).apply();
     }
 
     /**
