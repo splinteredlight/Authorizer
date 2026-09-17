@@ -510,6 +510,9 @@ public class BluetoothForegroundService extends Service {
         reconnectHandler.removeCallbacksAndMessages(null);
         reconnectScheduled = false;
         reconnectAttempt = 0;
+        // Next cycle starts at the preferred host again (the one that just
+        // connected is first on the list), not at whichever came after it.
+        reconnectHostIndex = -1;
     }
 
     private void tryReconnect() {
