@@ -185,8 +185,42 @@ currently the only thing preventing that. Recorded here so the trade-off is
 not rediscovered by accident; the maintainer has accepted it knowingly for
 his own single-user setup.
 
+## Step 3: staying connected (implemented 2026-09-17)
+
+The phone is the HID *peripheral*. Windows and Linux never dial HID
+peripherals (keyboards and mice dial the PC when a key is pressed), so once
+the link dropped, because the PC slept or the phone left range, it stayed
+down until the user opened the Bluetooth screen and tapped Connect. The
+service used to dial exactly once, at profile registration, and only when a
+host was flagged "default".
+
+Now `BluetoothForegroundService` is the dialing side, like a multipoint
+headset working through its paired list:
+
+- `BluetoothDeviceListing.getFidoHostsByPreference()` returns every paired
+  FIDO host, last connected first, then the default, then the rest. The
+  host that connects is remembered (`LAST_FIDO_HOST` in the `hidbt`
+  preferences). No default is needed.
+- A DISCONNECTED callback with nothing connected schedules a retry with
+  backoff, 10 s doubling to a 2 min cap; each attempt pages the next host
+  on the list. The controller's 15 s connect timeout turns a host that is
+  out of reach into a DISCONNECTED, which schedules the next attempt.
+- `ACTION_ACL_CONNECTED` for any host on the list (some other profile just
+  linked to it, typically the PC's Bluetooth coming back) triggers an
+  attempt at once. Verified on kodiak: reconnected 2 s after the PC's
+  Bluetooth was switched back on.
+- The loop runs only in FIDO mode with FIDO enabled and no pairing or
+  keyboard auto-type in flight, so the teardown before an auto-type is
+  ignored; it is cancelled on CONNECTED, on user-driven connects and when
+  the service stops. Keyboard mode still uses the default keyboard host.
+- Preference "Reconnect to the FIDO computer automatically", on by default.
+
+Cost: one page attempt (about 5 s of radio) every two minutes while no host
+is reachable, nothing while connected.
+
 ## Order of work, if picked up
 
 1. ~~Auto-approve preference.~~ Done, see Step 1.
 2. ~~Decouple the credential backend from the activity.~~ Done.
 3. ~~Option 3 key cache, then relax the answering gate in the service.~~ Done.
+4. ~~Automatic reconnect to the FIDO host.~~ Done, see Step 3.

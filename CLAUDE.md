@@ -146,6 +146,12 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   one is genuinely in flight, otherwise pages, fails in ~5 s and delivers
   CLOSE). `HidDeviceController` does this plus a 15 s timeout backstop;
   verified on device 2026-09-12 with the Pico unpowered.
+- FIDO reconnect: the phone is the HID peripheral and PCs never dial HID
+  peripherals, so the service must redial. It cycles through
+  `getFidoHostsByPreference()` (last connected first, no default needed)
+  with backoff, and at once on `ACTION_ACL_CONNECTED`; see
+  `doc/FIDO_AUTOMATION.md` step 3. Keep the loop out of keyboard mode and
+  out of any pairing or auto-type in flight, or it steals the link.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
   explicitly: Magisk's busybox `stat` has no `%C`.
 

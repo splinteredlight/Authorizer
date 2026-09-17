@@ -112,6 +112,8 @@ paired keyboard host, the Bluetooth Auto-Type button sends immediately. With sev
 default from the menu on its card in the Bluetooth screen, or choose one in the dialog on each tap.
 Keyboard-only use shows no persistent notification; only the optional FIDO mode keeps a
 foreground service (with its notification) running so it can answer requests while the app is closed.
+In FIDO mode the app reconnects to a paired FIDO computer by itself whenever the link drops
+(the PC slept, the phone was out of range); no default needs to be set for that.
 An unrooted phone can auto-type over Bluetooth to any PC through the
 [Pico W bridge](hardware/pico-bt-bridge/README.md).
 
