@@ -874,6 +874,8 @@
     <string name="bt_fido_enable">Enable FIDO U2F/WebAuthn</string>
     <string name="bt_fido_auto_approve_login">Approve FIDO logins without confirmation</string>
     <string name="bt_fido_auto_approve_register">Approve FIDO registrations without confirmation</string>
+    <string name="bt_fido_auto_reconnect">Reconnect to the FIDO computer automatically</string>
+    <string name="bt_fido_auto_reconnect_warning">Keeps dialing the paired FIDO computers whenever the link drops, so it is back as soon as one is in range and awake. No default is needed.</string>
     <string name="bt_fido_background_answer">Answer FIDO requests with the app closed</string>
     <string name="bt_fido_background_answer_warning">Keeps a copy of the FIDO keys (not passwords) encrypted under a hardware key so the phone can sign after the file locks or the app is closed. Unlock the file once after each reboot. Turning this off deletes the copy.</string>
     <string name="bt_fido_auto_approve_warning">Any paired computer in range can then sign in as you with only a toast shown on the phone.</string>

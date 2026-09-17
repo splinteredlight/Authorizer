@@ -25,6 +25,7 @@ import android.content.SharedPreferences;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.widget.Toast;
 
@@ -40,6 +41,8 @@ import net.tjado.passwdsafe.lib.PasswdSafeUtil;
 import net.tjado.bluetooth.BluetoothDeviceWrapper;
 import net.tjado.passwdsafe.lib.Utils;
 import net.tjado.webauthn.TransactionManager;
+
+import java.util.List;
 
 import static android.app.Notification.DEFAULT_SOUND;
 import static android.app.Notification.DEFAULT_VIBRATE;
@@ -74,6 +77,19 @@ public class BluetoothForegroundService extends Service {
     private BluetoothDevice keyboardOutputTarget = null;
 
     final private Handler openFileResetHandler = new Handler();
+    // Automatic reconnect to the default FIDO host. The phone is the HID
+    // peripheral and Android does not keep it page-scannable, so the PC never
+    // pulls the link back up on its own: after the PC sleeps or the phone
+    // leaves range, the link stays down until the phone connects again.
+    // Retried with exponential backoff while disconnected in FIDO mode, and
+    // immediately when the system reports any ACL link to that host.
+    final private Handler reconnectHandler = new Handler(Looper.getMainLooper());
+    final private long RECONNECT_MIN_MS = 10 * 1000;
+    final private long RECONNECT_MAX_MS = 120 * 1000;
+    private int reconnectAttempt = 0;
+    private boolean reconnectScheduled = false;
+    /** Index into the FIDO host list of the host the last attempt paged. */
+    private int reconnectHostIndex = -1;
     final private Handler initAppRegistrationHandler = new Handler();
 
     final private int OPEN_FILE_TIMEOUT_MS = 20 * 1000;
@@ -99,6 +115,12 @@ public class BluetoothForegroundService extends Service {
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                 checkBluetoothState(state);
+            } else if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)) {
+                // Some profile just linked to a device (e.g. the PC came back
+                // in range). If it is the host we are waiting for, do not
+                // wait out the backoff.
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                onAclConnected(device);
             }
         }
     };
@@ -112,6 +134,7 @@ public class BluetoothForegroundService extends Service {
         // A service needs to manage its own lifecycle - if Bluetooth gets deactivated the service
         // needs to terminate itself. It can't be done by the activity as it might be not running.
         IntentFilter btStatusIntentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        btStatusIntentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
         // RECEIVER_EXPORTED on purpose: Bluetooth broadcasts are sent by the Bluetooth
         // process, not the system uid, so Android drops them for non-exported receivers.
         // They are protected broadcasts; no third-party app can send them.
@@ -188,6 +211,7 @@ public class BluetoothForegroundService extends Service {
         // stopped service cannot re-register the HID profile after stopSelf().
         initAppRegistrationHandler.removeCallbacksAndMessages(null);
         openFileResetHandler.removeCallbacksAndMessages(null);
+        cancelReconnect();
         isInitPhase = false;
         registrationAttempts = 0;
 
@@ -336,6 +360,7 @@ public class BluetoothForegroundService extends Service {
     public void pairAsKeyboard(BluetoothDevice device) {
         PasswdSafeUtil.dbginfo(TAG, "Start Keyboard pairing");
         pairingDevice = device;
+        cancelReconnect();
 
         hidDeviceController.disconnect();
         requireKeyboardMode();
@@ -356,6 +381,7 @@ public class BluetoothForegroundService extends Service {
 
         PasswdSafeUtil.dbginfo(TAG, "Start FIDO pairing");
         pairingDevice = device;
+        cancelReconnect();
 
         hidDeviceController.disconnect();
         // As the standard connect does not work reliable to switch between FIDO devices, this
@@ -392,6 +418,7 @@ public class BluetoothForegroundService extends Service {
 
     public void connectAndType(BluetoothDevice device, byte[] autotypeString) {
         PasswdSafeUtil.dbginfo(TAG, "Connect And Type");
+        cancelReconnect();
         requireKeyboardMode();
 
         keyboardOutput = autotypeString;
@@ -446,6 +473,97 @@ public class BluetoothForegroundService extends Service {
         return hidDeviceController.getConnectedDevice();
     }
 
+    /**
+     * Paired FIDO hosts an automatic reconnect may dial, in preference
+     * order, or an empty list when the loop must not run.
+     */
+    private List<BluetoothDeviceWrapper> reconnectCandidates() {
+        if (bluetoothDeviceListing == null || hidDeviceController == null) {
+            return java.util.Collections.emptyList();
+        }
+        if (!hidRegistered || !hidDeviceController.isHidFidoMode()) {
+            return java.util.Collections.emptyList();
+        }
+        if (!Preferences.getBluetoothFidoEnabled(prefs)
+                || !Preferences.getFidoAutoReconnect(prefs)) {
+            return java.util.Collections.emptyList();
+        }
+        if (pairingDevice != null || keyboardOutput != null) {
+            // A user-driven connect is in flight; it owns the link.
+            return java.util.Collections.emptyList();
+        }
+        return bluetoothDeviceListing.getFidoHostsByPreference();
+    }
+
+    /** Queue the next reconnect attempt with backoff. Safe to call repeatedly. */
+    private void scheduleReconnect() {
+        if (reconnectScheduled || reconnectCandidates().isEmpty()) {
+            return;
+        }
+        long delay = Math.min(RECONNECT_MAX_MS, RECONNECT_MIN_MS << Math.min(reconnectAttempt, 8));
+        PasswdSafeUtil.dbginfo(TAG, "scheduleReconnect: attempt " + reconnectAttempt + " in " + delay + " ms");
+        reconnectScheduled = true;
+        reconnectHandler.postDelayed(this::tryReconnect, delay);
+    }
+
+    private void cancelReconnect() {
+        reconnectHandler.removeCallbacksAndMessages(null);
+        reconnectScheduled = false;
+        reconnectAttempt = 0;
+        // Next cycle starts at the preferred host again (the one that just
+        // connected is first on the list), not at whichever came after it.
+        reconnectHostIndex = -1;
+    }
+
+    private void tryReconnect() {
+        reconnectScheduled = false;
+        List<BluetoothDeviceWrapper> hosts = reconnectCandidates();
+        if (hosts.isEmpty()) {
+            return;
+        }
+        if (hidDeviceController.getConnectedDevice() != null) {
+            // Something else connected meanwhile (e.g. the host itself).
+            reconnectAttempt = 0;
+            return;
+        }
+        // Each attempt pages the next host on the list; with one host this
+        // is a plain retry, with several it cycles like a multipoint headset.
+        reconnectHostIndex = (reconnectHostIndex + 1) % hosts.size();
+        reconnectAttempt++;
+        PasswdSafeUtil.dbginfo(TAG, "tryReconnect: requestConnect to FIDO host #" + reconnectHostIndex);
+        // Outcome arrives via onConnectionStateChanged: CONNECTED resets the
+        // backoff, DISCONNECTED (the controller's 15 s timeout included)
+        // schedules the next attempt.
+        hidDeviceController.requestConnect(hosts.get(reconnectHostIndex).getDevice());
+    }
+
+    private void onAclConnected(BluetoothDevice device) {
+        if (device == null || !reconnectScheduled) {
+            return;
+        }
+        List<BluetoothDeviceWrapper> hosts = reconnectCandidates();
+        for (int i = 0; i < hosts.size(); i++) {
+            if (hosts.get(i).getDevice().equals(device)) {
+                PasswdSafeUtil.dbginfo(TAG, "ACL link to a FIDO host, reconnecting now");
+                reconnectHandler.removeCallbacksAndMessages(null);
+                reconnectScheduled = false;
+                reconnectAttempt = 0;
+                reconnectHostIndex = i - 1;
+                tryReconnect();
+                return;
+            }
+        }
+    }
+
+    /** Called by the settings switch; starts or stops the retry loop right away. */
+    public void onAutoReconnectPrefChanged(boolean enabled) {
+        cancelReconnect();
+        if (enabled && hidDeviceController != null
+                && hidDeviceController.getConnectedDevice() == null) {
+            scheduleReconnect();
+        }
+    }
+
     public boolean isAppRegistered() {
         return !isBtProfileAlreadyRegistered /*&& hidDeviceController.getRegisterAppStatus()*/;
     }
@@ -487,17 +605,23 @@ public class BluetoothForegroundService extends Service {
 
             // Connect to default device in case of app was registered and no pairing is in progress
             if (registered && hidDeviceController != null && pairingDevice == null) {
-                BluetoothDeviceWrapper defaultDevice = bluetoothDeviceListing.getHidDefaultDevice();
-
-                if (
-                    defaultDevice != null &&
-                    (
-                            (hidDeviceController.isHidFidoMode() && bluetoothDeviceListing.isFidoHost(defaultDevice)) ||
-                            (hidDeviceController.isHidKeyboardMode() && bluetoothDeviceListing.isKeyboardHost(defaultDevice))
-                    )
-                ){
-                    PasswdSafeUtil.dbginfo(TAG, "onAppStatusChanged - requestConnect to default device");
-                    hidDeviceController.requestConnect(defaultDevice.getDevice());
+                if (hidDeviceController.isHidFidoMode()) {
+                    // FIDO: dial the preferred host (last connected, then
+                    // default, then any paired FIDO host). A failed page
+                    // lands in onConnectionStateChanged and the reconnect
+                    // loop moves on to the next host.
+                    List<BluetoothDeviceWrapper> hosts = bluetoothDeviceListing.getFidoHostsByPreference();
+                    if (!hosts.isEmpty()) {
+                        reconnectHostIndex = 0;
+                        PasswdSafeUtil.dbginfo(TAG, "onAppStatusChanged - requestConnect to preferred FIDO host");
+                        hidDeviceController.requestConnect(hosts.get(0).getDevice());
+                    }
+                } else if (hidDeviceController.isHidKeyboardMode()) {
+                    BluetoothDeviceWrapper defaultDevice = bluetoothDeviceListing.getHidDefaultDevice();
+                    if (defaultDevice != null && bluetoothDeviceListing.isKeyboardHost(defaultDevice)) {
+                        PasswdSafeUtil.dbginfo(TAG, "onAppStatusChanged - requestConnect to default keyboard host");
+                        hidDeviceController.requestConnect(defaultDevice.getDevice());
+                    }
                 }
             }
 
@@ -519,6 +643,10 @@ public class BluetoothForegroundService extends Service {
             synchronized (mLock) {
                 if (state == BluetoothProfile.STATE_CONNECTED && device.getBondState() == BluetoothDevice.BOND_BONDED) {
                     PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: CONNECTED: " + BluetoothUtils.getDeviceDisplayName(device));
+                    cancelReconnect();
+                    if (hidDeviceController.isHidFidoMode() && bluetoothDeviceListing.isFidoHost(device)) {
+                        bluetoothDeviceListing.setLastFidoHost(device);
+                    }
 
                     if (
                         hidDeviceController.isHidKeyboardMode() &&
@@ -567,6 +695,14 @@ public class BluetoothForegroundService extends Service {
                     Toast.makeText(getApplicationContext(),
                                    getString(R.string.bt_autotype_connect_failed, name),
                                    Toast.LENGTH_LONG).show();
+                } else if (state == BluetoothProfile.STATE_DISCONNECTED
+                           && hidDeviceController.getConnectedDevice() == null) {
+                    // Link to the FIDO host dropped or the connect attempt
+                    // failed. reconnectTarget() is null in keyboard mode, so
+                    // the teardown that precedes an auto-type is ignored; the
+                    // switch back to FIDO mode re-registers and connects, and
+                    // if that fails we land here again in FIDO mode.
+                    scheduleReconnect();
                 }
             }
         }

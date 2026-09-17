@@ -152,6 +152,8 @@ public class BluetoothFragment extends Fragment
         CompoundButton cbFidoAutoRegister = rootView.findViewById(R.id.cb_pref_bt_fido_auto_register);
         TextView tvFidoBackground = rootView.findViewById(R.id.tv_pref_bt_fido_background);
         CompoundButton cbFidoBackground = rootView.findViewById(R.id.cb_pref_bt_fido_background);
+        TextView tvFidoReconnect = rootView.findViewById(R.id.tv_pref_bt_fido_auto_reconnect);
+        CompoundButton cbFidoReconnect = rootView.findViewById(R.id.cb_pref_bt_fido_auto_reconnect);
 
         prefs = Preferences.getSharedPrefs(getContext());
 
@@ -170,6 +172,9 @@ public class BluetoothFragment extends Fragment
             cbFidoBackground.setEnabled(fidoOn);
             tvFidoBackground.setEnabled(fidoOn);
             cbFidoBackground.setChecked(fidoOn && Preferences.getFidoBackgroundAnswer(prefs));
+            cbFidoReconnect.setEnabled(fidoOn);
+            tvFidoReconnect.setEnabled(fidoOn);
+            cbFidoReconnect.setChecked(fidoOn && Preferences.getFidoAutoReconnect(prefs));
         };
 
         cbBluetoothFeature.setChecked(Preferences.getBluetoothEnabled(prefs));
@@ -191,6 +196,15 @@ public class BluetoothFragment extends Fragment
             Preferences.setFidoAutoApproveLoginPref(cbFidoAutoLogin.isChecked(), prefs));
         cbFidoAutoRegister.setOnClickListener(item ->
             Preferences.setFidoAutoApproveRegisterPref(cbFidoAutoRegister.isChecked(), prefs));
+        tvFidoReconnect.setOnClickListener(item -> cbFidoReconnect.performClick());
+        cbFidoReconnect.setOnClickListener(item -> {
+            boolean on = cbFidoReconnect.isChecked();
+            Preferences.setFidoAutoReconnectPref(on, prefs);
+            BluetoothForegroundService btService = ((PasswdSafe) requireActivity()).btService;
+            if (btService != null) {
+                btService.onAutoReconnectPrefChanged(on);
+            }
+        });
         tvFidoBackground.setOnClickListener(item -> cbFidoBackground.performClick());
         cbFidoBackground.setOnClickListener(item -> {
             boolean on = cbFidoBackground.isChecked();
