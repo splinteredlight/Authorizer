@@ -26,6 +26,8 @@ public class BluetoothDeviceListing {
     public static final String HID_FIDO_HOST = "FIDO_HID_HOST";
     public static final String HID_KEYBOARD_HOST = "KEYBOARD_HID_HOST";
     public static final String HID_UNKNOWN_HOST = "UNKNOWN_HID_HOST";
+    /** Hash of the FIDO host the phone was connected to most recently. */
+    private static final String HID_LAST_FIDO_HOST = "LAST_FIDO_HOST";
 
     final private BluetoothAdapter bluetoothAdapter;
     final private SharedPreferences hidPreferences;
@@ -92,6 +94,46 @@ public class BluetoothDeviceListing {
 
         availableDevices.removeAll(removeDevices);
         return availableDevices;
+    }
+
+    /**
+     * Paired FIDO hosts in the order an automatic connect should try them:
+     * the one connected most recently first, then the default, then the rest.
+     * No "default" is needed for a single host, and with several the phone
+     * cycles through them like a multipoint headset through its paired list.
+     */
+    public List<BluetoothDeviceWrapper> getFidoHostsByPreference() {
+        List<BluetoothDeviceWrapper> hosts = new ArrayList<>();
+        BluetoothDeviceWrapper last = null;
+        BluetoothDeviceWrapper def = null;
+        String lastHash = hidPreferences.getString(HID_LAST_FIDO_HOST, null);
+        for (BluetoothDeviceWrapper device : getAvailableDevices()) {
+            if (!HID_FIDO_HOST.equals(device.getType())) {
+                continue;
+            }
+            if (device.getHash().equals(lastHash)) {
+                last = device;
+            } else if (device.isDefault()) {
+                def = device;
+            } else {
+                hosts.add(device);
+            }
+        }
+        if (def != null) {
+            hosts.add(0, def);
+        }
+        if (last != null) {
+            hosts.add(0, last);
+        }
+        return hosts;
+    }
+
+    public void setLastFidoHost(BluetoothDevice device) {
+        if (device != null) {
+            hidPreferences.edit()
+                    .putString(HID_LAST_FIDO_HOST, new BluetoothDeviceWrapper(device).getHash())
+                    .apply();
+        }
     }
 
     public boolean cacheHidDefaultDevice(BluetoothDevice device) {
