@@ -398,6 +398,10 @@ public class BluetoothForegroundService extends Service {
 
     public void requireKeyboardMode() {
         if(!hidDeviceController.isHidKeyboardMode()) {
+            // Re-registering drops any connect in flight, so a retry queued
+            // for the old registration is stale (and would find the
+            // controller unregistered). The new registration dials afresh.
+            cancelReconnect();
             hidDeviceController.unregister(profileListener);
             SystemClock.sleep(50);
             hidDeviceController.registerKeyboard(getApplicationContext(), profileListener);
@@ -410,6 +414,8 @@ public class BluetoothForegroundService extends Service {
 
     public void requireFidoMode(boolean enforce) {
         if((!hidDeviceController.isHidFidoMode() || enforce) && Preferences.getBluetoothFidoEnabled(prefs)) {
+            // See requireKeyboardMode.
+            cancelReconnect();
             hidDeviceController.unregister(profileListener);
             SystemClock.sleep(50);
             hidDeviceController.registerFido(getApplicationContext(), profileListener);
@@ -534,7 +540,14 @@ public class BluetoothForegroundService extends Service {
         // Outcome arrives via onConnectionStateChanged: CONNECTED resets the
         // backoff, DISCONNECTED (the controller's 15 s timeout included)
         // schedules the next attempt.
-        hidDeviceController.requestConnect(hosts.get(reconnectHostIndex).getDevice());
+        if (!hidDeviceController.requestConnect(hosts.get(reconnectHostIndex).getDevice())) {
+            // The profile is between registrations (a mode switch is
+            // re-registering it): the controller only stored the request
+            // and no callback will follow, so nothing else would re-arm
+            // the timer. The registration that completes dials the
+            // preferred host itself and cancels this.
+            scheduleReconnect();
+        }
     }
 
     private void onAclConnected(BluetoothDevice device) {
@@ -610,6 +623,13 @@ public class BluetoothForegroundService extends Service {
                     // default, then any paired FIDO host). A failed page
                     // lands in onConnectionStateChanged and the reconnect
                     // loop moves on to the next host.
+                    //
+                    // This is a fresh registration, so any retry state from
+                    // before it (a queued attempt, a grown backoff) is
+                    // stale: with it left in place a failed dial here could
+                    // not schedule a retry, and the retry that eventually
+                    // fired used the old delay.
+                    cancelReconnect();
                     List<BluetoothDeviceWrapper> hosts = bluetoothDeviceListing.getFidoHostsByPreference();
                     if (!hosts.isEmpty()) {
                         reconnectHostIndex = 0;
