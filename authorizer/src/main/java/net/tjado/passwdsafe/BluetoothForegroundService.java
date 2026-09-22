@@ -69,7 +69,21 @@ public class BluetoothForegroundService extends Service {
 
     private HidDeviceController hidDeviceController;
     private BluetoothDeviceListing bluetoothDeviceListing;
+    /**
+     * Host a user-driven pairAsKeyboard()/pairAsFido() is connecting to.
+     * While set, the automatic reconnect must not dial: it would steal the
+     * link. Cleared only when this host reports CONNECTED or DISCONNECTED
+     * (or the service goes down), never merely because the profile
+     * re-registered, since the connect is issued after that.
+     */
     private BluetoothDevice pairingDevice = null;
+    /**
+     * True while the pairing connect is postponed behind the profile
+     * re-registration; onAppStatusChanged issues it. A DISCONNECTED for the
+     * pairing host in that window is the teardown of its previous link, not
+     * a failed pairing.
+     */
+    private boolean pairingConnectPending = false;
     private BtServiceProfileListener profileListener = null;
 
     private byte[] keyboardOutput = null;
@@ -212,6 +226,7 @@ public class BluetoothForegroundService extends Service {
         initAppRegistrationHandler.removeCallbacksAndMessages(null);
         openFileResetHandler.removeCallbacksAndMessages(null);
         cancelReconnect();
+        clearPairing();
         isInitPhase = false;
         registrationAttempts = 0;
 
@@ -365,9 +380,9 @@ public class BluetoothForegroundService extends Service {
         hidDeviceController.disconnect();
         requireKeyboardMode();
 
-        // requestConnect will only save the device for the connect after the bt app profile
-        // was successfully registered.
-        hidDeviceController.requestConnect(device);
+        // When the profile had to re-register, requestConnect only stores
+        // the device and returns false; onAppStatusChanged issues it.
+        pairingConnectPending = !hidDeviceController.requestConnect(device);
 
         PasswdSafeUtil.dbginfo(TAG, "pref update: " + bluetoothDeviceListing.cacheHidDeviceAsKeyboard(device));
     }
@@ -389,11 +404,17 @@ public class BluetoothForegroundService extends Service {
         // we enforce the reinitialization of the FIDO Bluetooth profile.
         requireFidoMode(true);
 
-        // requestConnect will only save the device for the connect after the bt app profile
-        // was successfully registered.
-        hidDeviceController.requestConnect(device);
+        // The profile always re-registers here, so requestConnect only
+        // stores the device and returns false; onAppStatusChanged issues it.
+        pairingConnectPending = !hidDeviceController.requestConnect(device);
 
         PasswdSafeUtil.dbginfo(TAG, "pref update: " + bluetoothDeviceListing.cacheHidDeviceAsFido(device));
+    }
+
+    /** Pairing finished (either way) or the service is going down. */
+    private void clearPairing() {
+        pairingDevice = null;
+        pairingConnectPending = false;
     }
 
     public void requireKeyboardMode() {
@@ -616,6 +637,20 @@ public class BluetoothForegroundService extends Service {
                 updateServiceNotificationContent(getString(R.string.notification_body_foregroundservice));
             }
 
+            if (registered && hidDeviceController != null && pairingDevice != null
+                    && pairingConnectPending) {
+                // The pairing connect was postponed behind this
+                // registration. The controller normally issues it now, but
+                // a DISCONNECTED for the same host (the teardown of its
+                // previous link, when the user re-pairs to the host that was
+                // connected) can arrive first and cancel the postponed
+                // request, so issue it here as well; a duplicate connect
+                // is answered "already in progress" by the stack.
+                PasswdSafeUtil.dbginfo(TAG, "onAppStatusChanged - requestConnect to pairing host");
+                pairingConnectPending = false;
+                hidDeviceController.requestConnect(pairingDevice);
+            }
+
             // Connect to default device in case of app was registered and no pairing is in progress
             if (registered && hidDeviceController != null && pairingDevice == null) {
                 if (hidDeviceController.isHidFidoMode()) {
@@ -645,12 +680,10 @@ public class BluetoothForegroundService extends Service {
                 }
             }
 
-            if (registered && pairingDevice != null) {
-                pairingDevice = null;
-            }
-
             if (!registered) {
                 hidRegistered = false;
+                // The stack dropped our registration; any pairing dies with it.
+                clearPairing();
             }
             if (!registered && hidDeviceController != null && profileListener != null) {
                 PasswdSafeUtil.dbginfo(TAG, "onAppStatusChanged - unregister profileListener");
@@ -685,42 +718,66 @@ public class BluetoothForegroundService extends Service {
 
                     } else if(pairingDevice != null && pairingDevice.equals(device)) {
                         // pairing seems to be successful
-                        pairingDevice = null;
+                        clearPairing();
                         requireFidoMode();
                     }
                 } else if (state == BluetoothProfile.STATE_DISCONNECTED
-                           && keyboardOutput != null
-                           && device != null
-                           && device.equals(keyboardOutputTarget)
                            && hidDeviceController.getConnectedDevice() == null) {
-                    // The connect issued by connectAndType failed (host off or
-                    // out of range) or the link dropped before the send ran.
-                    // Drop the pending output so it cannot be typed into
-                    // whatever host connects next, and tell the user; the
-                    // controller has already given up retrying.
-                    //
-                    // Only the target host counts. When the phone was on the
-                    // FIDO host (the PC), connectAndType's switch to keyboard
-                    // mode tears that link down first, and its DISCONNECTED
-                    // arrives while the output is still pending and nothing
-                    // is connected yet. Treating that as the failure discarded
-                    // the text and blamed the PC; the keyboard host then
-                    // connected with nothing left to type, so only the second
-                    // tap worked. The callback's device is freshly unparceled,
+                    // Only the host a user-driven connect targets counts as
+                    // that connect failing. When the phone was on the FIDO
+                    // host (the PC), the switch to keyboard mode that
+                    // precedes an auto-type or keyboard pairing tears that
+                    // link down first, and its DISCONNECTED arrives while
+                    // the output is still pending and nothing is connected
+                    // yet. Treating that as the failure discarded the text
+                    // and blamed the PC; the keyboard host then connected
+                    // with nothing left to type, so only the second tap
+                    // worked. The callback's device is freshly unparceled,
                     // hence equals, not ==.
-                    PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: DISCONNECTED with pending autotype, discarding");
-                    keyboardOutput = null;
-                    keyboardOutputTarget = null;
-                    String name = BluetoothUtils.getDeviceDisplayName(device);
-                    Toast.makeText(getApplicationContext(),
-                                   getString(R.string.bt_autotype_connect_failed, name),
-                                   Toast.LENGTH_LONG).show();
-                } else if (state == BluetoothProfile.STATE_DISCONNECTED
-                           && hidDeviceController.getConnectedDevice() == null) {
-                    // Link to the FIDO host dropped or the connect attempt
-                    // failed. reconnectTarget() is null in keyboard mode, so
-                    // the teardown that precedes an auto-type is ignored; the
-                    // switch back to FIDO mode re-registers and connects, and
+                    boolean autotypeFailed = keyboardOutput != null
+                                             && device != null
+                                             && device.equals(keyboardOutputTarget);
+                    // Likewise a DISCONNECTED for the pairing host before its
+                    // connect was even issued is the old link going down.
+                    boolean pairingFailed = pairingDevice != null
+                                            && !pairingConnectPending
+                                            && pairingDevice.equals(device);
+                    if (autotypeFailed) {
+                        // The connect issued by connectAndType failed (host
+                        // off or out of range) or the link dropped before the
+                        // send ran. Drop the pending output so it cannot be
+                        // typed into whatever host connects next, and tell
+                        // the user; the controller has already given up
+                        // retrying.
+                        PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: DISCONNECTED with pending autotype, discarding");
+                        keyboardOutput = null;
+                        keyboardOutputTarget = null;
+                        String name = BluetoothUtils.getDeviceDisplayName(device);
+                        Toast.makeText(getApplicationContext(),
+                                       getString(R.string.bt_autotype_connect_failed, name),
+                                       Toast.LENGTH_LONG).show();
+                    }
+                    if (pairingFailed) {
+                        PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: DISCONNECTED while pairing, giving up");
+                        clearPairing();
+                    }
+                    if ((autotypeFailed || pairingFailed)
+                            && hidDeviceController.isHidKeyboardMode()) {
+                        // The keyboard host never came up, so the switch back
+                        // to FIDO mode that follows a successful auto-type or
+                        // keyboard pairing did not happen either. Left like
+                        // this the phone stays in keyboard mode, where the
+                        // reconnect loop is off, and silently stops being a
+                        // FIDO key until the user toggles FIDO. Re-register
+                        // now; onAppStatusChanged dials the preferred host.
+                        // No-op with FIDO disabled.
+                        requireFidoMode();
+                    }
+                    // Link to the FIDO host dropped or a connect attempt
+                    // failed. reconnectCandidates() is empty in keyboard mode
+                    // and while a user-driven connect is in flight, so the
+                    // teardown that precedes an auto-type is ignored; the
+                    // switch back to FIDO mode re-registers and dials, and
                     // if that fails we land here again in FIDO mode.
                     scheduleReconnect();
                 }

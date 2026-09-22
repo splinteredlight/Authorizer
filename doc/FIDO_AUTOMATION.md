@@ -213,6 +213,12 @@ headset working through its paired list:
   keyboard auto-type in flight, so the teardown before an auto-type is
   ignored; it is cancelled on CONNECTED, on user-driven connects and when
   the service stops. Keyboard mode still uses the default keyboard host.
+  A pairing keeps the loop off until its host reports CONNECTED or
+  DISCONNECTED (not just until the profile re-registers, which happens
+  before the connect is issued). A failed auto-type or keyboard pairing
+  switches back to FIDO mode itself, so the loop resumes instead of the
+  phone staying a keyboard with no host; every registration starts a
+  fresh cycle at the preferred host.
 - Preference "Reconnect to the FIDO computer automatically", on by default.
 
 Cost: one page attempt (about 5 s of radio) every two minutes while no host
