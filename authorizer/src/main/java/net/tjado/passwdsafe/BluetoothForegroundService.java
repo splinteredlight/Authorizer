@@ -374,6 +374,22 @@ public class BluetoothForegroundService extends Service {
 
     public void pairAsKeyboard(BluetoothDevice device) {
         PasswdSafeUtil.dbginfo(TAG, "Start Keyboard pairing");
+
+        BluetoothDevice connected = hidDeviceController.getConnectedDevice();
+        if (connected != null && connected.equals(device)
+                && hidDeviceController.isHidKeyboardMode()) {
+            // Already linked to this host as a keyboard, so there is
+            // nothing to (re)connect. Going through the disconnect below
+            // would race the controller: with no mode switch in between,
+            // requestConnect() runs while the old link is still closing,
+            // and either takes the "already connected" shortcut on a dying
+            // link or has its pending request cancelled by the teardown
+            // DISCONNECTED. Either way the phone ended up disconnected.
+            PasswdSafeUtil.dbginfo(TAG, "Keyboard host already connected, nothing to do");
+            PasswdSafeUtil.dbginfo(TAG, "pref update: " + bluetoothDeviceListing.cacheHidDeviceAsKeyboard(device));
+            return;
+        }
+
         pairingDevice = device;
         cancelReconnect();
 
