@@ -134,7 +134,14 @@ public class BluetoothForegroundService extends Service {
                 // in range). If it is the host we are waiting for, do not
                 // wait out the backoff.
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                onAclConnected(device);
+                // EXTRA_TRANSPORT exists from API 33; before that treat the
+                // link as unknown, which lets the attempt through.
+                int transport = BluetoothDevice.TRANSPORT_AUTO;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    transport = intent.getIntExtra(BluetoothDevice.EXTRA_TRANSPORT,
+                                                   BluetoothDevice.TRANSPORT_AUTO);
+                }
+                onAclConnected(device, transport);
             }
         }
     };
@@ -516,35 +523,50 @@ public class BluetoothForegroundService extends Service {
         return hidDeviceController.getConnectedDevice();
     }
 
-    /**
-     * Paired FIDO hosts an automatic reconnect may dial, in preference
-     * order, or an empty list when the loop must not run.
-     */
-    private List<BluetoothDeviceWrapper> reconnectCandidates() {
+    /** Whether the automatic reconnect may run at all right now. */
+    private boolean reconnectAllowed() {
         if (bluetoothDeviceListing == null || hidDeviceController == null) {
-            return java.util.Collections.emptyList();
+            return false;
         }
         if (!hidRegistered || !hidDeviceController.isHidFidoMode()) {
-            return java.util.Collections.emptyList();
+            return false;
         }
         if (!Preferences.getBluetoothFidoEnabled(prefs)
                 || !Preferences.getFidoAutoReconnect(prefs)) {
-            return java.util.Collections.emptyList();
+            return false;
         }
         if (pairingDevice != null || keyboardOutput != null) {
             // A user-driven connect is in flight; it owns the link.
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Paired FIDO hosts an automatic reconnect may dial, in preference
+     * order, or an empty list when the loop must not run. Enumerates and
+     * hashes every bonded device, so call it once per attempt, not per event.
+     */
+    private List<BluetoothDeviceWrapper> reconnectCandidates() {
+        if (!reconnectAllowed()) {
             return java.util.Collections.emptyList();
         }
         return bluetoothDeviceListing.getFidoHostsByPreference();
     }
 
-    /** Queue the next reconnect attempt with backoff. Safe to call repeatedly. */
+    /**
+     * Queue the next reconnect attempt with backoff. Safe to call repeatedly.
+     * The attempt counter advances here, so whoever dials next (the timer or
+     * an ACL trigger) uses the delay that belongs to the attempt just made.
+     */
     private void scheduleReconnect() {
-        if (reconnectScheduled || reconnectCandidates().isEmpty()) {
+        if (reconnectScheduled || !reconnectAllowed()
+                || !bluetoothDeviceListing.hasFidoHosts()) {
             return;
         }
         long delay = Math.min(RECONNECT_MAX_MS, RECONNECT_MIN_MS << Math.min(reconnectAttempt, 8));
         PasswdSafeUtil.dbginfo(TAG, "scheduleReconnect: attempt " + reconnectAttempt + " in " + delay + " ms");
+        reconnectAttempt++;
         reconnectScheduled = true;
         reconnectHandler.postDelayed(this::tryReconnect, delay);
     }
@@ -572,7 +594,6 @@ public class BluetoothForegroundService extends Service {
         // Each attempt pages the next host on the list; with one host this
         // is a plain retry, with several it cycles like a multipoint headset.
         reconnectHostIndex = (reconnectHostIndex + 1) % hosts.size();
-        reconnectAttempt++;
         PasswdSafeUtil.dbginfo(TAG, "tryReconnect: requestConnect to FIDO host #" + reconnectHostIndex);
         // Outcome arrives via onConnectionStateChanged: CONNECTED resets the
         // backoff, DISCONNECTED (the controller's 15 s timeout included)
@@ -587,8 +608,20 @@ public class BluetoothForegroundService extends Service {
         }
     }
 
-    private void onAclConnected(BluetoothDevice device) {
+    private void onAclConnected(BluetoothDevice device, int transport) {
         if (device == null || !reconnectScheduled) {
+            return;
+        }
+        // Every device that links to the phone lands here (watch, earbuds),
+        // so answer the common case from one preference read before
+        // enumerating the bonded list.
+        if (!bluetoothDeviceListing.isFidoHost(device)) {
+            return;
+        }
+        if (transport == BluetoothDevice.TRANSPORT_LE) {
+            // BluetoothHidDevice is BR/EDR only; an LE link to a dual-mode
+            // PC says nothing about its Classic radio being reachable.
+            PasswdSafeUtil.dbginfo(TAG, "ACL link to a FIDO host over LE, ignoring");
             return;
         }
         List<BluetoothDeviceWrapper> hosts = reconnectCandidates();
@@ -597,6 +630,9 @@ public class BluetoothForegroundService extends Service {
                 PasswdSafeUtil.dbginfo(TAG, "ACL link to a FIDO host, reconnecting now");
                 reconnectHandler.removeCallbacksAndMessages(null);
                 reconnectScheduled = false;
+                // This attempt is a fresh start: if the page fails because
+                // the host is still bringing its profiles up, the retry
+                // should follow at the minimum delay, not the next step.
                 reconnectAttempt = 0;
                 reconnectHostIndex = i - 1;
                 tryReconnect();
