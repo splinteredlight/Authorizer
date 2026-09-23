@@ -42,6 +42,7 @@ import net.tjado.bluetooth.BluetoothDeviceWrapper;
 import net.tjado.passwdsafe.lib.Utils;
 import net.tjado.webauthn.TransactionManager;
 
+import java.util.Collections;
 import java.util.List;
 
 import static android.app.Notification.DEFAULT_SOUND;
@@ -91,12 +92,13 @@ public class BluetoothForegroundService extends Service {
     private BluetoothDevice keyboardOutputTarget = null;
 
     final private Handler openFileResetHandler = new Handler();
-    // Automatic reconnect to the default FIDO host. The phone is the HID
+    // Automatic reconnect to the paired FIDO hosts. The phone is the HID
     // peripheral and Android does not keep it page-scannable, so the PC never
     // pulls the link back up on its own: after the PC sleeps or the phone
     // leaves range, the link stays down until the phone connects again.
-    // Retried with exponential backoff while disconnected in FIDO mode, and
-    // immediately when the system reports any ACL link to that host.
+    // Retried with exponential backoff while disconnected in FIDO mode,
+    // paging the hosts in turn (last connected first, no default needed),
+    // and at once when the system reports a Classic ACL link to one of them.
     final private Handler reconnectHandler = new Handler(Looper.getMainLooper());
     final private long RECONNECT_MIN_MS = 10 * 1000;
     final private long RECONNECT_MAX_MS = 120 * 1000;
@@ -549,7 +551,7 @@ public class BluetoothForegroundService extends Service {
      */
     private List<BluetoothDeviceWrapper> reconnectCandidates() {
         if (!reconnectAllowed()) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
         return bluetoothDeviceListing.getFidoHostsByPreference();
     }

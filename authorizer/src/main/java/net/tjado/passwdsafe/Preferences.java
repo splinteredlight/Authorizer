@@ -720,8 +720,9 @@ public class Preferences
     }
 
     /**
-     * Get whether the service keeps reconnecting to the default FIDO host
-     * after the link drops (PC asleep, phone out of range).
+     * Get whether the service keeps reconnecting to the paired FIDO hosts
+     * (last connected first) after the link drops (PC asleep, phone out of
+     * range).
      */
     public static boolean getFidoAutoReconnect(SharedPreferences prefs)
     {
