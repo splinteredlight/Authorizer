@@ -53,3 +53,5 @@ authorizer/.externalNativeBuild/
 .cxx
 sign/**
 !sign/sign.example.gradle
+# Local test plans
+/TESTING-*.md
