@@ -9,14 +9,26 @@ One box does everything: what it shows is what **Send** types, and
 
 ## The format
 
-Text is typed as written and a new line is Enter. Keys go in braces
-where they happen:
+Text is typed as written and keys go in braces where they happen. Line
+breaks are only layout and type nothing, so a script can put each step on
+its own line; Enter is always `{ENTER}`:
 
 ```
-{REM Log in to the Hilux box}
-{WIN+r}{DELAY 500}ssh admin@hilux
-{DELAY 1500}{Hilux.password}
+{REM Open Local Users and Groups as administrator}
+{WIN+r}
+{DELAY 1000}
+lusrmgr.msc
+{CTRL+SHIFT+ENTER}
+{DELAY 3000}
+{Hilux.user}
+{TAB}
+{Hilux.password}
+{ENTER}
 ```
+
+(The first version typed Enter at every line break. A script written a
+step per line then pressed Enter after every step; on a UAC prompt that
+moved the cursor to the password box before the username was typed.)
 
 | Token | Meaning |
 | --- | --- |
@@ -27,7 +39,7 @@ where they happen:
 | `{WIN}` | A modifier on its own (opens the Start menu) |
 | `{TAB 3}` | Press a key or combo 3 times |
 | `{DELAY 500}` | Wait 500 ms (up to 600000) |
-| `{REM note}` | Comment; a line holding only a comment types nothing, not even Enter |
+| `{REM note}` | Comment |
 | `{Title.password}` | A field of the open file (below) |
 | `{{` | A literal `{` |
 
@@ -72,8 +84,8 @@ list reloads when you return to the app.
 A file where every line starts with an upper-case Ducky Script command
 (`STRING`, `STRINGLN`, `DELAY`, `DEFAULT_DELAY`, `REPEAT`, `REM`, a key
 such as `ENTER`, or a combo such as `GUI r`) runs as Ducky Script. Edit
-converts it to the format above (the result types exactly the same keys),
-and Save then writes it in that format.
+converts it to the format above, one command per line (the result types
+exactly the same keys), and Save then writes it in that format.
 
 ## Credential references
 

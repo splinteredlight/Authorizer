@@ -1041,7 +1041,7 @@
     <string name="keyboard_no_output">Turn on Bluetooth or USB auto-type in Settings to type to a computer.</string>
     <string name="keyboard_type">Type</string>
     <string name="keyboard_text_hint">Text to type</string>
-    <string name="keyboard_text_help">Keys go in braces: {ENTER}, {WIN+r}, {TAB 3}, {DELAY 500}. {Title.password} types a field of the open file.</string>
+    <string name="keyboard_text_help">Keys go in braces: {ENTER}, {WIN+r}, {TAB 3}, {DELAY 500}. {Title.password} types a field of the open file. Line breaks are for layout; they type nothing.</string>
     <string name="keyboard_save">Save</string>
     <string name="keyboard_editing">Editing %1$s</string>
     <string name="keyboard_insert_entry">Entry field</string>
@@ -1114,7 +1114,7 @@
     <string name="keyboard_field_email">Email</string>
     <string name="keyboard_field_notes">Notes</string>
     <string name="keyboard_script_help">Script commands</string>
-    <string name="keyboard_script_help_text">Text is typed as written and a new line is Enter. Keys go in braces:\n\n{ENTER}, {TAB}, {ESC}, {BACKSPACE}, {DELETE}, {UP}, {DOWN}, {LEFT}, {RIGHT}, {HOME}, {END}, {PAGEUP}, {PAGEDOWN}, {INSERT}, {SPACE}, {F1}–{F12}, {PRINTSCREEN}, {MENU}\n{WIN+r}, {CTRL+ALT+DELETE}, {SHIFT+TAB}: keys with modifiers (CTRL, ALT, SHIFT, WIN, ALTGR)\n{WIN}: a modifier on its own\n{TAB 3}: press a key 3 times\n{DELAY 500}: wait 500 ms\n{REM note}: a comment; a line with only a comment types nothing\n\n{Title.password} types a field of the open file. Fields: user, password, url, email, notes, title, otp. Add the group when titles repeat: {Work/Servers/Hilux.password}. {{ types a brace.\n\nNothing is typed if any line has a problem. Ducky Script files (STRING, DELAY, GUI r, ...) also run.</string>
+    <string name="keyboard_script_help_text">Text is typed as written and keys go in braces. Line breaks are only for layout and type nothing, so put each step on its own line and press Enter with {ENTER}.\n\nKeys:\n\n{ENTER}, {TAB}, {ESC}, {BACKSPACE}, {DELETE}, {UP}, {DOWN}, {LEFT}, {RIGHT}, {HOME}, {END}, {PAGEUP}, {PAGEDOWN}, {INSERT}, {SPACE}, {F1}–{F12}, {PRINTSCREEN}, {MENU}\n{WIN+r}, {CTRL+ALT+DELETE}, {SHIFT+TAB}: keys with modifiers (CTRL, ALT, SHIFT, WIN, ALTGR)\n{WIN}: a modifier on its own\n{TAB 3}: press a key 3 times\n{DELAY 500}: wait 500 ms\n{REM note}: a comment\n\n{Title.password} types a field of the open file. Fields: user, password, url, email, notes, title, otp. Add the group when titles repeat: {Work/Servers/Hilux.password}. {{ types a brace.\n\nNothing is typed if any line has a problem. Ducky Script files (STRING, DELAY, GUI r, ...) also run.</string>
     <plurals name="group_entries">
         <item quantity="one">%d entry</item>
         <item quantity="other">%d entries</item>

@@ -229,11 +229,33 @@ public class KeyScriptTest
     }
 
     @Test
-    public void textTurnsLineBreaksAndTabsIntoKeys()
+    public void textLineBreaksTypeNothingButTabsDo()
     {
-        assertSteps(KeyScript.parseText("a\tb\r\nc", US, null),
-                    key(0, 0x04), key(0, 0x2b), key(0, 0x05), key(0, 0x28),
-                    key(0, 0x06));
+        assertSteps(KeyScript.parseText("a\tb\r\nc\n", US, null),
+                    key(0, 0x04), key(0, 0x2b), key(0, 0x05), key(0, 0x06));
+    }
+
+    @Test
+    public void referencedNotesStillTypeTheirLineBreaks()
+    {
+        KeyScript.CredentialResolver notes = (path, field) -> "a\r\nb";
+        assertSteps(KeyScript.parseText("{X.notes}", US, notes),
+                    key(0, 0x04), key(0, 0x28), key(0, 0x05));
+    }
+
+    /** The script that exposed Enter-per-line: one step per line */
+    @Test
+    public void stepPerLineScriptPressesOnlyItsOwnKeys()
+    {
+        KeyScript.CredentialResolver r = (path, field) ->
+                field.equals("user") ? "u" : "p";
+        assertSteps(KeyScript.parseText(
+                            "{delay 1000}\n{WIN+r}\n{delay 1000}\nab\n" +
+                            "{CTRL+SHIFT+ENTER}\n{hilux.user}\n{TAB}\n" +
+                            "{hilux.password}\n{ENTER}", US, r),
+                    pause(1000), key(0x08, 0x15), pause(1000), key(0, 0x04),
+                    key(0, 0x05), key(0x03, 0x28), key(0, 0x18), key(0, 0x2b),
+                    key(0, 0x13), key(0, 0x28));
     }
 
     @Test
@@ -298,7 +320,7 @@ public class KeyScriptTest
     {
         assertSteps(KeyScript.parseText("{REM top}\na\n{REM mid}\nb\n{rem}", US,
                                         null),
-                    key(0, 0x04), key(0, 0x28), key(0, 0x05), key(0, 0x28));
+                    key(0, 0x04), key(0, 0x05));
     }
 
     @Test
@@ -364,8 +386,9 @@ public class KeyScriptTest
     @Test
     public void convertedDuckyUsesScreenModifierNames()
     {
-        assertEquals("{WIN+r}{CTRL+ALT+DEL}",
-                     KeyScript.duckyToInline("GUI r\nCONTROL-ALT DEL"));
+        assertEquals("{WIN+r}\n{CTRL+ALT+DEL}\nhi{ENTER}\n{ENTER}",
+                     KeyScript.duckyToInline(
+                             "GUI r\nCONTROL-ALT DEL\nSTRINGLN hi\nENTER"));
     }
 
     @Test

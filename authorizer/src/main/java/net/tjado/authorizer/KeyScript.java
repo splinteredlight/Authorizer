@@ -25,11 +25,18 @@ import java.util.regex.Pattern;
  * Turns keyboard text or a script into {@link Keystrokes}.
  *
  * <p>The main format is inline ({@link #parseText}): text is typed as
- * written, a line break is Enter, and keys go in braces where they happen:
+ * written and keys go in braces where they happen. Line breaks are layout
+ * only and type nothing; Enter is always {ENTER}:
  * <pre>
- * {WIN+r}{DELAY 500}ssh admin@hilux{ENTER}
- * {DELAY 1500}{Hilux.password}{ENTER}
+ * {WIN+r}
+ * {DELAY 500}
+ * ssh admin@hilux{ENTER}
+ * {DELAY 1500}
+ * {Hilux.password}{ENTER}
  * </pre>
+ * (A first version typed Enter for every line break. Scripts written a
+ * step per line then pressed Enter after every step, which on a UAC
+ * prompt moved the cursor into the password box before the username.)
  * Tokens: a named key ({ENTER}, {F5}), a combo ({CTRL+ALT+DELETE},
  * {WIN+r}), a modifier alone ({WIN}), any of these with a repeat count
  * ({TAB 3}), {DELAY ms}, {REM comment}, and references (below). A brace
@@ -236,9 +243,6 @@ public final class KeyScript
                     "REM", "STRING", "STRINGLN", "DELAY", "DEFAULT_DELAY",
                     "DEFAULTDELAY", "REPEAT"));
 
-    /** A line holding only {REM ...} */
-    private static final Pattern COMMENT_LINE =
-            Pattern.compile("\\s*\\{\\s*(?i:REM)(\\s[^{}]*)?\\}\\s*");
     /** {DELAY 500} */
     private static final Pattern DELAY_TOKEN =
             Pattern.compile("(?i)DELAY\\s+(\\S+)");
@@ -284,9 +288,9 @@ public final class KeyScript
     }
 
     /**
-     * Parse the inline format: text is typed as it is, line breaks become
-     * Enter and tabs Tab, and brace tokens are keys, delays, comments and
-     * references (see the class comment).
+     * Parse the inline format: text is typed as it is (a tab character is
+     * Tab), line breaks type nothing, and brace tokens are keys, delays,
+     * comments and references (see the class comment).
      */
     @NonNull
     public static Result parseText(@NonNull String text,
@@ -342,8 +346,8 @@ public final class KeyScript
     }
 
     /**
-     * Rewrite a Ducky script in the inline format, for editing. The result
-     * types the same keys. Call only for a script that parses without
+     * Rewrite a Ducky script in the inline format, for editing, one command
+     * per line. The result types the same keys. Call only for a script that parses without
      * problems; lines that do not parse are dropped.
      */
     @NonNull
@@ -374,7 +378,7 @@ public final class KeyScript
             }
             case "DELAY": {
                 piece = "{DELAY " + ((arg == null) ? "" : arg.trim()) + "}";
-                out.append(piece);
+                out.append(piece).append('\n');
                 previous = piece;
                 continue;
             }
@@ -393,7 +397,7 @@ public final class KeyScript
                 } catch (NumberFormatException ignored) {
                 }
                 for (int r = 0; (previous != null) && (r < n); ++r) {
-                    out.append(previous);
+                    out.append(previous).append('\n');
                 }
                 continue;
             }
@@ -402,33 +406,30 @@ public final class KeyScript
                 break;
             }
             case "STRINGLN": {
-                piece = escapeInline((arg == null) ? "" : arg) + "\n";
+                piece = escapeInline((arg == null) ? "" : arg) + "{ENTER}";
                 break;
             }
             default: {
-                List<String> tokens = comboTokens(trimmed);
-                if ((tokens.size() == 1) &&
-                    KEYS.containsKey(tokens.get(0).toUpperCase(Locale.ROOT)) &&
-                    (KEYS.get(tokens.get(0).toUpperCase(Locale.ROOT)) ==
-                     (int)KEYS.get("ENTER"))) {
-                    piece = "\n";
-                } else {
-                    // Modifiers as the keyboard screen writes them
-                    List<String> names = new ArrayList<>();
-                    for (String t : tokens) {
-                        Integer bit = MODIFIERS.get(t.toUpperCase(Locale.ROOT));
-                        names.add((bit == null) ? t : MODIFIER_NAMES.get(bit));
-                    }
-                    piece = "{" + String.join("+", names) + "}";
+                // Modifiers as the keyboard screen writes them
+                List<String> names = new ArrayList<>();
+                for (String t : comboTokens(trimmed)) {
+                    Integer bit = MODIFIERS.get(t.toUpperCase(Locale.ROOT));
+                    names.add((bit == null) ? t : MODIFIER_NAMES.get(bit));
                 }
+                piece = "{" + String.join("+", names) + "}";
                 break;
             }
             }
             if (defaultDelay > 0) {
                 piece += "{DELAY " + defaultDelay + "}";
             }
-            out.append(piece);
+            out.append(piece).append('\n');
             previous = piece;
+        }
+        // No trailing break: it would only leave an empty last line
+        int len = out.length();
+        if ((len > 0) && (out.charAt(len - 1) == '\n')) {
+            out.setLength(len - 1);
         }
         return out.toString();
     }
@@ -480,16 +481,10 @@ public final class KeyScript
     {
         Keystrokes out = new Keystrokes();
         String[] lines = stripBom(text).split("\\r?\\n", -1);
+        // Lines only number the problems; the breaks between them type
+        // nothing.
         for (int i = 0; i < lines.length; ++i) {
-            // A line that is only a comment types nothing, not even the
-            // Enter of its line break, so scripts can be annotated.
-            if (COMMENT_LINE.matcher(lines[i]).matches()) {
-                continue;
-            }
             typeText(lines[i], i + 1, out, true);
-            if (i < lines.length - 1) {
-                out.addReport(report(0, KEYS.get("ENTER")));
-            }
         }
         return finish(out);
     }
