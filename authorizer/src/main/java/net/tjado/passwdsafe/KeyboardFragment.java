@@ -20,6 +20,7 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -219,6 +220,7 @@ public class KeyboardFragment extends Fragment
             delays.getChildAt(i).setOnClickListener(
                     v -> insertText("{DELAY " + v.getTag() + "}"));
         }
+        allowInnerScroll(itsText);
         itsText.addTextChangedListener(new TextWatcher()
         {
             @Override
@@ -344,6 +346,28 @@ public class KeyboardFragment extends Fragment
                 run.setEnabled(canType);
             }
         }
+    }
+
+    /**
+     * Let the box scroll its own text. It is capped at a number of lines
+     * inside the page's scroll view, which otherwise takes every vertical
+     * swipe, so a long script could not be scrolled inside the box.
+     */
+    // Returning false keeps the EditText's own touch handling, including
+    // performClick, so the accessibility lint does not apply.
+    @SuppressLint("ClickableViewAccessibility")
+    private static void allowInnerScroll(EditText box)
+    {
+        box.setOnTouchListener((v, event) -> {
+            boolean canScroll = v.canScrollVertically(1) ||
+                                v.canScrollVertically(-1);
+            int action = event.getActionMasked();
+            boolean ending = (action == MotionEvent.ACTION_UP) ||
+                             (action == MotionEvent.ACTION_CANCEL);
+            v.getParent().requestDisallowInterceptTouchEvent(canScroll &&
+                                                             !ending);
+            return false;
+        });
     }
 
     // ---------------------------------------------------------------------
