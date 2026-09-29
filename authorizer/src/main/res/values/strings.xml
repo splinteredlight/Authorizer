@@ -1046,6 +1046,10 @@
     <string name="keyboard_editing">Editing %1$s</string>
     <string name="keyboard_insert_entry">Entry field</string>
     <string name="keyboard_insert_delay">Delay</string>
+    <string name="keyboard_delay_500">0.5 s</string>
+    <string name="keyboard_delay_1000">1 s</string>
+    <string name="keyboard_delay_2000">2 s</string>
+    <string name="keyboard_delay_5000">5 s</string>
     <string name="keyboard_send">Send</string>
     <string name="keyboard_keys">Keys</string>
     <string name="keyboard_keys_help">Tap adds a key to the box; long-press sends it now. A modifier applies to the next key or character you type.</string>

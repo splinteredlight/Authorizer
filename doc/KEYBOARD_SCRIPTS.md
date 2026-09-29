@@ -50,7 +50,8 @@ are typed as written.
   field: username, password, one-time code, URL, email, notes, or
   "Login", which adds `{X.user}{TAB}{X.password}{ENTER}`. Only the
   reference goes into the box, never the value.
-- **Delay**: adds `{DELAY 500}`; edit the number in the box.
+- **Delay** chips (0.5 s, 1 s, 2 s, 5 s): add `{DELAY 500}` and so on;
+  for another length, edit the number in the box.
 
 The box turns off suggestions and keyboard learning (Gboard shows its
 incognito icon) and is excluded from autofill.

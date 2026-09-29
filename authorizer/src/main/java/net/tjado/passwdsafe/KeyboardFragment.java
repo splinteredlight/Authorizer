@@ -91,8 +91,6 @@ public class KeyboardFragment extends Fragment
     private static final int MAX_SCRIPT_BYTES = 256 * 1024;
     private static final int MAX_PROBLEMS_SHOWN = 10;
     private static final String STATE_EDITING = "editing";
-    /** Inserted by the Delay chip; edit the number in the box */
-    private static final int DEFAULT_DELAY_MS = 500;
 
     /** A script in the folder */
     private static final class ScriptFile
@@ -211,8 +209,11 @@ public class KeyboardFragment extends Fragment
         }
         root.findViewById(R.id.insert_entry)
             .setOnClickListener(v -> pickEntry());
-        root.findViewById(R.id.insert_delay)
-            .setOnClickListener(v -> insertDelay());
+        ChipGroup delays = root.findViewById(R.id.delays);
+        for (int i = 0; i < delays.getChildCount(); ++i) {
+            delays.getChildAt(i).setOnClickListener(
+                    v -> insertText("{DELAY " + v.getTag() + "}"));
+        }
         itsText.addTextChangedListener(new TextWatcher()
         {
             @Override
@@ -367,11 +368,6 @@ public class KeyboardFragment extends Fragment
         String mods = activeModifiers();
         clearModifiers();
         type(parse("{" + mods + key + "}", false), null);
-    }
-
-    private void insertDelay()
-    {
-        insertText("{DELAY " + DEFAULT_DELAY_MS + "}");
     }
 
     private void pickEntry()

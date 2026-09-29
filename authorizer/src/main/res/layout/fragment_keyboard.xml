@@ -202,15 +202,62 @@
                 android:layout_height="wrap_content"
                 android:text="@string/keyboard_insert_entry"
                 app:chipIcon="@drawable/ic_key"/>
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Delays: each chip's tag is the pause in milliseconds -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:drawablePadding="6dp"
+                android:gravity="center_vertical"
+                android:text="@string/keyboard_insert_delay"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:drawableStartCompat="@drawable/ic_timer"
+                app:drawableTint="?attr/colorOnSurfaceVariant"/>
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/delays"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
 
             <com.google.android.material.chip.Chip
-                android:id="@+id/insert_delay"
                 style="@style/Widget.Material3.Chip.Assist"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/keyboard_insert_delay"
-                app:chipIcon="@drawable/ic_timer"/>
-        </com.google.android.material.chip.ChipGroup>
+                android:tag="500"
+                android:text="@string/keyboard_delay_500"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="1000"
+                android:text="@string/keyboard_delay_1000"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="2000"
+                android:text="@string/keyboard_delay_2000"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="5000"
+                android:text="@string/keyboard_delay_5000"/>
+            </com.google.android.material.chip.ChipGroup>
+        </LinearLayout>
 
         <!-- Single keys -->
         <TextView
