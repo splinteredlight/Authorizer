@@ -22,10 +22,23 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Turns a keyboard script, or free text, into {@link Keystrokes}.
+ * Turns keyboard text or a script into {@link Keystrokes}.
  *
- * <p>The script language is a small subset of Hak5 Ducky Script, one
- * command per line:
+ * <p>The main format is inline ({@link #parseText}): text is typed as
+ * written, a line break is Enter, and keys go in braces where they happen:
+ * <pre>
+ * {WIN+r}{DELAY 500}ssh admin@hilux{ENTER}
+ * {DELAY 1500}{Hilux.password}{ENTER}
+ * </pre>
+ * Tokens: a named key ({ENTER}, {F5}), a combo ({CTRL+ALT+DELETE},
+ * {WIN+r}), a modifier alone ({WIN}), any of these with a repeat count
+ * ({TAB 3}), {DELAY ms}, {REM comment}, and references (below). A brace
+ * that looks like a key name but is not one ({ENTR}) is a problem rather
+ * than being typed; other braces ({"a": 1}) are typed as they are.
+ *
+ * <p>Script files may also be a small subset of Hak5 Ducky Script
+ * ({@link #parseScript}, chosen by {@link #parseFile}), one command per
+ * line:
  * <pre>
  * REM comment                  ignored
  * STRING text                  type the text
@@ -206,6 +219,28 @@ public final class KeyScript
      */
     // Every brace escaped: Android's ICU regex rejects a bare "}" that
     // desktop Java accepts, so the JVM tests alone would not catch it.
+    /** Ducky commands other than keys, for {@link #isDucky} */
+    private static final java.util.Set<String> DUCKY_COMMANDS =
+            new java.util.HashSet<>(java.util.Arrays.asList(
+                    "REM", "STRING", "STRINGLN", "DELAY", "DEFAULT_DELAY",
+                    "DEFAULTDELAY", "REPEAT"));
+
+    /** A line holding only {REM ...} */
+    private static final Pattern COMMENT_LINE =
+            Pattern.compile("\\s*\\{\\s*(?i:REM)(\\s[^{}]*)?\\}\\s*");
+    /** {DELAY 500} */
+    private static final Pattern DELAY_TOKEN =
+            Pattern.compile("(?i)DELAY\\s+(\\S+)");
+    /** {TAB 3}: a token and a repeat count */
+    private static final Pattern REPEAT_TOKEN =
+            Pattern.compile("(\\S.*?)\\s+(\\d+)");
+    /**
+     * Braces holding what looks like a key name or combo; if it is not a
+     * known one, that is a typo to report, not text to type.
+     */
+    private static final Pattern KEY_LIKE =
+            Pattern.compile("[A-Za-z][A-Za-z0-9]*(\\s*\\+\\s*[^+\\s]+)*(\\s+\\d+)?");
+
     private static final Pattern REFERENCE =
             Pattern.compile("\\{([^\\{\\}\\r\\n]+)\\.([A-Za-z]+)\\}");
 
@@ -238,8 +273,9 @@ public final class KeyScript
     }
 
     /**
-     * Parse free text: typed as it is, line breaks become Enter and tabs
-     * become Tab. References are expanded as in a script's STRING.
+     * Parse the inline format: text is typed as it is, line breaks become
+     * Enter and tabs Tab, and brace tokens are keys, delays, comments and
+     * references (see the class comment).
      */
     @NonNull
     public static Result parseText(@NonNull String text,
@@ -248,6 +284,173 @@ public final class KeyScript
     {
         return new KeyScript(UsbHidKbd.forLanguage(lang), lang.name(), resolver)
                 .doParseText(text);
+    }
+
+    /**
+     * Parse a script file in whichever format it is written: Ducky Script
+     * when {@link #isDucky} says so, else the inline format.
+     */
+    @NonNull
+    public static Result parseFile(@NonNull String script,
+                                   @NonNull OutputInterface.Language lang,
+                                   @Nullable CredentialResolver resolver)
+    {
+        return isDucky(script) ? parseScript(script, lang, resolver) :
+               parseText(script, lang, resolver);
+    }
+
+    /**
+     * Whether a script is Ducky Script: every non-blank line starts with a
+     * Ducky command, key or modifier in upper case (as Ducky Script is
+     * written). Inline text almost never does; a file of plain "TAB" and
+     * "ENTER" lines means the same either way.
+     */
+    public static boolean isDucky(@NonNull String script)
+    {
+        boolean any = false;
+        for (String line : stripBom(script).split("\\r?\\n")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            int space = firstSpace(trimmed);
+            String first = (space < 0) ? trimmed : trimmed.substring(0, space);
+            // CTRL-ALT style joins count by their first part
+            int dash = first.indexOf('-');
+            if (dash > 0) {
+                first = first.substring(0, dash);
+            }
+            if (!first.equals(first.toUpperCase(Locale.ROOT)) ||
+                !(DUCKY_COMMANDS.contains(first) || KEYS.containsKey(first) ||
+                  MODIFIERS.containsKey(first))) {
+                return false;
+            }
+            any = true;
+        }
+        return any;
+    }
+
+    /**
+     * Rewrite a Ducky script in the inline format, for editing. The result
+     * types the same keys. Call only for a script that parses without
+     * problems; lines that do not parse are dropped.
+     */
+    @NonNull
+    public static String duckyToInline(@NonNull String script)
+    {
+        StringBuilder out = new StringBuilder();
+        String previous = null;
+        int defaultDelay = 0;
+        for (String line : stripBom(script).split("\\r?\\n", -1)) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            int space = firstSpace(trimmed);
+            String cmd = ((space < 0) ? trimmed : trimmed.substring(0, space))
+                    .toUpperCase(Locale.ROOT);
+            String arg = null;
+            if (space >= 0) {
+                arg = line.substring(line.indexOf(trimmed) + space + 1);
+            }
+            String piece;
+            switch (cmd) {
+            case "REM": {
+                String note = (arg == null) ? "" :
+                              arg.replace("{", "").replace("}", "").trim();
+                out.append("{REM ").append(note).append("}\n");
+                continue;
+            }
+            case "DELAY": {
+                piece = "{DELAY " + ((arg == null) ? "" : arg.trim()) + "}";
+                out.append(piece);
+                previous = piece;
+                continue;
+            }
+            case "DEFAULT_DELAY":
+            case "DEFAULTDELAY": {
+                try {
+                    defaultDelay = Integer.parseInt((arg == null) ? "" : arg.trim());
+                } catch (NumberFormatException ignored) {
+                }
+                continue;
+            }
+            case "REPEAT": {
+                int n = 0;
+                try {
+                    n = Integer.parseInt((arg == null) ? "" : arg.trim());
+                } catch (NumberFormatException ignored) {
+                }
+                for (int r = 0; (previous != null) && (r < n); ++r) {
+                    out.append(previous);
+                }
+                continue;
+            }
+            case "STRING": {
+                piece = escapeInline((arg == null) ? "" : arg);
+                break;
+            }
+            case "STRINGLN": {
+                piece = escapeInline((arg == null) ? "" : arg) + "\n";
+                break;
+            }
+            default: {
+                List<String> tokens = comboTokens(trimmed);
+                if ((tokens.size() == 1) &&
+                    KEYS.containsKey(tokens.get(0).toUpperCase(Locale.ROOT)) &&
+                    (KEYS.get(tokens.get(0).toUpperCase(Locale.ROOT)) ==
+                     (int)KEYS.get("ENTER"))) {
+                    piece = "\n";
+                } else {
+                    piece = "{" + String.join("+", tokens) + "}";
+                }
+                break;
+            }
+            }
+            if (defaultDelay > 0) {
+                piece += "{DELAY " + defaultDelay + "}";
+            }
+            out.append(piece);
+            previous = piece;
+        }
+        return out.toString();
+    }
+
+    /**
+     * Ducky STRING text in the inline format: references and "{{" keep
+     * their meaning, every other brace is doubled so it stays literal.
+     */
+    private static String escapeInline(String text)
+    {
+        StringBuilder sb = new StringBuilder();
+        int pos = 0;
+        while (pos < text.length()) {
+            char c = text.charAt(pos);
+            if (c != '{') {
+                sb.append(c);
+                ++pos;
+            } else if (text.startsWith("{{", pos)) {
+                sb.append("{{");
+                pos += 2;
+            } else {
+                Matcher m = REFERENCE.matcher(text);
+                m.region(pos, text.length());
+                if (m.lookingAt() &&
+                    FIELDS.containsKey(m.group(2).toLowerCase(Locale.ROOT))) {
+                    sb.append(m.group());
+                    pos = m.end();
+                } else {
+                    sb.append("{{");
+                    ++pos;
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String stripBom(String s)
+    {
+        return (!s.isEmpty() && (s.charAt(0) == BOM)) ? s.substring(1) : s;
     }
 
     /** Whether a token names a modifier, e.g. "CTRL" or "gui" */
@@ -259,12 +462,17 @@ public final class KeyScript
     private Result doParseText(String text)
     {
         Keystrokes out = new Keystrokes();
-        String[] lines = text.split("\\r?\\n", -1);
+        String[] lines = stripBom(text).split("\\r?\\n", -1);
         for (int i = 0; i < lines.length; ++i) {
-            if (i > 0) {
+            // A line that is only a comment types nothing, not even the
+            // Enter of its line break, so scripts can be annotated.
+            if (COMMENT_LINE.matcher(lines[i]).matches()) {
+                continue;
+            }
+            typeText(lines[i], i + 1, out, true);
+            if (i < lines.length - 1) {
                 out.addReport(report(0, KEYS.get("ENTER")));
             }
-            typeText(lines[i], i + 1, out);
         }
         return finish(out);
     }
@@ -313,7 +521,7 @@ public final class KeyScript
                     }
                     arg = "";
                 }
-                typeText(arg, lineNo, cmdKeys);
+                typeText(arg, lineNo, cmdKeys, false);
                 if (cmd.equals("STRINGLN")) {
                     cmdKeys.addReport(report(0, KEYS.get("ENTER")));
                 }
@@ -383,21 +591,7 @@ public final class KeyScript
      */
     private boolean keyCombo(String line, int lineNo, Keystrokes out)
     {
-        List<String> tokens = new ArrayList<>();
-        for (String tok : line.split("\\s+")) {
-            if ((tok.length() > 1) && tok.contains("-")) {
-                String[] parts = tok.split("-");
-                boolean allMods = parts.length > 1;
-                for (String p : parts) {
-                    allMods &= isModifier(p);
-                }
-                if (allMods) {
-                    Collections.addAll(tokens, parts);
-                    continue;
-                }
-            }
-            tokens.add(tok);
-        }
+        List<String> tokens = comboTokens(line);
 
         int mods = 0;
         String key = null;
@@ -422,29 +616,17 @@ public final class KeyScript
             return true;
         }
 
-        Integer usage = KEYS.get(key.toUpperCase(Locale.ROOT));
-        if (usage != null) {
-            out.addReport(report(mods, usage));
-            return true;
-        }
-
-        if (key.codePointCount(0, key.length()) == 1) {
-            // Letters are keys, as in Ducky Script: "GUI r" and "GUI R" both
-            // mean Win+R, not Win+Shift+R.
-            String ch = key;
-            if ((ch.length() == 1) && (ch.charAt(0) >= 'A') &&
-                (ch.charAt(0) <= 'Z')) {
-                ch = ch.toLowerCase(Locale.ROOT);
-            }
-            byte[] rep = scancode(ch);
-            if (rep == null) {
-                problem(lineNo, "'" + key + "' can't be typed with the " +
-                                itsLayoutName + " keyboard layout");
-                return false;
-            }
-            rep[0] |= (byte)mods;
+        // Letters are keys, as in Ducky Script: "GUI r" and "GUI R" both
+        // mean Win+R, not Win+Shift+R.
+        byte[] rep = keyReport(mods, key, true);
+        if (rep != null) {
             out.addReport(rep);
             return true;
+        }
+        if (key.codePointCount(0, key.length()) == 1) {
+            problem(lineNo, "'" + key + "' can't be typed with the " +
+                            itsLayoutName + " keyboard layout");
+            return false;
         }
 
         if ((tokens.size() == 1) && (mods == 0)) {
@@ -456,8 +638,169 @@ public final class KeyScript
         return false;
     }
 
-    /** Type text, expanding references */
-    private void typeText(String text, int lineNo, Keystrokes out)
+    /** Split a Ducky key line into its keys, expanding CTRL-ALT joins */
+    private static List<String> comboTokens(String line)
+    {
+        List<String> tokens = new ArrayList<>();
+        for (String tok : line.trim().split("\\s+")) {
+            if ((tok.length() > 1) && tok.contains("-")) {
+                String[] parts = tok.split("-");
+                boolean allMods = parts.length > 1;
+                for (String p : parts) {
+                    allMods &= isModifier(p);
+                }
+                if (allMods) {
+                    Collections.addAll(tokens, parts);
+                    continue;
+                }
+            }
+            tokens.add(tok);
+        }
+        return tokens;
+    }
+
+    /**
+     * Type an inline brace token.
+     *
+     * @param content what is between the braces
+     * @return false if it is not a token and the braces are to be typed as
+     *         text; true if it was typed or reported as a problem
+     */
+    private boolean inlineToken(String content, int lineNo, Keystrokes out)
+    {
+        String c = content.trim();
+        String upper = c.toUpperCase(Locale.ROOT);
+        if (upper.equals("REM") || upper.startsWith("REM ")) {
+            return true;
+        }
+        Matcher delay = DELAY_TOKEN.matcher(c);
+        if (delay.matches()) {
+            Integer ms = number(delay.group(1), lineNo, "{DELAY}", 0,
+                                MAX_DELAY_MS);
+            if (ms != null) {
+                out.addPause(ms);
+            }
+            return true;
+        }
+
+        // {TAB 3}: a key and a count. The count only counts if what is
+        // before it is a key; {"a": 5000} is text.
+        Matcher repeat = REPEAT_TOKEN.matcher(c);
+        if (repeat.matches()) {
+            byte[] rep = tokenReport(repeat.group(1));
+            if (rep != null) {
+                int n = -1;
+                try {
+                    n = Integer.parseInt(repeat.group(2));
+                } catch (NumberFormatException ignored) {
+                }
+                if ((n < 1) || (n > MAX_REPEAT)) {
+                    problem(lineNo, "{" + content + "}: the count must be " +
+                                    "from 1 to " + MAX_REPEAT);
+                    return true;
+                }
+                for (int i = 0; i < n; ++i) {
+                    out.addReport(rep);
+                }
+                return true;
+            }
+        }
+
+        byte[] rep = tokenReport(c);
+        if (rep != null) {
+            out.addReport(rep);
+            return true;
+        }
+        // A single character after valid modifiers that the layout lacks
+        int plus = c.lastIndexOf('+');
+        String key = (plus < 0) ? c : c.substring(plus + 1);
+        if ((plus > 0) && (key.codePointCount(0, key.length()) == 1) &&
+            (tokenReport(c.substring(0, plus)) != null)) {
+            problem(lineNo, "'" + key + "' can't be typed with the " +
+                            itsLayoutName + " keyboard layout");
+            return true;
+        }
+        if (KEY_LIKE.matcher(c).matches()) {
+            problem(lineNo, "Unknown key {" + content +
+                            "}. To type a brace, write {{");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * The report for a key token without a count: "ENTER", "a",
+     * "CTRL+ALT+DELETE", "WIN+r", "CTRL++", or modifiers alone ("WIN",
+     * "CTRL+ALT"). Null if it is not one.
+     */
+    @Nullable
+    private byte[] tokenReport(String base)
+    {
+        String modPart;
+        String key;
+        if ((base.length() > 2) && base.endsWith("++")) {
+            modPart = base.substring(0, base.length() - 2);
+            key = "+";
+        } else {
+            int plus = base.lastIndexOf('+');
+            modPart = (plus < 0) ? "" : base.substring(0, plus);
+            key = (plus < 0) ? base : base.substring(plus + 1).trim();
+        }
+        if (key.isEmpty()) {
+            return null;
+        }
+        int mods = 0;
+        if (!modPart.isEmpty()) {
+            for (String m : modPart.split("\\+", -1)) {
+                Integer bit = MODIFIERS.get(m.trim().toUpperCase(Locale.ROOT));
+                if (bit == null) {
+                    return null;
+                }
+                mods |= bit;
+            }
+        }
+        Integer bit = MODIFIERS.get(key.toUpperCase(Locale.ROOT));
+        if (bit != null) {
+            // Modifiers alone, e.g. {WIN} for the Start menu
+            return report(mods | bit, 0);
+        }
+        return keyReport(mods, key, mods != 0);
+    }
+
+    /**
+     * The report for a named key or a single character with modifiers, or
+     * null if there is none. With {@code lowerLetters}, A-Z are keys, so
+     * WIN+R is Win+R, not Win+Shift+R.
+     */
+    @Nullable
+    private byte[] keyReport(int mods, String key, boolean lowerLetters)
+    {
+        Integer usage = KEYS.get(key.toUpperCase(Locale.ROOT));
+        if (usage != null) {
+            return report(mods, usage);
+        }
+        if (key.codePointCount(0, key.length()) != 1) {
+            return null;
+        }
+        String ch = key;
+        if (lowerLetters && (ch.length() == 1) && (ch.charAt(0) >= 'A') &&
+            (ch.charAt(0) <= 'Z')) {
+            ch = ch.toLowerCase(Locale.ROOT);
+        }
+        byte[] rep = scancode(ch);
+        if (rep != null) {
+            rep[0] |= (byte)mods;
+        }
+        return rep;
+    }
+
+    /**
+     * Type text, expanding references and "{{".
+     * @param tokens whether brace tokens (keys, delays) are recognised, as
+     *               in the inline format; Ducky STRING text types them
+     */
+    private void typeText(String text, int lineNo, Keystrokes out,
+                          boolean tokens)
     {
         int pos = 0;
         while (pos < text.length()) {
@@ -477,6 +820,14 @@ public final class KeyScript
                         pos = m.end();
                         continue;
                     }
+                }
+                int close = text.indexOf('}', pos + 1);
+                if (tokens && (close > pos + 1) &&
+                    (text.indexOf('{', pos + 1) < 0 ||
+                     text.indexOf('{', pos + 1) > close) &&
+                    inlineToken(text.substring(pos + 1, close), lineNo, out)) {
+                    pos = close + 1;
+                    continue;
                 }
             }
             int next = text.indexOf('{', pos + 1);

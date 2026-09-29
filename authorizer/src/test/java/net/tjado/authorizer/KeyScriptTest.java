@@ -252,4 +252,122 @@ public class KeyScriptTest
         assertArrayEquals(new byte[8], rep);
         assertTrue(ks.isEmpty());
     }
+
+    // ------------------------------------------------------------------
+    // Inline format
+
+    @Test
+    public void inlineKeysAndCombos()
+    {
+        assertSteps(KeyScript.parseText("{WIN+r}a{ENTER}{ctrl+alt+del}", US,
+                                        null),
+                    key(0x08, 0x15), key(0, 0x04), key(0, 0x28),
+                    key(0x05, 0x4c));
+    }
+
+    @Test
+    public void inlineComboLetterIgnoresCaseButLoneLetterDoesNot()
+    {
+        assertSteps(KeyScript.parseText("{WIN+R}{A}", US, null),
+                    key(0x08, 0x15), key(0x02, 0x04));
+    }
+
+    @Test
+    public void inlineModifierAloneAndPlusKey()
+    {
+        assertSteps(KeyScript.parseText("{WIN}{CTRL++}", US, null),
+                    key(0x08, 0), key(0x03, 0x2e));
+    }
+
+    @Test
+    public void inlineRepeatDelayAndComment()
+    {
+        assertSteps(KeyScript.parseText("{TAB 2}{DELAY 500}{REM hi}", US, null),
+                    key(0, 0x2b), key(0, 0x2b), pause(500));
+    }
+
+    @Test
+    public void inlineReferenceAndEscapedBrace()
+    {
+        assertSteps(KeyScript.parseText("{{{Hilux.password}", US, RESOLVER),
+                    key(0x02, 0x2f), key(0, 0x13), key(0, 0x1a), key(0, 0x1e));
+    }
+
+    @Test
+    public void inlineCommentLinesTypeNothing()
+    {
+        assertSteps(KeyScript.parseText("{REM top}\na\n{REM mid}\nb\n{rem}", US,
+                                        null),
+                    key(0, 0x04), key(0, 0x28), key(0, 0x05), key(0, 0x28));
+    }
+
+    @Test
+    public void inlineUnknownKeyIsAProblem()
+    {
+        KeyScript.Result r = KeyScript.parseText("ok\n{ENTR}", US, null);
+        assertFalse(r.isOk());
+        assertEquals(2, r.problems.get(0).line);
+    }
+
+    @Test
+    public void inlineNonKeyBracesAreText()
+    {
+        // {"a": 5000} is not a key with a count, and {a.b} not a reference
+        KeyScript.Result r = KeyScript.parseText("{\"a\": 5000}{a.b}", US, null);
+        assertEquals(16, r.keystrokes.getKeyCount());
+    }
+
+    @Test
+    public void inlineUntypableComboKeyIsNamed()
+    {
+        KeyScript.Result r = KeyScript.parseText("{CTRL+\u00e9}", US, null);
+        assertFalse(r.isOk());
+        assertTrue(r.problems.get(0).message.contains("layout"));
+    }
+
+    @Test
+    public void inlineBadCount()
+    {
+        assertFalse(KeyScript.parseText("{TAB 0}", US, null).isOk());
+    }
+
+    // ------------------------------------------------------------------
+    // Format detection and conversion
+
+    @Test
+    public void duckyIsDetected()
+    {
+        assertTrue(KeyScript.isDucky("REM x\nGUI r\n\nSTRINGLN hi\nCTRL-ALT DEL"));
+        assertFalse(KeyScript.isDucky("{WIN+r}ssh admin@hilux"));
+        assertFalse(KeyScript.isDucky("Enter the code\n"));
+        assertFalse(KeyScript.isDucky(""));
+    }
+
+    @Test
+    public void parseFilePicksTheFormat()
+    {
+        assertSteps(KeyScript.parseFile("TAB", US, null), key(0, 0x2b));
+        assertSteps(KeyScript.parseFile("{TAB}", US, null), key(0, 0x2b));
+    }
+
+    private static void assertSameKeys(String ducky)
+    {
+        String inline = KeyScript.duckyToInline(ducky);
+        List<byte[]> a = steps(KeyScript.parseScript(ducky, US, RESOLVER));
+        List<byte[]> b = steps(KeyScript.parseText(inline, US, RESOLVER));
+        assertEquals(inline, a.size(), b.size());
+        for (int i = 0; i < a.size(); ++i) {
+            assertArrayEquals(inline + " step " + i, a.get(i), b.get(i));
+        }
+    }
+
+    @Test
+    public void convertedDuckyTypesTheSame()
+    {
+        assertSameKeys("REM Log in\nGUI r\nDELAY 500\nSTRINGLN ssh admin@hilux\n" +
+                       "DELAY 1500\nSTRINGLN {Hilux.password}\nENTER");
+        assertSameKeys("DEFAULT_DELAY 100\nTAB\nREPEAT 2\nSTRING a{b}{{c\n" +
+                       "CTRL-ALT DELETE\nSHIFT TAB\nGUI");
+        assertSameKeys("STRING {ENTER} is text in Ducky\nCTRL +");
+    }
 }
