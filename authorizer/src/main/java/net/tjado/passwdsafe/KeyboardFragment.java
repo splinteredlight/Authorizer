@@ -132,6 +132,11 @@ public class KeyboardFragment extends Fragment
 
     /** Name of the script the box was loaded from or saved as, or null */
     private String itsEditingName;
+    /**
+     * The box text as last loaded or saved, to tell whether loading another
+     * script would throw away unsaved changes; "" when nothing was
+     */
+    private String itsCleanText = "";
     /** Set while the fragment itself changes the box */
     private boolean itsSelfEdit;
     /** A character typed while a modifier was on: its start, or -1 */
@@ -331,8 +336,13 @@ public class KeyboardFragment extends Fragment
                            Preferences.getAutoTypeUsbEnabled(itsPrefs));
         // Key chips stay enabled: tapping only edits the box
         itsSend.setEnabled(canType);
+        // Script rows stay enabled for editing; only their Type button needs
+        // an output
         for (int i = 0; i < itsScriptsList.getChildCount(); ++i) {
-            itsScriptsList.getChildAt(i).setEnabled(canType);
+            View run = itsScriptsList.getChildAt(i).findViewById(R.id.script_run);
+            if (run != null) {
+                run.setEnabled(canType);
+            }
         }
     }
 
@@ -491,8 +501,14 @@ public class KeyboardFragment extends Fragment
             itsSelfEdit = false;
         }
         itsText.setSelection(text.length());
+        itsCleanText = text;
         setEditingName(name);
         itsText.requestFocus();
+        // The script list is below the fold; show the box it went into
+        View root = getView();
+        if (root instanceof androidx.core.widget.NestedScrollView) {
+            ((androidx.core.widget.NestedScrollView)root).smoothScrollTo(0, 0);
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -607,9 +623,21 @@ public class KeyboardFragment extends Fragment
                                         itsScriptsList, false);
             TextView name = row.findViewById(R.id.script_name);
             name.setText(script.displayName());
-            row.setOnClickListener(v -> readScript(script, false));
+            View edit = row.findViewById(R.id.script_edit);
+            View run = row.findViewById(R.id.script_run);
+            edit.setContentDescription(
+                    getString(R.string.keyboard_script_edit_desc,
+                              script.displayName()));
+            run.setContentDescription(
+                    getString(R.string.keyboard_script_run_desc,
+                              script.displayName()));
+            // Tapping the row edits: a stray tap must not type into
+            // whatever window has focus on the computer.
+            row.setOnClickListener(v -> readScript(script, ScriptAction.EDIT));
+            edit.setOnClickListener(v -> readScript(script, ScriptAction.EDIT));
+            run.setOnClickListener(v -> readScript(script, ScriptAction.RUN));
             row.setOnLongClickListener(v -> {
-                readScript(script, true);
+                readScript(script, ScriptAction.VIEW);
                 return true;
             });
             itsScriptsList.addView(row);
@@ -617,8 +645,11 @@ public class KeyboardFragment extends Fragment
         updateEnabled();
     }
 
-    /** Read a script off the main thread, then run or show it */
-    private void readScript(ScriptFile script, boolean view)
+    /** What to do with a script once it is read */
+    private enum ScriptAction { RUN, EDIT, VIEW }
+
+    /** Read a script off the main thread, then act on it */
+    private void readScript(ScriptFile script, ScriptAction action)
     {
         Context appCtx = requireContext().getApplicationContext();
         itsIo.execute(() -> {
@@ -655,10 +686,21 @@ public class KeyboardFragment extends Fragment
                     PasswdSafeUtil.showErrorMsg(
                             getString(fError, script.itsName),
                             new ActContext(requireContext()));
-                } else if (view) {
-                    showScript(script, fText);
                 } else {
-                    type(parse(fText, true), script.displayName());
+                    switch (action) {
+                    case RUN: {
+                        type(parse(fText, true), script.displayName());
+                        break;
+                    }
+                    case EDIT: {
+                        editScript(script, fText);
+                        break;
+                    }
+                    case VIEW: {
+                        showScript(script, fText);
+                        break;
+                    }
+                    }
                 }
             });
         });
@@ -692,6 +734,22 @@ public class KeyboardFragment extends Fragment
      * box's format; it has to parse first, or the rewrite would drop lines.
      */
     private void editScript(ScriptFile script, String text)
+    {
+        String current = boxText();
+        if (!current.isEmpty() && !current.equals(itsCleanText)) {
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setMessage(getString(R.string.keyboard_replace_box,
+                                          script.displayName()))
+                    .setPositiveButton(R.string.keyboard_save_replace,
+                                       (d, w) -> doEditScript(script, text))
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+            return;
+        }
+        doEditScript(script, text);
+    }
+
+    private void doEditScript(ScriptFile script, String text)
     {
         String boxText = text;
         if (KeyScript.isDucky(text)) {
@@ -818,6 +876,7 @@ public class KeyboardFragment extends Fragment
                             .setNegativeButton(R.string.cancel, null)
                             .show();
                 } else if (fSaved) {
+                    itsCleanText = text;
                     setEditingName(name);
                     Toast.makeText(ctx, getString(R.string.keyboard_saved,
                                                   fileName),

@@ -72,9 +72,12 @@ incognito icon) and is excluded from autofill.
 
 Tap **Choose folder** and pick a folder; the app keeps read and write
 access to it. **Save** writes the box as `name.txt` there (asking before
-it replaces a file). In the list, tap a script to type it, long-press to
-view it, then **Edit** to load it into the box. "Editing *name*" shows
-which script the box holds; Save offers that name.
+it replaces a file). Each script in the list has two buttons: the
+pencil loads it into the box for editing, and ▶ types it. Tapping the
+name also edits it, so a stray tap never types into the computer;
+long-press previews it. If the box holds unsaved changes, loading
+another script asks first. "Editing *name*" shows which script the box
+holds, and Save offers that name.
 
 Scripts are plain text, so you can also edit them in any editor; the
 list reloads when you return to the app.

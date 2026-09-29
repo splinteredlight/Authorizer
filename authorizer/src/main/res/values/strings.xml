@@ -1085,13 +1085,16 @@
     <string name="keyboard_scripts_choose">Choose folder</string>
     <string name="keyboard_scripts_refresh">Reload scripts</string>
     <string name="keyboard_scripts_change">Change</string>
-    <string name="keyboard_scripts_no_folder">Choose a folder for your scripts. Tap a script to type it; long-press to view or edit it.</string>
+    <string name="keyboard_scripts_no_folder">Choose a folder for your scripts. Tap a script to edit it, ▶ to type it; long-press to preview it.</string>
     <string name="keyboard_scripts_empty">No .txt scripts in this folder</string>
     <string name="keyboard_scripts_folder_gone">The script folder can\'t be read any more; choose it again</string>
     <string name="keyboard_script_too_large">%1$s is too large for a script</string>
     <string name="keyboard_script_read_failed">Can\'t read %1$s</string>
     <string name="keyboard_script_run">Type it</string>
     <string name="keyboard_script_edit">Edit</string>
+    <string name="keyboard_script_edit_desc">Edit %1$s</string>
+    <string name="keyboard_script_run_desc">Type %1$s</string>
+    <string name="keyboard_replace_box">The box has unsaved changes. Replace them with %1$s?</string>
     <string name="keyboard_script_converted">Converted from Ducky Script; Save writes it in this format</string>
     <string name="keyboard_save_title">Save script</string>
     <string name="keyboard_save_name">Name</string>
