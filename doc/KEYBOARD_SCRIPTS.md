@@ -1,80 +1,96 @@
 # Keyboard screen and scripts
 
 The **Keyboard** tab types to the connected computer without opening an
-entry: free text, single keys with modifiers, and scripts saved as text
-files on the phone. It uses the same output as auto-type, over Bluetooth
-(through the Pico bridge or a paired PC) or USB, and the same keyboard
-layout setting.
+entry. It uses the same output as auto-type, over Bluetooth (through the
+Pico bridge or a paired PC) or USB, and the same keyboard layout setting.
 
-## Free typing
+One box does everything: what it shows is what **Send** types, and
+**Save** stores it as a script in your folder.
 
-Type into the box and tap **Send**. Line breaks become Enter and tabs
-become Tab; **Press Enter after** adds one more Enter at the end.
+## The format
 
-For shortcuts, turn on one or more modifier chips (Ctrl, Alt, Shift, Win)
-and tap a key chip, or send a single character: Ctrl + Alt + `Delete`, or
-Win with `r` in the box for the Run dialog. The modifiers clear after each
-use.
+Text is typed as written and a new line is Enter. Keys go in braces
+where they happen:
 
-The text box turns off suggestions and keyboard learning (Gboard shows
-its incognito icon) and is excluded from autofill.
+```
+{REM Log in to the Hilux box}
+{WIN+r}{DELAY 500}ssh admin@hilux
+{DELAY 1500}{Hilux.password}
+```
+
+| Token | Meaning |
+| --- | --- |
+| `{ENTER}`, `{TAB}`, `{ESC}`, `{BACKSPACE}`, `{DELETE}`, `{INSERT}`, `{SPACE}` | Press the key |
+| `{UP}`, `{DOWN}`, `{LEFT}`, `{RIGHT}`, `{HOME}`, `{END}`, `{PAGEUP}`, `{PAGEDOWN}` | Press the key |
+| `{F1}` … `{F12}`, `{PRINTSCREEN}`, `{CAPSLOCK}`, `{NUMLOCK}`, `{MENU}` | Press the key |
+| `{WIN+r}`, `{CTRL+ALT+DELETE}`, `{SHIFT+TAB}`, `{CTRL++}` | Hold the modifiers, press the last key |
+| `{WIN}` | A modifier on its own (opens the Start menu) |
+| `{TAB 3}` | Press a key or combo 3 times |
+| `{DELAY 500}` | Wait 500 ms (up to 600000) |
+| `{REM note}` | Comment; a line holding only a comment types nothing, not even Enter |
+| `{Title.password}` | A field of the open file (below) |
+| `{{` | A literal `{` |
+
+Modifiers: `CTRL`, `ALT`, `SHIFT`, `WIN` (also `GUI`, `COMMAND`),
+`ALTGR`. After a modifier, letters are keys: `{WIN+R}` is Win+R, not
+Win+Shift+R. Tokens are not case-sensitive.
+
+A brace that looks like a key but isn't one (`{ENTR}`) is reported as a
+problem rather than typed. Braces that don't look like keys (`{"a": 1}`)
+are typed as written.
+
+## Building it on the phone
+
+- **Modifier chips** (Ctrl, Alt, Shift, Win): turn one on, then type a
+  character or tap a key chip; the box gets `{WIN+r}`. The chip turns off
+  after one use.
+- **Key chips**: tap to add the key to the box; long-press to send that
+  key straight away without touching the box.
+- **Entry field**: pick an entry of the open file (searchable), then a
+  field: username, password, one-time code, URL, email, notes, or
+  "Login", which adds `{X.user}{TAB}{X.password}{ENTER}`. Only the
+  reference goes into the box, never the value.
+- **Delay**: adds `{DELAY 500}`; edit the number in the box.
+
+The box turns off suggestions and keyboard learning (Gboard shows its
+incognito icon) and is excluded from autofill.
 
 ## Scripts
 
-Tap **Choose folder** and pick a folder of `.txt` files. The app keeps
-read access to that folder only. Tap a script to type it, long-press to
-read it first. Edit scripts in any text editor; the list reloads when you
-return to the app (or with the reload button).
+Tap **Choose folder** and pick a folder; the app keeps read and write
+access to it. **Save** writes the box as `name.txt` there (asking before
+it replaces a file). In the list, tap a script to type it, long-press to
+view it, then **Edit** to load it into the box. "Editing *name*" shows
+which script the box holds; Save offers that name.
 
-The language is a subset of Hak5 Ducky Script, one command per line:
+Scripts are plain text, so you can also edit them in any editor; the
+list reloads when you return to the app.
 
-| Command | Meaning |
-| --- | --- |
-| `STRING text` | Type the text (spaces after the first one are kept) |
-| `STRINGLN text` | Type the text, then Enter |
-| `ENTER`, `TAB`, `ESC`, `BACKSPACE`, `DELETE`, `INSERT`, `SPACE` | Press the key |
-| `UP`, `DOWN`, `LEFT`, `RIGHT`, `HOME`, `END`, `PAGEUP`, `PAGEDOWN` | Press the key |
-| `F1` … `F12`, `PRINTSCREEN`, `CAPSLOCK`, `NUMLOCK`, `MENU` | Press the key |
-| `CTRL ALT DELETE`, `GUI r`, `SHIFT TAB` | Hold the modifiers, press the last key |
-| `GUI` | Press a modifier on its own (opens the Start menu) |
-| `DELAY 500` | Wait 500 ms (up to 600000) |
-| `DEFAULT_DELAY 100` | Wait 100 ms after every later command |
-| `REPEAT 3` | Run the previous command 3 more times |
-| `REM text` | Comment |
+### Ducky Script files
 
-Modifiers: `CTRL`, `ALT`, `SHIFT`, `GUI` (also `WIN`, `WINDOWS`,
-`COMMAND`), `ALTGR`. Letters after modifiers are keys, so `GUI r` and
-`GUI R` are both Win+R. Commands are not case-sensitive.
-
-Example:
-
-```
-REM Log in to the Hilux box
-GUI r
-DELAY 500
-STRINGLN ssh admin@hilux
-DELAY 1500
-STRINGLN {Hilux.password}
-```
+A file where every line starts with an upper-case Ducky Script command
+(`STRING`, `STRINGLN`, `DELAY`, `DEFAULT_DELAY`, `REPEAT`, `REM`, a key
+such as `ENTER`, or a combo such as `GUI r`) runs as Ducky Script. Edit
+converts it to the format above (the result types exactly the same keys),
+and Save then writes it in that format.
 
 ## Credential references
 
-In free text and in `STRING`/`STRINGLN`, `{Title.field}` types a field
-of an entry in the open password file, so scripts never contain secrets:
+`{Title.field}` types a field of an entry in the open password file, so
+scripts never contain secrets:
 
 - Fields: `user` (or `username`), `password`, `url`, `email`, `notes`,
   `title`, `otp` (time-based codes only).
 - When several entries share a title, add the group path:
   `{Work/Servers/Hilux.password}`. Matching ignores case but must find
-  exactly one entry.
-- `{{` types a single `{`. Braces that are not a reference (such as
-  `{a.b}`, where `b` is not a field) are typed as written.
+  exactly one entry. The Entry field picker adds the group only when it
+  is needed.
 
 A reference needs the file to be open. If a reference can't be resolved,
-a line has an unknown command, or a character can't be typed with the
-selected layout, nothing is typed: the app lists the problems with their
-line numbers instead. Messages never show a resolved value, and a
-password with an untypable character is reported without naming it.
+a token is unknown, or a character can't be typed with the selected
+layout, nothing is typed: the app lists the problems with their line
+numbers instead. Messages never show a resolved value, and a password
+with an untypable character is reported without naming it.
 
 ## Stopping
 
@@ -84,10 +100,11 @@ going to the background in Bluetooth keyboard mode, also stops typing.
 
 ## Code
 
-- `net.tjado.authorizer.KeyScript`: the parser (plain Java, tested by
-  `KeyScriptTest`).
+- `net.tjado.authorizer.KeyScript`: the parser for both formats, format
+  detection and Ducky conversion (plain Java, tested by `KeyScriptTest`).
 - `Keystrokes`: reports plus pauses; wiped after sending.
 - `UsbAutoType.run(..., Keystrokes, cancel, cb)` and
   `HidDeviceController.sendKeystrokes()`: the two senders.
-- `KeyboardFragment`, `FileCredentialResolver`, `KeyboardHostChooser`:
-  the screen, reference lookup, and Bluetooth host choice.
+- `KeyboardFragment`: the screen, saving and editing.
+  `KeyboardEntryPicker`: the Entry field dialog. `FileCredentialResolver`:
+  reference lookup. `KeyboardHostChooser`: Bluetooth host choice.

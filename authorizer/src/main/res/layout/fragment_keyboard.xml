@@ -159,12 +159,25 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <com.google.android.material.checkbox.MaterialCheckBox
-                android:id="@+id/enter_after"
+            <!-- The script the box was loaded from; Save offers its name -->
+            <TextView
+                android:id="@+id/editing_name"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/keyboard_enter_after"/>
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+            <Button
+                android:id="@+id/save"
+                style="@style/Widget.Authorizer.Button.Outlined"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/keyboard_save"
+                app:icon="@drawable/ic_save"/>
 
             <Button
                 android:id="@+id/send"
@@ -174,6 +187,30 @@
                 android:text="@string/keyboard_send"
                 app:icon="@drawable/ic_send"/>
         </LinearLayout>
+
+        <!-- Things to insert that are not keys -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/inserts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/insert_entry"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/keyboard_insert_entry"
+                app:chipIcon="@drawable/ic_key"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/insert_delay"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/keyboard_insert_delay"
+                app:chipIcon="@drawable/ic_timer"/>
+        </com.google.android.material.chip.ChipGroup>
 
         <!-- Single keys -->
         <TextView
@@ -225,7 +262,7 @@
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:tag="GUI"
+                android:tag="WIN"
                 android:text="@string/keyboard_mod_gui"/>
         </com.google.android.material.chip.ChipGroup>
 

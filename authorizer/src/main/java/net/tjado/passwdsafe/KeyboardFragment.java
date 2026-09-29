@@ -17,11 +17,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,6 +55,7 @@ import net.tjado.passwdsafe.lib.PasswdSafeUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,12 +65,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Keyboard screen: type free text, single keys with modifiers, and scripts
- * from a folder the user picked, over Bluetooth or USB.
+ * Keyboard screen: compose text with keys, delays and entry references in
+ * one box, then send it over Bluetooth or USB or save it as a script in a
+ * folder the user picked; scripts in that folder can be run or edited.
  *
- * <p>Everything typed goes through {@link KeyScript}, so free text and
- * scripts share one set of rules: {Group/Title.field} references into the
- * open file, and nothing is typed when anything fails to parse.
+ * <p>The box holds the inline format of {@link KeyScript}: what it shows is
+ * what is sent. Key chips insert tokens such as {ENTER} (long-press sends
+ * the key at once), and with a modifier chip on, the next key or character
+ * typed becomes a combo such as {WIN+r}. Nothing is typed when anything
+ * fails to parse.
  */
 public class KeyboardFragment extends Fragment
 {
@@ -84,6 +90,9 @@ public class KeyboardFragment extends Fragment
     /** Largest script read; anything bigger is surely the wrong file */
     private static final int MAX_SCRIPT_BYTES = 256 * 1024;
     private static final int MAX_PROBLEMS_SHOWN = 10;
+    private static final String STATE_EDITING = "editing";
+    /** Inserted by the Delay chip; edit the number in the box */
+    private static final int DEFAULT_DELAY_MS = 500;
 
     /** A script in the folder */
     private static final class ScriptFile
@@ -113,8 +122,8 @@ public class KeyboardFragment extends Fragment
     private MaterialButtonToggleGroup itsOutputToggle;
     private MaterialCardView itsTypingCard;
     private TextView itsTypingLabel;
-    private TextView itsText;
-    private CheckBox itsEnterAfter;
+    private EditText itsText;
+    private TextView itsEditingLabel;
     private Button itsSend;
     private ChipGroup itsModifiers;
     private ChipGroup itsKeys;
@@ -122,6 +131,13 @@ public class KeyboardFragment extends Fragment
     private Button itsScriptsChoose;
     private TextView itsScriptsEmpty;
     private LinearLayout itsScriptsList;
+
+    /** Name of the script the box was loaded from or saved as, or null */
+    private String itsEditingName;
+    /** Set while the fragment itself changes the box */
+    private boolean itsSelfEdit;
+    /** A character typed while a modifier was on: its start, or -1 */
+    private int itsComboAt = -1;
 
     /** Stop flag of the job that is typing; null when idle */
     private AtomicBoolean itsTyping;
@@ -166,7 +182,7 @@ public class KeyboardFragment extends Fragment
         itsTypingCard = root.findViewById(R.id.typing_card);
         itsTypingLabel = root.findViewById(R.id.typing_label);
         itsText = root.findViewById(R.id.text);
-        itsEnterAfter = root.findViewById(R.id.enter_after);
+        itsEditingLabel = root.findViewById(R.id.editing_name);
         itsSend = root.findViewById(R.id.send);
         itsModifiers = root.findViewById(R.id.modifiers);
         itsKeys = root.findViewById(R.id.keys);
@@ -184,16 +200,71 @@ public class KeyboardFragment extends Fragment
                 });
         root.findViewById(R.id.typing_stop).setOnClickListener(v -> stop());
         itsSend.setOnClickListener(v -> sendText());
+        root.findViewById(R.id.save).setOnClickListener(v -> saveScript());
         for (int i = 0; i < itsKeys.getChildCount(); ++i) {
             View chip = itsKeys.getChildAt(i);
-            chip.setOnClickListener(v -> sendKey((String)v.getTag()));
+            chip.setOnClickListener(v -> insertKey((String)v.getTag()));
+            chip.setOnLongClickListener(v -> {
+                sendKeyNow((String)v.getTag());
+                return true;
+            });
         }
+        root.findViewById(R.id.insert_entry)
+            .setOnClickListener(v -> pickEntry());
+        root.findViewById(R.id.insert_delay)
+            .setOnClickListener(v -> insertDelay());
+        itsText.addTextChangedListener(new TextWatcher()
+        {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start,
+                                          int count, int after)
+            {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before,
+                                      int count)
+            {
+                // One character typed with a modifier on: make it a combo
+                // in afterTextChanged, where the text may be changed.
+                if (!itsSelfEdit && (before == 0) && (count == 1) &&
+                    !activeModifiers().isEmpty()) {
+                    itsComboAt = start;
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s)
+            {
+                if (itsComboAt >= 0) {
+                    int at = itsComboAt;
+                    itsComboAt = -1;
+                    String token = comboToken(s.subSequence(at, at + 1)
+                                               .toString());
+                    replaceText(at, at + 1, token);
+                } else if (!itsSelfEdit && (s.length() == 0)) {
+                    // Cleared: no longer editing a saved script
+                    setEditingName(null);
+                }
+            }
+        });
+        if (savedInstanceState != null) {
+            itsEditingName = savedInstanceState.getString(STATE_EDITING);
+        }
+        setEditingName(itsEditingName);
         itsScriptsChoose.setOnClickListener(v -> chooseFolder());
         root.findViewById(R.id.scripts_refresh)
             .setOnClickListener(v -> loadScripts());
         root.findViewById(R.id.scripts_help)
             .setOnClickListener(v -> showScriptHelp());
         return root;
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState)
+    {
+        super.onSaveInstanceState(outState);
+        outState.putString(STATE_EDITING, itsEditingName);
     }
 
     @Override
@@ -257,60 +328,143 @@ public class KeyboardFragment extends Fragment
         boolean canType = (itsTyping == null) &&
                           (isBluetoothAvailable() ||
                            Preferences.getAutoTypeUsbEnabled(itsPrefs));
+        // Key chips stay enabled: tapping only edits the box
         itsSend.setEnabled(canType);
-        for (int i = 0; i < itsKeys.getChildCount(); ++i) {
-            itsKeys.getChildAt(i).setEnabled(canType);
-        }
         for (int i = 0; i < itsScriptsList.getChildCount(); ++i) {
             itsScriptsList.getChildAt(i).setEnabled(canType);
         }
     }
 
     // ---------------------------------------------------------------------
-    // Free typing and keys
+    // Composing and sending the box
+
+    private String boxText()
+    {
+        CharSequence typed = itsText.getText();
+        return (typed != null) ? typed.toString() : "";
+    }
 
     private void sendText()
     {
-        CharSequence typed = itsText.getText();
-        String text = (typed != null) ? typed.toString() : "";
-        String mods = activeModifiers();
-        if (!mods.isEmpty()) {
-            if (text.codePointCount(0, text.length()) != 1) {
-                Toast.makeText(requireContext(),
-                               R.string.keyboard_mods_need_one_key,
-                               Toast.LENGTH_LONG).show();
-                return;
-            }
-            String key = text.equals(" ") ? "SPACE" : text;
-            clearModifiers();
-            type(parse(true, mods + key), null);
-            return;
-        }
-        if (itsEnterAfter.isChecked()) {
-            // parseText turns the trailing line break into Enter
-            text += "\n";
-        }
+        String text = boxText();
         if (text.isEmpty()) {
             return;
         }
-        type(parse(false, text), null);
+        type(parse(text, false), null);
     }
 
-    private void sendKey(String key)
+    /** Key chip tapped: insert its token, with any modifiers that are on */
+    private void insertKey(String key)
     {
         String mods = activeModifiers();
         clearModifiers();
-        type(parse(true, mods + key), null);
+        insertText("{" + mods + key + "}");
     }
 
-    /** The checked modifiers as script tokens, e.g. "CTRL ALT ", or "" */
+    /** Key chip long-pressed: send that key now, the box is untouched */
+    private void sendKeyNow(String key)
+    {
+        String mods = activeModifiers();
+        clearModifiers();
+        type(parse("{" + mods + key + "}", false), null);
+    }
+
+    private void insertDelay()
+    {
+        insertText("{DELAY " + DEFAULT_DELAY_MS + "}");
+    }
+
+    private void pickEntry()
+    {
+        Context ctx = requireContext();
+        List<KeyboardEntryPicker.Entry> entries = itsListener.useFileData(
+                fileData -> KeyboardEntryPicker.load(fileData, ctx));
+        if (entries == null) {
+            Toast.makeText(ctx, R.string.keyboard_entry_no_file,
+                           Toast.LENGTH_LONG).show();
+            return;
+        }
+        KeyboardEntryPicker.show(ctx, entries, text -> {
+            if (getView() != null) {
+                insertText(text);
+            }
+        });
+    }
+
+    /**
+     * The token for a character typed with modifiers on, e.g. {WIN+r}.
+     * Clears the modifiers.
+     */
+    private String comboToken(String ch)
+    {
+        String key;
+        switch (ch) {
+        case "\n": {
+            key = "ENTER";
+            break;
+        }
+        case " ": {
+            key = "SPACE";
+            break;
+        }
+        case "\t": {
+            key = "TAB";
+            break;
+        }
+        default: {
+            key = ch;
+            break;
+        }
+        }
+        String token = "{" + activeModifiers() + key + "}";
+        clearModifiers();
+        return token;
+    }
+
+    /**
+     * Replace the selection (or insert at the cursor, or append) with text.
+     * @return where the text starts
+     */
+    private int insertText(String text)
+    {
+        Editable box = itsText.getText();
+        if (box == null) {
+            return 0;
+        }
+        int start = Math.min(itsText.getSelectionStart(),
+                             itsText.getSelectionEnd());
+        int end = Math.max(itsText.getSelectionStart(),
+                           itsText.getSelectionEnd());
+        if (start < 0) {
+            start = end = box.length();
+        }
+        replaceText(start, end, text);
+        return start;
+    }
+
+    private void replaceText(int start, int end, String text)
+    {
+        Editable box = itsText.getText();
+        if (box == null) {
+            return;
+        }
+        itsSelfEdit = true;
+        try {
+            box.replace(start, end, text);
+        } finally {
+            itsSelfEdit = false;
+        }
+        itsText.setSelection(start + text.length());
+    }
+
+    /** The checked modifiers as token prefixes, e.g. "CTRL+ALT+", or "" */
     private String activeModifiers()
     {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < itsModifiers.getChildCount(); ++i) {
             Chip chip = (Chip)itsModifiers.getChildAt(i);
             if (chip.isChecked()) {
-                sb.append(chip.getTag()).append(' ');
+                sb.append(chip.getTag()).append('+');
             }
         }
         return sb.toString();
@@ -319,6 +473,30 @@ public class KeyboardFragment extends Fragment
     private void clearModifiers()
     {
         itsModifiers.clearCheck();
+    }
+
+    private void setEditingName(@Nullable String name)
+    {
+        itsEditingName = name;
+        if (itsEditingLabel != null) {
+            itsEditingLabel.setText((name != null) ?
+                                    getString(R.string.keyboard_editing, name) :
+                                    null);
+        }
+    }
+
+    /** Put a script into the box to edit it */
+    private void loadIntoBox(String text, String name)
+    {
+        itsSelfEdit = true;
+        try {
+            itsText.setText(text);
+        } finally {
+            itsSelfEdit = false;
+        }
+        itsText.setSelection(text.length());
+        setEditingName(name);
+        itsText.requestFocus();
     }
 
     // ---------------------------------------------------------------------
@@ -336,7 +514,9 @@ public class KeyboardFragment extends Fragment
             return;
         }
         Context ctx = requireContext();
-        int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+        // Write too, so the box can be saved there as a script
+        int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
         String old = Preferences.getKeyboardScriptFolder(itsPrefs);
         if ((old != null) && !old.equals(tree.toString())) {
             try {
@@ -482,7 +662,7 @@ public class KeyboardFragment extends Fragment
                 } else if (view) {
                     showScript(script, fText);
                 } else {
-                    type(parse(true, fText), script.displayName());
+                    type(parse(fText, true), script.displayName());
                 }
             });
         });
@@ -503,10 +683,170 @@ public class KeyboardFragment extends Fragment
                 .setTitle(script.displayName())
                 .setView(scroll)
                 .setPositiveButton(R.string.keyboard_script_run,
-                                   (d, w) -> type(parse(true, text),
+                                   (d, w) -> type(parse(text, true),
                                                   script.displayName()))
+                .setNeutralButton(R.string.keyboard_script_edit,
+                                  (d, w) -> editScript(script, text))
                 .setNegativeButton(R.string.close, null)
                 .show();
+    }
+
+    /**
+     * Load a script into the box. A Ducky Script file is rewritten in the
+     * box's format; it has to parse first, or the rewrite would drop lines.
+     */
+    private void editScript(ScriptFile script, String text)
+    {
+        String boxText = text;
+        if (KeyScript.isDucky(text)) {
+            // Check the structure only; references need not resolve here
+            KeyScript.Result check = KeyScript.parseScript(
+                    text, Preferences.getAutoTypeLanguagePref(itsPrefs),
+                    (path, field) -> "");
+            if (!check.isOk()) {
+                showProblems(check.problems);
+                return;
+            }
+            if (check.keystrokes != null) {
+                check.keystrokes.wipe();
+            }
+            boxText = KeyScript.duckyToInline(text);
+            Toast.makeText(requireContext(), R.string.keyboard_script_converted,
+                           Toast.LENGTH_LONG).show();
+        }
+        loadIntoBox(boxText, script.displayName());
+    }
+
+    // ---------------------------------------------------------------------
+    // Saving
+
+    private void saveScript()
+    {
+        Context ctx = requireContext();
+        String text = boxText();
+        if (text.trim().isEmpty()) {
+            Toast.makeText(ctx, R.string.keyboard_save_empty,
+                           Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (Preferences.getKeyboardScriptFolder(itsPrefs) == null) {
+            Toast.makeText(ctx, R.string.keyboard_save_no_folder,
+                           Toast.LENGTH_LONG).show();
+            chooseFolder();
+            return;
+        }
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_keyboard_save,
+                                                null);
+        EditText nameField = view.findViewById(R.id.save_name);
+        if (itsEditingName != null) {
+            nameField.setText(itsEditingName);
+            nameField.setSelection(itsEditingName.length());
+        }
+        new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.keyboard_save_title)
+                .setView(view)
+                .setPositiveButton(R.string.keyboard_save, (d, w) -> {
+                    CharSequence n = nameField.getText();
+                    String name = (n != null) ? n.toString().trim() : "";
+                    if (name.toLowerCase(Locale.ROOT).endsWith(".txt")) {
+                        name = name.substring(0, name.length() - 4).trim();
+                    }
+                    if (name.isEmpty() || name.contains("/") ||
+                        name.contains("\\")) {
+                        Toast.makeText(ctx, R.string.keyboard_save_bad_name,
+                                       Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    writeScript(name, text, false);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /**
+     * Write the script off the main thread.
+     * @param replace whether the user agreed to replace an existing file
+     */
+    private void writeScript(String name, String text, boolean replace)
+    {
+        String folder = Preferences.getKeyboardScriptFolder(itsPrefs);
+        if (folder == null) {
+            return;
+        }
+        Context appCtx = requireContext().getApplicationContext();
+        String fileName = name + ".txt";
+        itsIo.execute(() -> {
+            boolean exists = false;
+            boolean saved = false;
+            try {
+                DocumentFile dir = DocumentFile.fromTreeUri(appCtx,
+                                                            Uri.parse(folder));
+                if ((dir != null) && dir.canWrite()) {
+                    DocumentFile file = findScript(dir, fileName);
+                    if ((file != null) && !replace) {
+                        exists = true;
+                    } else {
+                        if (file == null) {
+                            file = dir.createFile("text/plain", fileName);
+                        }
+                        if (file != null) {
+                            try (OutputStream out = appCtx.getContentResolver()
+                                    .openOutputStream(file.getUri(), "wt")) {
+                                if (out != null) {
+                                    out.write(text.getBytes(
+                                            StandardCharsets.UTF_8));
+                                    saved = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (IOException | RuntimeException e) {
+                PasswdSafeUtil.dbginfo(TAG, e, "save failed");
+            }
+            final boolean fExists = exists;
+            final boolean fSaved = saved;
+            itsMainHandler.post(() -> {
+                if (!isAdded()) {
+                    return;
+                }
+                Context ctx = requireContext();
+                if (fExists) {
+                    new MaterialAlertDialogBuilder(ctx)
+                            .setMessage(getString(R.string.keyboard_save_exists,
+                                                  fileName))
+                            .setPositiveButton(R.string.keyboard_save_replace,
+                                               (d, w) -> writeScript(name, text,
+                                                                     true))
+                            .setNegativeButton(R.string.cancel, null)
+                            .show();
+                } else if (fSaved) {
+                    setEditingName(name);
+                    Toast.makeText(ctx, getString(R.string.keyboard_saved,
+                                                  fileName),
+                                   Toast.LENGTH_SHORT).show();
+                    loadScripts();
+                } else {
+                    PasswdSafeUtil.showErrorMsg(
+                            getString(R.string.keyboard_save_failed),
+                            new ActContext(ctx));
+                }
+            });
+        });
+    }
+
+    /** The folder's file with this name, ignoring case, or null */
+    @Nullable
+    private static DocumentFile findScript(DocumentFile dir, String fileName)
+    {
+        for (DocumentFile f : dir.listFiles()) {
+            String n = f.getName();
+            if (f.isFile() && (n != null) && n.equalsIgnoreCase(fileName)) {
+                return f;
+            }
+        }
+        return null;
     }
 
     private void showScriptHelp()
@@ -526,7 +866,7 @@ public class KeyboardFragment extends Fragment
      * only safe here.
      */
     @NonNull
-    private KeyScript.Result parse(boolean script, @NonNull String source)
+    private KeyScript.Result parse(@NonNull String source, boolean file)
     {
         OutputInterface.Language lang =
                 Preferences.getAutoTypeLanguagePref(itsPrefs);
@@ -534,12 +874,12 @@ public class KeyboardFragment extends Fragment
         KeyScript.Result result = itsListener.useFileData(fileData -> {
             KeyScript.CredentialResolver resolver =
                     new FileCredentialResolver(fileData, ctx);
-            return script ? KeyScript.parseScript(source, lang, resolver) :
+            return file ? KeyScript.parseFile(source, lang, resolver) :
                    KeyScript.parseText(source, lang, resolver);
         });
         if (result == null) {
             // No file open; references will be reported
-            result = script ? KeyScript.parseScript(source, lang, null) :
+            result = file ? KeyScript.parseFile(source, lang, null) :
                      KeyScript.parseText(source, lang, null);
         }
         return result;
