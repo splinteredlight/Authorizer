@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Authorizer
+  ~
+  ~ Copyright 2026 Authorizer contributors
+  ~ Licensed under GNU General Public License 3.0.
+  -->
+<!-- One script on the keyboard screen: tap or pencil edits it, play types
+     it, long-press previews it -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="56dp"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_description"
+        app:tint="?attr/colorOnSurfaceVariant"/>
+
+    <TextView
+        android:id="@+id/script_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurface"/>
+
+    <Button
+        android:id="@+id/script_edit"
+        style="@style/Widget.Authorizer.IconButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:icon="@drawable/ic_edit"/>
+
+    <Button
+        android:id="@+id/script_run"
+        style="@style/Widget.Authorizer.IconButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:icon="@drawable/ic_play_arrow"
+        app:iconTint="?attr/colorTertiary"/>
+</LinearLayout>

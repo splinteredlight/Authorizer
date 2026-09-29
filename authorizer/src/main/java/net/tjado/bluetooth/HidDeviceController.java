@@ -28,15 +28,18 @@ import android.os.SystemClock;
 import android.util.ArraySet;
 import android.util.Log;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 
+import net.tjado.authorizer.Keystrokes;
+import net.tjado.authorizer.UsbAutoType;
 import net.tjado.authorizer.Utilities;
 
 
@@ -278,42 +281,50 @@ public class HidDeviceController
         }
     }
 
-    public void sendToKeyboardHost(byte[] keyboardOutput) {
-        Log.d(TAG, "sendToKeyboardHost");
+    /** All keys up */
+    private static final byte[] RELEASE = new byte[Keystrokes.REPORT_LEN];
 
-        synchronized (lock) {
-            Utilities.dbginfo(TAG, "send");
-            try
-            {
-                if (keyboardOutput != null) {
-
-                    int blockSize = 8;
-                    int blockCount = keyboardOutput.length / blockSize;
-
-                    int start = 0;
-                    for (int i = 0; i < blockCount; i++) {
-                        byte[] scancode = Arrays.copyOfRange(keyboardOutput, start, start + blockSize);
-                        // Never log the report itself: it is the keystroke (see CLAUDE.md).
-                        Utilities.dbginfo(TAG, "send report " + (i + 1) + "/" + blockCount);
-
-                        sendScancodeInternal(scancode);
-                        clean();
-                        start += blockSize;
-                    }
+    /**
+     * Send prepared keystrokes to the connected keyboard host: each report
+     * is followed by an all-keys-up release, pauses are slept through.
+     *
+     * <p>The lock is taken per report, not for the whole run. A script can
+     * pause for seconds, and the connection callbacks need the same lock;
+     * holding it across the run stalled them (and the service's main-thread
+     * callback behind them).
+     *
+     * @return true if every step was sent; false if the link dropped or
+     *         {@code cancel} was set first
+     */
+    @WorkerThread
+    public boolean sendKeystrokes(@NonNull Keystrokes keys,
+                                  @NonNull AtomicBoolean cancel) {
+        List<Keystrokes.Step> steps = keys.getSteps();
+        for (int i = 0; i < steps.size(); ++i) {
+            if (cancel.get()) {
+                return false;
+            }
+            Keystrokes.Step step = steps.get(i);
+            if (step.isPause()) {
+                try {
+                    UsbAutoType.pauseUnlessCancelled(step.pauseMs, cancel);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
                 }
-            } catch (IOException e) {
-                Utilities.dbginfo(TAG, "send error: " + e.getLocalizedMessage());
-                e.printStackTrace();
+                continue;
+            }
+            synchronized (lock) {
+                if (connectedDevice == null) {
+                    Utilities.dbginfo(TAG, "send: link lost at step " + (i + 1));
+                    return false;
+                }
+                // Never log the report itself: it is the keystroke (see CLAUDE.md).
+                sendScancodeInternal(step.report);
+                sendScancodeInternal(RELEASE);
             }
         }
-    }
-
-    private void clean() throws IOException
-    {
-        // overwriting the last keystroke, otherwise it will be repeated until the next writing
-        // and it would not be possible to repeat the keystroke
-        byte[] scancode = new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        sendScancode(scancode);
+        return true;
     }
 
     public void sendScancode(byte[] scancode) {

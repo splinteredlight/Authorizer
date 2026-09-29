@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 /**
@@ -174,6 +175,61 @@ public final class UsbAutoType
             return ctx.getString(R.string.autotype_lost_chars);
         }
         return null;
+    }
+
+    /**
+     * Type prepared keystrokes (free text or a script) on the worker thread
+     * and report on the main thread. The keystrokes are wiped afterwards.
+     *
+     * @param cancel set to stop typing at the next key or during a pause;
+     *               the key in flight is still released
+     */
+    @MainThread
+    public static void run(@NonNull String devicePath,
+                           @NonNull OutputInterface.Language lang,
+                           int keyDelayMs,
+                           @NonNull Keystrokes keys,
+                           @NonNull AtomicBoolean cancel,
+                           @NonNull Callback cb)
+    {
+        itsExecutor.execute(() -> {
+            Exception error = null;
+            OutputUsbKeyboard kbd = null;
+            try {
+                kbd = new OutputUsbKeyboard(devicePath, lang, keyDelayMs);
+                for (Keystrokes.Step step : keys.getSteps()) {
+                    if (cancel.get()) {
+                        break;
+                    }
+                    if (step.isPause()) {
+                        pauseUnlessCancelled(step.pauseMs, cancel);
+                    } else {
+                        kbd.sendReport(step.report);
+                    }
+                }
+            } catch (Exception e) {
+                error = e;
+            } finally {
+                if (kbd != null) {
+                    kbd.destruct();
+                }
+                keys.wipe();
+            }
+            final Exception fErr = error;
+            itsMainHandler.post(() -> cb.onFinished(fErr, false));
+        });
+    }
+
+    /** Sleep in short slices so a stop request is honoured quickly */
+    public static void pauseUnlessCancelled(int ms, @NonNull AtomicBoolean cancel)
+            throws InterruptedException
+    {
+        long end = System.currentTimeMillis() + ms;
+        long left;
+        while (!cancel.get() &&
+               ((left = end - System.currentTimeMillis()) > 0)) {
+            Thread.sleep(Math.min(left, 100));
+        }
     }
 
     /**

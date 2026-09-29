@@ -28,6 +28,9 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   R8 runs in full mode and has already broken code that was fine in debug
   (`Class.getPackage()` returning null). Anything reflective needs a keep rule
   in `authorizer/proguard-rules.pro` or a literal.
+- `./gradlew :authorizer:testDebugUnitTest` runs the JVM tests
+  (`KeyScriptTest`). They run on desktop Java, which is laxer than
+  Android: a regex with a bare `}` passed them and crashed on the device.
 - `./gradlew :authorizer:lintDebug` must report 0 errors. SARIF output is
   disabled because Lint 9.4 crashes writing it. `assembleRelease` also runs
   `lintVitalRelease`, which fails on API-gated theme attributes without
@@ -65,6 +68,8 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
 - `doc/UI_DESIGN.md` — the Material 3 redesign: colour roles, icons,
   components, and the traps (menu rebuild loop, preference icon space).
 - `doc/HID_SETUP.md` — how the HID path works, manual test, troubleshooting.
+- `doc/KEYBOARD_SCRIPTS.md` — the Keyboard tab: free typing, scripts
+  (Ducky Script subset, `KeyScript`) and `{Group/Title.field}` references.
 - `doc/magisk/service.sh` — Magisk module script that re-applies HID access at boot.
 - `hardware/pico-bt-bridge/` — Raspberry Pi Pico W firmware that turns the
   phone's Bluetooth auto-type into a USB keyboard on any PC (works with an

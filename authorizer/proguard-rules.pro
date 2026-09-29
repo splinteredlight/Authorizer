@@ -18,6 +18,10 @@
 
 -keep,includedescriptorclasses class net.tjado.passwdsafe.lib.StartupReceiver
 -keep class net.tjado.authorizer.*
+# Keyboard layouts are created by name (UsbHidKbd.forLanguage and the
+# Output*Keyboard classes). Keeping the class alone lets R8 full mode drop
+# the no-arg constructor, and the lookup then fell back to en_US silently.
+-keep class net.tjado.authorizer.UsbHidKbd_* { <init>(); }
 -keepclasseswithmembernames,includedescriptorclasses class org.pwsafe.lib.crypto.SHA256Pws {
     native <methods>;
 }

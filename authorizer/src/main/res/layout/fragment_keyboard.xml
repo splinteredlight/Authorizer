@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Authorizer
+  ~
+  ~ Copyright 2026 Authorizer contributors
+  ~ Licensed under GNU General Public License 3.0.
+  -->
+<!-- Keyboard screen: type free text, single keys and saved scripts to the
+     connected computer. -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    tools:context="net.tjado.passwdsafe.KeyboardFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:importantForAutofill="noExcludeDescendants"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/screen_gutter"
+        android:paddingEnd="@dimen/screen_gutter"
+        android:paddingBottom="24dp">
+
+        <TextView
+            android:id="@+id/no_output"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/keyboard_no_output"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorError"
+            android:visibility="gone"/>
+
+        <!-- Output, shown only when both are available -->
+        <LinearLayout
+            android:id="@+id/output_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/keyboard_output"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface"/>
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/output_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <Button
+                    android:id="@+id/output_bluetooth"
+                    style="@style/Widget.Authorizer.Button.Outlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keyboard_output_bluetooth"
+                    app:icon="@drawable/ic_bluetooth"/>
+
+                <Button
+                    android:id="@+id/output_usb"
+                    style="@style/Widget.Authorizer.Button.Outlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keyboard_output_usb"
+                    app:icon="@drawable/ic_usb"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
+
+        <!-- Shown while a job is typing -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/typing_card"
+            style="@style/Widget.Authorizer.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"
+                    app:indicatorSize="24dp"/>
+
+                <TextView
+                    android:id="@+id/typing_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/keyboard_typing"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"/>
+
+                <Button
+                    android:id="@+id/typing_stop"
+                    style="@style/Widget.Authorizer.Button.Tonal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keyboard_stop"
+                    app:icon="@drawable/ic_stop"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Free typing -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp"
+            android:text="@string/keyboard_type"
+            android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/text_layout"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/keyboard_text_hint"
+            app:endIconMode="clear_text"
+            app:helperText="@string/keyboard_text_help">
+
+            <!-- textVisiblePassword: the only flag Gboard honours reliably
+                 to stop suggestions and learning from what is typed here. -->
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:gravity="top|start"
+                android:imeOptions="flagNoPersonalizedLearning"
+                android:importantForAutofill="no"
+                android:inputType="textMultiLine|textNoSuggestions|textVisiblePassword"
+                android:minLines="3"
+                android:maxLines="12"
+                android:scrollbars="vertical"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- The script the box was loaded from; Save offers its name -->
+            <TextView
+                android:id="@+id/editing_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+            <Button
+                android:id="@+id/save"
+                style="@style/Widget.Authorizer.Button.Outlined"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/keyboard_save"
+                app:icon="@drawable/ic_save"/>
+
+            <Button
+                android:id="@+id/send"
+                style="@style/Widget.Authorizer.Button.AutoType.Primary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/keyboard_send"
+                app:icon="@drawable/ic_send"/>
+        </LinearLayout>
+
+        <!-- Things to insert that are not keys -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/inserts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/insert_entry"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/keyboard_insert_entry"
+                app:chipIcon="@drawable/ic_key"/>
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Delays: each chip's tag is the pause in milliseconds -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:drawablePadding="6dp"
+                android:gravity="center_vertical"
+                android:text="@string/keyboard_insert_delay"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:drawableStartCompat="@drawable/ic_timer"
+                app:drawableTint="?attr/colorOnSurfaceVariant"/>
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/delays"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="500"
+                android:text="@string/keyboard_delay_500"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="1000"
+                android:text="@string/keyboard_delay_1000"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="2000"
+                android:text="@string/keyboard_delay_2000"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="5000"
+                android:text="@string/keyboard_delay_5000"/>
+            </com.google.android.material.chip.ChipGroup>
+        </LinearLayout>
+
+        <!-- Single keys -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/keyboard_keys"
+            android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="4dp"
+            android:text="@string/keyboard_keys_help"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"/>
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/modifiers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/mod_ctrl"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="CTRL"
+                android:text="@string/keyboard_mod_ctrl"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/mod_alt"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="ALT"
+                android:text="@string/keyboard_mod_alt"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/mod_shift"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="SHIFT"
+                android:text="@string/keyboard_mod_shift"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/mod_gui"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="WIN"
+                android:text="@string/keyboard_mod_gui"/>
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Each chip's tag is the script key name it sends -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/keys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="ENTER"
+                android:text="@string/keyboard_key_enter"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="TAB"
+                android:text="@string/keyboard_key_tab"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="ESC"
+                android:text="@string/keyboard_key_esc"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="BACKSPACE"
+                android:text="@string/keyboard_key_backspace"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="DELETE"
+                android:text="@string/keyboard_key_delete"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/keyboard_key_left_desc"
+                android:tag="LEFT"
+                android:text="@string/keyboard_key_left"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/keyboard_key_up_desc"
+                android:tag="UP"
+                android:text="@string/keyboard_key_up"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/keyboard_key_down_desc"
+                android:tag="DOWN"
+                android:text="@string/keyboard_key_down"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/keyboard_key_right_desc"
+                android:tag="RIGHT"
+                android:text="@string/keyboard_key_right"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="HOME"
+                android:text="@string/keyboard_key_home"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="END"
+                android:text="@string/keyboard_key_end"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="PAGEUP"
+                android:text="@string/keyboard_key_pgup"/>
+
+            <com.google.android.material.chip.Chip
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:tag="PAGEDOWN"
+                android:text="@string/keyboard_key_pgdn"/>
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Scripts -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/keyboard_scripts"
+                android:textAppearance="@style/TextAppearance.Authorizer.Section"/>
+
+            <Button
+                android:id="@+id/scripts_help"
+                style="@style/Widget.Authorizer.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/keyboard_script_help"
+                app:icon="@drawable/ic_help"/>
+
+            <Button
+                android:id="@+id/scripts_refresh"
+                style="@style/Widget.Authorizer.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/keyboard_scripts_refresh"
+                app:icon="@drawable/ic_refresh"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/scripts_folder"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:drawablePadding="8dp"
+                android:ellipsize="middle"
+                android:gravity="center_vertical"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:drawableStartCompat="@drawable/ic_folder"
+                app:drawableTint="?attr/colorOnSurfaceVariant"/>
+
+            <Button
+                android:id="@+id/scripts_choose"
+                style="@style/Widget.Authorizer.Button.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/keyboard_scripts_choose"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/scripts_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/keyboard_scripts_no_folder"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"/>
+
+        <!-- Script rows are added in code; a folder holds a handful -->
+        <LinearLayout
+            android:id="@+id/scripts_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

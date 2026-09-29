@@ -15,6 +15,20 @@ import java.util.NoSuchElementException;
 
 public abstract class UsbHidKbd {
 
+    /**
+     * The layout for a language, or en_US if there is none. Layout classes
+     * are found by name, so proguard-rules.pro keeps them.
+     */
+    public static UsbHidKbd forLanguage(OutputInterface.Language lang) {
+        try {
+            return (UsbHidKbd)Class.forName("net.tjado.authorizer.UsbHidKbd_" + lang)
+                                   .getDeclaredConstructor()
+                                   .newInstance();
+        } catch (Exception e) {
+            return new UsbHidKbd_en_US();
+        }
+    }
+
     // ToDo: replace byte with ByteArray... eveywhere
     protected Map<String, byte[]> kbdVal= new HashMap<String, byte[]>();
 
