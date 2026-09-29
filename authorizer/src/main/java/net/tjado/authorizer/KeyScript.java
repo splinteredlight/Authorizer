@@ -55,6 +55,8 @@ public final class KeyScript
 {
     /** Longest single DELAY, and longest DEFAULT_DELAY */
     public static final int MAX_DELAY_MS = 600_000;
+    /** Byte-order mark some Windows editors put at the start of a file */
+    private static final char BOM = 0xFEFF;
     /** Most repetitions a REPEAT may ask for */
     public static final int MAX_REPEAT = 1000;
 
@@ -277,7 +279,7 @@ public final class KeyScript
             String line = lines[i];
             // A BOM from a Windows editor would otherwise make the first
             // command unknown.
-            if ((i == 0) && line.startsWith("﻿")) {
+            if ((i == 0) && !line.isEmpty() && (line.charAt(0) == BOM)) {
                 line = line.substring(1);
             }
             String trimmed = line.trim();

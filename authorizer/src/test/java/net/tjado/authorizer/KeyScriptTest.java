@@ -85,6 +85,20 @@ public class KeyScriptTest
     }
 
     @Test
+    public void leadingByteOrderMarkIsIgnored()
+    {
+        assertSteps(KeyScript.parseScript((char)0xFEFF + "ENTER", US, null),
+                    key(0, 0x28));
+    }
+
+    @Test
+    public void emptyFirstLineIsFine()
+    {
+        assertSteps(KeyScript.parseScript("\nENTER", US, null),
+                    key(0, 0x28));
+    }
+
+    @Test
     public void stringlnAddsEnter()
     {
         assertSteps(KeyScript.parseScript("STRINGLN a", US, null),
