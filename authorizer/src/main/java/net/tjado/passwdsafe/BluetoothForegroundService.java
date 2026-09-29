@@ -32,6 +32,10 @@ import android.widget.Toast;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import net.tjado.authorizer.Keystrokes;
 import net.tjado.bluetooth.BluetoothDeviceListing;
 import net.tjado.bluetooth.BluetoothUtils;
 import net.tjado.bluetooth.HidDeviceController;
@@ -44,6 +48,9 @@ import net.tjado.webauthn.TransactionManager;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static android.app.Notification.DEFAULT_SOUND;
 import static android.app.Notification.DEFAULT_VIBRATE;
@@ -87,9 +94,28 @@ public class BluetoothForegroundService extends Service {
     private boolean pairingConnectPending = false;
     private BtServiceProfileListener profileListener = null;
 
-    private byte[] keyboardOutput = null;
+    /** How a Bluetooth typing job ended; delivered on the main thread */
+    public enum TypingResult { DONE, CANCELLED, LINK_LOST, CONNECT_FAILED }
+
+    public interface TypingCallback {
+        void onTypingFinished(@NonNull TypingResult result);
+    }
+
+    private Keystrokes keyboardOutput = null;
     /** Keyboard host that keyboardOutput is destined for; null when none is pending. */
     private BluetoothDevice keyboardOutputTarget = null;
+    /** Stop flag and completion callback of the pending or running job */
+    private AtomicBoolean keyboardOutputCancel = null;
+    private TypingCallback keyboardOutputCallback = null;
+    /** True from the moment a job starts sending until it has finished */
+    private boolean typingInProgress = false;
+    /**
+     * Sends run here, one at a time: a script can take minutes, and two
+     * jobs must never interleave their reports.
+     */
+    private final ExecutorService typingExecutor =
+            Executors.newSingleThreadExecutor(r -> new Thread(r, "BtAutotype"));
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     final private Handler openFileResetHandler = new Handler();
     // Automatic reconnect to the paired FIDO hosts. The phone is the HID
@@ -207,6 +233,11 @@ public class BluetoothForegroundService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        // The activity stops the service when it leaves the screen in
+        // keyboard mode; a script must not keep typing after that.
+        cancelTyping();
+        typingExecutor.shutdown();
 
         stopForegroundService();
     }
@@ -469,12 +500,43 @@ public class BluetoothForegroundService extends Service {
     }
 
     public void connectAndType(BluetoothDevice device, byte[] autotypeString) {
+        connectAndType(device, Keystrokes.fromReports(autotypeString),
+                       new AtomicBoolean(), null);
+    }
+
+    /**
+     * Connect to a keyboard host (unless already connected) and type.
+     *
+     * @param cancel set to stop typing; checked between keys and in pauses
+     * @param callback told on the main thread how the job ended; may be null
+     * @return false, and nothing is typed, if another job is typing. A job
+     *         still waiting for its connection is replaced, as before.
+     */
+    public boolean connectAndType(@NonNull BluetoothDevice device,
+                                  @NonNull Keystrokes output,
+                                  @NonNull AtomicBoolean cancel,
+                                  @Nullable TypingCallback callback) {
         PasswdSafeUtil.dbginfo(TAG, "Connect And Type");
+        synchronized (mLock) {
+            if (typingInProgress) {
+                output.wipe();
+                return false;
+            }
+            if (keyboardOutput != null) {
+                notifyTyping(keyboardOutputCallback, TypingResult.CANCELLED);
+                keyboardOutput.wipe();
+                takeKeyboardOutput();
+            }
+        }
         cancelReconnect();
         requireKeyboardMode();
 
-        keyboardOutput = autotypeString;
-        keyboardOutputTarget = device;
+        synchronized (mLock) {
+            keyboardOutput = output;
+            keyboardOutputTarget = device;
+            keyboardOutputCancel = cancel;
+            keyboardOutputCallback = callback;
+        }
 
         BluetoothDevice connected = hidDeviceController.getConnectedDevice();
         if (connected != null && connected.equals(device)
@@ -485,40 +547,89 @@ public class BluetoothForegroundService extends Service {
             // worker thread instead (HID writes block and must never run on the
             // main thread).
             final BluetoothDevice target = device;
-            new Thread(() -> autotypeToConnectedHost(target), "BtAutotype").start();
+            typingExecutor.execute(() -> autotypeToConnectedHost(target));
         } else {
             // Not connected yet: connect and let the STATE_CONNECTED callback
             // perform the send once the link is up.
             hidDeviceController.requestConnect(device);
         }
+        return true;
+    }
+
+    /** Stop the job that is pending or typing, if any */
+    public void cancelTyping() {
+        synchronized (mLock) {
+            if (keyboardOutputCancel != null) {
+                keyboardOutputCancel.set(true);
+            }
+        }
     }
 
     /**
-     * Send the pending keyboard output to an already-connected host. Mirrors the
-     * send performed from onConnectionStateChanged and clears keyboardOutput so
-     * a stray CONNECTED callback cannot repeat it.
+     * Take the pending job's output and callback and clear them, so a stray
+     * CONNECTED callback cannot send it twice. Caller holds mLock.
      */
-    // Runs on a dedicated worker thread; sendToKeyboardHost is @WorkerThread
-    // while requireFidoMode is @MainThread. This mirrors the pre-existing send
-    // in onConnectionStateChanged, which carries the same suppression.
+    private void takeKeyboardOutput() {
+        keyboardOutput = null;
+        keyboardOutputTarget = null;
+        keyboardOutputCancel = null;
+        keyboardOutputCallback = null;
+    }
+
+    private void notifyTyping(@Nullable TypingCallback cb, TypingResult result) {
+        if (cb != null) {
+            mainHandler.post(() -> cb.onTypingFinished(result));
+        }
+    }
+
+    /**
+     * Send the pending keyboard output to a connected host. Runs on
+     * typingExecutor, from connectAndType when the host was already
+     * connected and from the STATE_CONNECTED callback otherwise.
+     *
+     * <p>mLock is not held while sending: a script can pause for minutes,
+     * and onConnectionStateChanged takes mLock on the main thread.
+     */
+    // requireFidoMode is @MainThread; the switch back after typing has always
+    // run on the typing worker.
     @SuppressLint("ThreadConstraint")
     private void autotypeToConnectedHost(BluetoothDevice device) {
+        Keystrokes out;
+        AtomicBoolean cancel;
+        TypingCallback cb;
         synchronized (mLock) {
             if (keyboardOutput == null) {
                 return;
             }
+            cb = keyboardOutputCallback;
             if (bluetoothDeviceListing == null
                     || !bluetoothDeviceListing.isKeyboardHost(device)) {
+                keyboardOutput.wipe();
+                takeKeyboardOutput();
+                notifyTyping(cb, TypingResult.CONNECT_FAILED);
                 return;
             }
-            byte[] out = keyboardOutput;
-            keyboardOutput = null;
-            keyboardOutputTarget = null;
+            out = keyboardOutput;
+            cancel = keyboardOutputCancel;
+            takeKeyboardOutput();
+            typingInProgress = true;
+        }
+
+        boolean complete;
+        try {
             SystemClock.sleep(100);
-            hidDeviceController.sendToKeyboardHost(out);
-            SystemClock.sleep(500);
+            complete = hidDeviceController.sendKeystrokes(out, cancel);
+        } finally {
+            out.wipe();
+        }
+        SystemClock.sleep(500);
+        synchronized (mLock) {
+            typingInProgress = false;
             requireFidoMode();
         }
+        notifyTyping(cb, complete ? TypingResult.DONE :
+                         cancel.get() ? TypingResult.CANCELLED :
+                         TypingResult.LINK_LOST);
     }
 
     public BluetoothDevice getConnectedDevice() {
@@ -537,7 +648,7 @@ public class BluetoothForegroundService extends Service {
                 || !Preferences.getFidoAutoReconnect(prefs)) {
             return false;
         }
-        if (pairingDevice != null || keyboardOutput != null) {
+        if (pairingDevice != null || keyboardOutput != null || typingInProgress) {
             // A user-driven connect is in flight; it owns the link.
             return false;
         }
@@ -768,7 +879,7 @@ public class BluetoothForegroundService extends Service {
                         // it must run on a worker thread. autotypeToConnectedHost
                         // clears keyboardOutput so it cannot be sent twice.
                         final BluetoothDevice target = device;
-                        new Thread(() -> autotypeToConnectedHost(target), "BtAutotype").start();
+                        typingExecutor.execute(() -> autotypeToConnectedHost(target));
 
                     } else if(pairingDevice != null && pairingDevice.equals(device)) {
                         // pairing seems to be successful
@@ -804,8 +915,9 @@ public class BluetoothForegroundService extends Service {
                         // the user; the controller has already given up
                         // retrying.
                         PasswdSafeUtil.dbginfo(TAG, "onConnectionStateChanged: DISCONNECTED with pending autotype, discarding");
-                        keyboardOutput = null;
-                        keyboardOutputTarget = null;
+                        notifyTyping(keyboardOutputCallback, TypingResult.CONNECT_FAILED);
+                        keyboardOutput.wipe();
+                        takeKeyboardOutput();
                         String name = BluetoothUtils.getDeviceDisplayName(device);
                         Toast.makeText(getApplicationContext(),
                                        getString(R.string.bt_autotype_connect_failed, name),

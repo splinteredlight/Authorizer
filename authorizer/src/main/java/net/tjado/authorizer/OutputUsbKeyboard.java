@@ -174,6 +174,14 @@ public class OutputUsbKeyboard implements OutputInterface
         pause(keyDelayMs);
     }
 
+    /**
+     * Press one prepared 8-byte report (key plus modifiers), then release.
+     */
+    public void sendReport(@NonNull byte[] report) throws IOException
+    {
+        writeReport(report);
+    }
+
     public int sendText(String output) throws IOException
     {
         int ret = 0;
