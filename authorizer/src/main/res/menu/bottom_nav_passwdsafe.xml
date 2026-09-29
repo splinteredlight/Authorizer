@@ -17,6 +17,11 @@
         android:title="@string/nav_policies"/>
 
     <item
+        android:id="@+id/menu_keyboard"
+        android:icon="@drawable/ic_keyboard"
+        android:title="@string/nav_keyboard"/>
+
+    <item
         android:id="@+id/menu_preferences"
         android:icon="@drawable/ic_settings"
         android:title="@string/nav_settings"/>

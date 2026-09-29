@@ -7,6 +7,7 @@
  */
 package net.tjado.passwdsafe;
 
+import androidx.annotation.Nullable;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -172,6 +173,10 @@ public class Preferences
     public static final String PREF_USB_HID_DEVICE = "usbHidDevicePref";
     public static final String PREF_USB_HID_DEVICE_DEF = "/dev/hidg0";
     public static final String PREF_USB_HID_AUTO_SETUP = "usbHidAutoSetupPref";
+    /** Tree URI of the folder the keyboard screen lists scripts from */
+    private static final String PREF_KEYBOARD_SCRIPT_FOLDER = "keyboardScriptFolderPref";
+    /** Output of the keyboard screen: true for USB, false for Bluetooth */
+    private static final String PREF_KEYBOARD_USE_USB = "keyboardUseUsbPref";
     private static final boolean PREF_USB_HID_AUTO_SETUP_DEF = true;
     public static final String PREF_USB_HID_PREPARE = "usbHidPreparePref";
     public static final String PREF_USB_HID_KEY_DELAY = "usbHidKeyDelayPref";
@@ -601,6 +606,29 @@ public class Preferences
                                       PREF_USB_HID_DEVICE_DEF);
         return ((path == null) || path.trim().isEmpty()) ?
                PREF_USB_HID_DEVICE_DEF : path.trim();
+    }
+
+    /** Get the keyboard script folder (a document tree URI), or null */
+    public static @Nullable String getKeyboardScriptFolder(SharedPreferences prefs)
+    {
+        return prefs.getString(PREF_KEYBOARD_SCRIPT_FOLDER, null);
+    }
+
+    public static void setKeyboardScriptFolder(SharedPreferences prefs,
+                                               @Nullable String uri)
+    {
+        prefs.edit().putString(PREF_KEYBOARD_SCRIPT_FOLDER, uri).apply();
+    }
+
+    /** Whether the keyboard screen types over USB rather than Bluetooth */
+    public static boolean getKeyboardUseUsb(SharedPreferences prefs)
+    {
+        return prefs.getBoolean(PREF_KEYBOARD_USE_USB, false);
+    }
+
+    public static void setKeyboardUseUsb(SharedPreferences prefs, boolean usb)
+    {
+        prefs.edit().putBoolean(PREF_KEYBOARD_USE_USB, usb).apply();
     }
 
     /** Persist the USB HID device path resolved by the root setup */

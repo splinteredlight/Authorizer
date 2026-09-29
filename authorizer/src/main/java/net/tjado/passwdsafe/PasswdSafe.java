@@ -123,6 +123,7 @@ public class PasswdSafe extends AppCompatActivity
                    LicensesFragment.Listener,
                    BluetoothFragment.Listener,
                    UsernamesFragment.Listener,
+                   KeyboardFragment.Listener,
                    PreferencesFragment.Listener,
                    PreferenceFragmentCompat.OnPreferenceStartScreenCallback
 {
@@ -178,6 +179,8 @@ public class PasswdSafe extends AppCompatActivity
         VIEW_PREF_BLUETOOTH,
         /** Viewing username settings */
         VIEW_PREF_USERNAMES,
+        /** Viewing the keyboard screen */
+        VIEW_KEYBOARD,
         /** View backup files */
         BACKUP_FILES,
         /** View files */
@@ -218,6 +221,8 @@ public class PasswdSafe extends AppCompatActivity
         VIEW_PREF_BLUETOOTH,
         /** Viewing usernames settings */
         VIEW_PREF_USERNAMES,
+        /** Viewing the keyboard screen */
+        VIEW_KEYBOARD,
         /** Viewing backup files */
         BACKUP_FILES,
         /** Viewing files */
@@ -766,6 +771,7 @@ public class PasswdSafe extends AppCompatActivity
                 case VIEW_PREF_LICENSES:
                 case VIEW_PREF_BLUETOOTH:
                 case VIEW_PREF_USERNAMES:
+                case VIEW_KEYBOARD:
                 case BACKUP_FILES:
                 case FILES: {
                     options.set(MENU_BIT_HAS_CLOSE, false);
@@ -1010,6 +1016,8 @@ public class PasswdSafe extends AppCompatActivity
                     itsCurrViewMode = ViewMode.VIEW_PREF_BLUETOOTH;
                 } else if(frag instanceof UsernamesFragment) {
                     itsCurrViewMode = ViewMode.VIEW_PREF_USERNAMES;
+                } else if(frag instanceof KeyboardFragment) {
+                    itsCurrViewMode = ViewMode.VIEW_KEYBOARD;
                 }
 
                 doUpdateView(itsCurrViewMode, itsLocation);
@@ -1290,6 +1298,10 @@ public class PasswdSafe extends AppCompatActivity
             }
             case VIEW_PREF_USERNAMES: {
                 doShowPrefUsernames();
+                break;
+            }
+            case VIEW_KEYBOARD: {
+                doShowKeyboard();
                 break;
             }
             case FILES: {
@@ -1790,6 +1802,12 @@ public class PasswdSafe extends AppCompatActivity
     }
 
     @Override
+    public void updateViewKeyboard()
+    {
+        doUpdateView(ViewMode.VIEW_KEYBOARD, itsLocation);
+    }
+
+    @Override
     public void updateViewPrefReleaseNotes()
     {
         doUpdateView(ViewMode.VIEW_PREF_RELEASE_NOTES, itsLocation);
@@ -2151,6 +2169,14 @@ public class PasswdSafe extends AppCompatActivity
     }
 
     /**
+     * Show the keyboard screen
+     */
+    private void doShowKeyboard()
+    {
+        doChangeView(ChangeMode.VIEW_KEYBOARD, KeyboardFragment.newInstance());
+    }
+
+    /**
      * Show username preferences
      */
     private void doShowPrefUsernames()
@@ -2227,6 +2253,7 @@ public class PasswdSafe extends AppCompatActivity
             case VIEW_PREF_LICENSES:
             case VIEW_PREF_BLUETOOTH:
             case VIEW_PREF_USERNAMES:
+            case VIEW_KEYBOARD:
             case BACKUP_FILES:
             case FILES:{
                 supportsBack = true;
@@ -2431,6 +2458,12 @@ public class PasswdSafe extends AppCompatActivity
                         getString(R.string.password_policies), this);
                 break;
             }
+            case VIEW_KEYBOARD: {
+                fileTimeoutPaused = false;
+                itsTitle = PasswdSafeApp.getAppTitle(
+                        getString(R.string.keyboard), this);
+                break;
+            }
             case VIEW_RECORD_ERRORS: {
                 fileTimeoutPaused = false;
                 itsTitle = PasswdSafeApp.getAppTitle(
@@ -2565,6 +2598,10 @@ public class PasswdSafe extends AppCompatActivity
         }
         case VIEW_POLICY_LIST: {
             parentMenuItem = R.id.menu_passwd_policies;
+            break;
+        }
+        case VIEW_KEYBOARD: {
+            parentMenuItem = R.id.menu_keyboard;
             break;
         }
         case VIEW_RECORD_ERRORS:
@@ -3098,6 +3135,8 @@ public class PasswdSafe extends AppCompatActivity
                 doShowExpiration(false);
             } else if (id == R.id.menu_passwd_policies) {
                 doShowPolicyList(false);
+            } else if (id == R.id.menu_keyboard) {
+                doShowKeyboard();
             } else if (id == R.id.menu_preferences) {
                 doShowPreferences(false);
             }
