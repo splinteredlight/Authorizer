@@ -204,8 +204,10 @@ public final class KeyScript
      * {prefix.field}: the part before the last dot is the entry path, the
      * part after it must be a known field.
      */
+    // Every brace escaped: Android's ICU regex rejects a bare "}" that
+    // desktop Java accepts, so the JVM tests alone would not catch it.
     private static final Pattern REFERENCE =
-            Pattern.compile("\\{([^{}\\r\\n]+)\\.([A-Za-z]+)}");
+            Pattern.compile("\\{([^\\{\\}\\r\\n]+)\\.([A-Za-z]+)\\}");
 
     private final UsbHidKbd itsLayout;
     private final String itsLayoutName;
