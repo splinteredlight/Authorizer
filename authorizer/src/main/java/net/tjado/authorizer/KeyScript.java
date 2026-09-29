@@ -30,9 +30,9 @@ import java.util.regex.Pattern;
  * <pre>
  * {WIN+r}
  * {DELAY 500}
- * ssh admin@hilux{ENTER}
+ * ssh admin@server{ENTER}
  * {DELAY 1500}
- * {Hilux.password}{ENTER}
+ * {Server.password}{ENTER}
  * </pre>
  * (A first version typed Enter for every line break. Scripts written a
  * step per line then pressed Enter after every step, which on a UAC

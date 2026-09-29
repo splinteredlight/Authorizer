@@ -20,9 +20,9 @@ its own line; Enter is always `{ENTER}`:
 lusrmgr.msc
 {CTRL+SHIFT+ENTER}
 {DELAY 3000}
-{Hilux.user}
+{Server.user}
 {TAB}
-{Hilux.password}
+{Server.password}
 {ENTER}
 ```
 
@@ -98,7 +98,7 @@ scripts never contain secrets:
 - Fields: `user` (or `username`), `password`, `url`, `email`, `notes`,
   `title`, `otp` (time-based codes only).
 - When several entries share a title, add the group path:
-  `{Work/Servers/Hilux.password}`. Matching ignores case but must find
+  `{Work/Servers/Mail.password}`. Matching ignores case but must find
   exactly one entry. The Entry field picker adds the group only when it
   is needed.
 

@@ -38,7 +38,7 @@ import java.util.Map;
 
 /**
  * Lets the user pick an entry of the open file and one of its fields, and
- * hands back a reference such as {Hilux.password} to insert into the
+ * hands back a reference such as {Server.password} to insert into the
  * keyboard text. Only which fields exist is read, never their values.
  */
 final class KeyboardEntryPicker

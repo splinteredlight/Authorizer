@@ -24,13 +24,13 @@ public class KeyScriptTest
     private static final OutputInterface.Language US =
             OutputInterface.Language.en_US;
 
-    /** Resolves "Hilux" and "Work/Hilux" only */
+    /** Resolves "Server" and "Work/Server" only */
     private static final KeyScript.CredentialResolver RESOLVER =
             (path, field) -> {
-                if (path.equals("Hilux") && field.equals("password")) {
+                if (path.equals("Server") && field.equals("password")) {
                     return "pw1";
                 }
-                if (path.equals("Work/Hilux") && field.equals("user")) {
+                if (path.equals("Work/Server") && field.equals("user")) {
                     return "admin";
                 }
                 if (path.equals("Umlaut")) {
@@ -153,7 +153,7 @@ public class KeyScriptTest
     @Test
     public void referenceIsResolved()
     {
-        assertSteps(KeyScript.parseScript("STRING {Hilux.password}!", US,
+        assertSteps(KeyScript.parseScript("STRING {Server.password}!", US,
                                           RESOLVER),
                     key(0, 0x13), key(0, 0x1a), key(0, 0x1e),
                     key(0x02, 0x1e));
@@ -162,7 +162,7 @@ public class KeyScriptTest
     @Test
     public void referenceWithGroupAndFieldAlias()
     {
-        assertSteps(KeyScript.parseScript("STRING {Work/Hilux.USERNAME}", US,
+        assertSteps(KeyScript.parseScript("STRING {Work/Server.USERNAME}", US,
                                           RESOLVER),
                     key(0, 0x04), key(0, 0x07), key(0, 0x10), key(0, 0x0c),
                     key(0, 0x11));
@@ -195,7 +195,7 @@ public class KeyScriptTest
     @Test
     public void referenceWithoutFileIsAProblem()
     {
-        assertFalse(KeyScript.parseScript("STRING {Hilux.password}", US, null)
+        assertFalse(KeyScript.parseScript("STRING {Server.password}", US, null)
                              .isOk());
     }
 
@@ -251,8 +251,8 @@ public class KeyScriptTest
                 field.equals("user") ? "u" : "p";
         assertSteps(KeyScript.parseText(
                             "{delay 1000}\n{WIN+r}\n{delay 1000}\nab\n" +
-                            "{CTRL+SHIFT+ENTER}\n{hilux.user}\n{TAB}\n" +
-                            "{hilux.password}\n{ENTER}", US, r),
+                            "{CTRL+SHIFT+ENTER}\n{server.user}\n{TAB}\n" +
+                            "{server.password}\n{ENTER}", US, r),
                     pause(1000), key(0x08, 0x15), pause(1000), key(0, 0x04),
                     key(0, 0x05), key(0x03, 0x28), key(0, 0x18), key(0, 0x2b),
                     key(0, 0x13), key(0, 0x28));
@@ -261,7 +261,7 @@ public class KeyScriptTest
     @Test
     public void textExpandsReferences()
     {
-        assertEquals(3, KeyScript.parseText("{Hilux.password}", US, RESOLVER)
+        assertEquals(3, KeyScript.parseText("{Server.password}", US, RESOLVER)
                                  .keystrokes.getKeyCount());
     }
 
@@ -311,7 +311,7 @@ public class KeyScriptTest
     @Test
     public void inlineReferenceAndEscapedBrace()
     {
-        assertSteps(KeyScript.parseText("{{{Hilux.password}", US, RESOLVER),
+        assertSteps(KeyScript.parseText("{{{Server.password}", US, RESOLVER),
                     key(0x02, 0x2f), key(0, 0x13), key(0, 0x1a), key(0, 0x1e));
     }
 
@@ -360,7 +360,7 @@ public class KeyScriptTest
     public void duckyIsDetected()
     {
         assertTrue(KeyScript.isDucky("REM x\nGUI r\n\nSTRINGLN hi\nCTRL-ALT DEL"));
-        assertFalse(KeyScript.isDucky("{WIN+r}ssh admin@hilux"));
+        assertFalse(KeyScript.isDucky("{WIN+r}ssh admin@server"));
         assertFalse(KeyScript.isDucky("Enter the code\n"));
         assertFalse(KeyScript.isDucky(""));
     }
@@ -394,8 +394,8 @@ public class KeyScriptTest
     @Test
     public void convertedDuckyTypesTheSame()
     {
-        assertSameKeys("REM Log in\nGUI r\nDELAY 500\nSTRINGLN ssh admin@hilux\n" +
-                       "DELAY 1500\nSTRINGLN {Hilux.password}\nENTER");
+        assertSameKeys("REM Log in\nGUI r\nDELAY 500\nSTRINGLN ssh admin@server\n" +
+                       "DELAY 1500\nSTRINGLN {Server.password}\nENTER");
         assertSameKeys("DEFAULT_DELAY 100\nTAB\nREPEAT 2\nSTRING a{b}{{c\n" +
                        "CTRL-ALT DELETE\nSHIFT TAB\nGUI");
         assertSameKeys("STRING {ENTER} is text in Ducky\nCTRL +");
