@@ -110,7 +110,6 @@ final class FileCredentialResolver implements KeyScript.CredentialResolver
         String want = normalize(path);
         boolean withGroup = want.contains("/");
         List<PwsRecord> matches = new ArrayList<>();
-        ArrayList<String> groups = new ArrayList<>();
         for (PwsRecord rec : itsFileData.getRecords()) {
             String title = itsFileData.getTitle(rec);
             if (title == null) {
@@ -118,12 +117,8 @@ final class FileCredentialResolver implements KeyScript.CredentialResolver
             }
             String key;
             if (withGroup) {
-                PasswdFileData.splitGroup(itsFileData.getGroup(rec), groups);
-                StringBuilder sb = new StringBuilder();
-                for (String g : groups) {
-                    sb.append(g).append('/');
-                }
-                key = sb.append(title).toString();
+                String group = groupPath(itsFileData, rec);
+                key = group.isEmpty() ? title : group + "/" + title;
             } else {
                 key = title;
             }
@@ -141,6 +136,23 @@ final class FileCredentialResolver implements KeyScript.CredentialResolver
                                       path + ".password}"));
         }
         return matches.get(0);
+    }
+
+    /**
+     * An entry's group as a slash path ("Work/Servers"), or "" when it has
+     * none. Groups are stored with dots; an entry without one has null.
+     */
+    @NonNull
+    static String groupPath(@NonNull PasswdFileData fileData,
+                            @NonNull PwsRecord rec)
+    {
+        String group = fileData.getGroup(rec);
+        if (TextUtils.isEmpty(group)) {
+            return "";
+        }
+        ArrayList<String> groups = new ArrayList<>();
+        PasswdFileData.splitGroup(group, groups);
+        return TextUtils.join("/", groups);
     }
 
     private static String normalize(String s)
