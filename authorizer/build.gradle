@@ -165,6 +165,9 @@ dependencies {
 
     annotationProcessor "androidx.room:room-compiler:$room_version"
 
+    // JVM unit tests (plain Java logic such as the keyboard script parser)
+    testImplementation 'junit:junit:4.13.2'
+
     // Core library
     androidTestImplementation 'androidx.test:core:1.7.0'
 
