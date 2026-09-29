@@ -362,6 +362,13 @@ public class KeyScriptTest
     }
 
     @Test
+    public void convertedDuckyUsesScreenModifierNames()
+    {
+        assertEquals("{WIN+r}{CTRL+ALT+DEL}",
+                     KeyScript.duckyToInline("GUI r\nCONTROL-ALT DEL"));
+    }
+
+    @Test
     public void convertedDuckyTypesTheSame()
     {
         assertSameKeys("REM Log in\nGUI r\nDELAY 500\nSTRINGLN ssh admin@hilux\n" +

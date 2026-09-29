@@ -145,6 +145,9 @@ public final class KeyScript
     /** Modifier bits of the first report byte */
     private static final Map<String, Integer> MODIFIERS;
 
+    /** The name the keyboard screen uses for each modifier bit */
+    private static final Map<Integer, String> MODIFIER_NAMES;
+
     /** Layout-independent named keys, as HID usage codes */
     private static final Map<String, Integer> KEYS;
 
@@ -175,6 +178,14 @@ public final class KeyScript
         mods.put("META", 0x08);
         mods.put("ALTGR", 0x40);
         MODIFIERS = Collections.unmodifiableMap(mods);
+
+        Map<Integer, String> modNames = new HashMap<>();
+        modNames.put(0x01, "CTRL");
+        modNames.put(0x02, "SHIFT");
+        modNames.put(0x04, "ALT");
+        modNames.put(0x08, "WIN");
+        modNames.put(0x40, "ALTGR");
+        MODIFIER_NAMES = Collections.unmodifiableMap(modNames);
 
         Map<String, Integer> keys = new HashMap<>();
         keys.put("ENTER", 0x28);
@@ -402,7 +413,13 @@ public final class KeyScript
                      (int)KEYS.get("ENTER"))) {
                     piece = "\n";
                 } else {
-                    piece = "{" + String.join("+", tokens) + "}";
+                    // Modifiers as the keyboard screen writes them
+                    List<String> names = new ArrayList<>();
+                    for (String t : tokens) {
+                        Integer bit = MODIFIERS.get(t.toUpperCase(Locale.ROOT));
+                        names.add((bit == null) ? t : MODIFIER_NAMES.get(bit));
+                    }
+                    piece = "{" + String.join("+", names) + "}";
                 }
                 break;
             }
