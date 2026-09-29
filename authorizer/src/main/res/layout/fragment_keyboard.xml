@@ -380,7 +380,8 @@
                 android:maxLines="1"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                app:drawableStartCompat="@drawable/ic_folder"/>
+                app:drawableStartCompat="@drawable/ic_folder"
+                app:drawableTint="?attr/colorOnSurfaceVariant"/>
 
             <Button
                 android:id="@+id/scripts_choose"
