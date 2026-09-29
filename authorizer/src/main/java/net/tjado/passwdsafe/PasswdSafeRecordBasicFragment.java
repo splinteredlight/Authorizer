@@ -57,7 +57,6 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import net.tjado.authorizer.UsbAutoType;
 import net.tjado.authorizer.Utilities;
-import net.tjado.bluetooth.BluetoothDeviceListing;
 import net.tjado.bluetooth.BluetoothDeviceWrapper;
 import net.tjado.bluetooth.BluetoothUtils;
 import net.tjado.passwdsafe.file.PasswdFileData;
@@ -91,8 +90,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.regex.Pattern;
 
 import static android.app.Activity.RESULT_OK;
@@ -1164,40 +1161,12 @@ public class PasswdSafeRecordBasicFragment
             PasswdSafeUtil.dbginfo("PasswdSafeRecordBasicFragment", e, e.getLocalizedMessage());
         }
 
-        BluetoothDeviceListing listing = new BluetoothDeviceListing(requireContext());
-        List<BluetoothDeviceWrapper> bondedDevices = listing.getAvailableKeyboardHostDevices();
-        if(bondedDevices.size() < 1) {
-            Toast.makeText(getActivity(), getString(R.string.bt_autotype_no_devices), Toast.LENGTH_LONG).show();
-            return;
-        }
-
         final byte[] output = outputStream.toByteArray();
-
-        // No chooser when the target is unambiguous: a single paired keyboard
-        // host, or one marked as default in the Bluetooth screen.
-        if (bondedDevices.size() == 1) {
-            connectAndTypeBluetooth(btService, bondedDevices.get(0), output);
-            return;
-        }
-        for (BluetoothDeviceWrapper device : bondedDevices) {
-            if (listing.isHidDefaultDevice(device)) {
+        KeyboardHostChooser.choose(requireContext(), device -> {
+            if (device != null) {
                 connectAndTypeBluetooth(btService, device, output);
-                return;
             }
-        }
-
-        SortedMap<String, BluetoothDeviceWrapper> deviceList = new TreeMap<>();
-        bondedDevices.forEach(device -> deviceList.put(device.getName(), device));
-        CharSequence[] cs = deviceList.keySet().toArray(new CharSequence[deviceList.size()]);
-
-        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getActivity());
-
-        builder.setTitle(R.string.autotype_bluetooth_devices).setItems(cs, (dialog, which) ->
-            connectAndTypeBluetooth(btService, deviceList.get(cs[which]), output));
-
-        AlertDialog dialog = builder.create();
-        // Display the alert dialog on interface
-        dialog.show();
+        });
     }
 
     /**
