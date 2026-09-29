@@ -198,21 +198,31 @@ Now `BluetoothForegroundService` is the dialing side, like a multipoint
 headset working through its paired list:
 
 - `BluetoothDeviceListing.getFidoHostsByPreference()` returns every paired
-  FIDO host, last connected first, then the default, then the rest. The
-  host that connects is remembered (`LAST_FIDO_HOST` in the `hidbt`
-  preferences). No default is needed.
+  FIDO host, last connected first, then the default, then the rest sorted
+  by address (the bonded-device Set has no stable order, and the loop
+  walks the list by index). The host that connects is remembered
+  (`LAST_FIDO_HOST` in the `hidbt` preferences). No default is needed.
 - A DISCONNECTED callback with nothing connected schedules a retry with
   backoff, 10 s doubling to a 2 min cap; each attempt pages the next host
   on the list. The controller's 15 s connect timeout turns a host that is
   out of reach into a DISCONNECTED, which schedules the next attempt.
-- `ACTION_ACL_CONNECTED` for any host on the list (some other profile just
-  linked to it, typically the PC's Bluetooth coming back) triggers an
-  attempt at once. Verified on kodiak: reconnected 2 s after the PC's
-  Bluetooth was switched back on.
+- `ACTION_ACL_CONNECTED` over BR/EDR for any host on the list (some other
+  profile just linked to it, typically the PC's Bluetooth coming back)
+  triggers an attempt at once, and a miss there retries after the minimum
+  10 s. LE links are ignored: `BluetoothHidDevice` is Classic only. Every
+  device that links to the phone raises this broadcast, so the receiver
+  answers the common case from one preference read. Verified on kodiak:
+  reconnected 2 s after the PC's Bluetooth was switched back on.
 - The loop runs only in FIDO mode with FIDO enabled and no pairing or
   keyboard auto-type in flight, so the teardown before an auto-type is
   ignored; it is cancelled on CONNECTED, on user-driven connects and when
   the service stops. Keyboard mode still uses the default keyboard host.
+  A pairing keeps the loop off until its host reports CONNECTED or
+  DISCONNECTED (not just until the profile re-registers, which happens
+  before the connect is issued). A failed auto-type or keyboard pairing
+  switches back to FIDO mode itself, so the loop resumes instead of the
+  phone staying a keyboard with no host; every registration starts a
+  fresh cycle at the preferred host.
 - Preference "Reconnect to the FIDO computer automatically", on by default.
 
 Cost: one page attempt (about 5 s of radio) every two minutes while no host

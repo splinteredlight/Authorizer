@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -98,9 +99,13 @@ public class BluetoothDeviceListing {
 
     /**
      * Paired FIDO hosts in the order an automatic connect should try them:
-     * the one connected most recently first, then the default, then the rest.
-     * No "default" is needed for a single host, and with several the phone
-     * cycles through them like a multipoint headset through its paired list.
+     * the one connected most recently first, then the default, then the rest
+     * by address. No "default" is needed for a single host, and with several
+     * the phone cycles through them like a multipoint headset through its
+     * paired list. The order is stable across calls: the reconnect loop
+     * walks the list by index over a fresh copy each attempt, and
+     * getBondedDevices() is a Set whose iteration order can change between
+     * calls, which made the loop page one host twice and skip another.
      */
     public List<BluetoothDeviceWrapper> getFidoHostsByPreference() {
         List<BluetoothDeviceWrapper> hosts = new ArrayList<>();
@@ -119,6 +124,7 @@ public class BluetoothDeviceListing {
                 hosts.add(device);
             }
         }
+        hosts.sort(Comparator.comparing(BluetoothDeviceWrapper::getAddress));
         if (def != null) {
             hosts.add(0, def);
         }
@@ -126,6 +132,16 @@ public class BluetoothDeviceListing {
             hosts.add(0, last);
         }
         return hosts;
+    }
+
+    /**
+     * Whether any host was ever paired as a FIDO host. One preference read,
+     * unlike getFidoHostsByPreference(), which enumerates and hashes every
+     * bonded device; a host unpaired since still counts, which only costs a
+     * reconnect attempt that finds nothing to dial.
+     */
+    public boolean hasFidoHosts() {
+        return hidPreferences.getAll().containsValue(HID_FIDO_HOST);
     }
 
     public void setLastFidoHost(BluetoothDevice device) {
