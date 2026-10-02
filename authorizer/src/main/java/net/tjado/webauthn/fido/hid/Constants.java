@@ -36,7 +36,10 @@ public class Constants {
     public static final long HID_CONT_TIMEOUT_MS = 500L;
     public static final long HID_MSG_TIMEOUT_MS = 3000L;
     public static final long HID_USER_PRESENCE_TIMEOUT_MS = 60000L;
-    public static final long HID_KEEPALIVE_INTERVAL_MS = 75L;
+    // CTAPHID says the authenticator sends KEEPALIVE "at least every 100 ms"
+    // while a request is pending; 75 ms was headroom that only added
+    // traffic to the link, and the user-presence wait can last a minute.
+    public static final long HID_KEEPALIVE_INTERVAL_MS = 100L;
 
     static final long COMMAND_MASK = (byte)0x7F;
 
