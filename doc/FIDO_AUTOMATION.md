@@ -228,9 +228,34 @@ headset working through its paired list:
 Cost: one page attempt (about 5 s of radio) every two minutes while no host
 is reachable, nothing while connected.
 
+## Step 4: sharing the PC's radio (fixed 2026-10-02)
+
+With the phone attached in FIDO mode, the PC's other Bluetooth devices
+suffered: A2DP earbuds connected but played nothing in Chrome and Spotify,
+a Bluetooth keyboard showed connected but did not type, and the PC once
+crashed in its USB host-controller driver. Zoom audio kept working, which
+was the clue: hands-free audio runs on reserved eSCO slots, while A2DP and
+HID input are plain ACL traffic that share whatever airtime is left.
+Updating the PC's Intel Bluetooth drivers changed nothing.
+
+The cause was the QoS the app requested for its FIDO interrupt channel in
+`net/tjado/bluetooth/Constants.java`: 5 ms latency and a 2000 B/s peak
+bandwidth, inherited from upstream with no requirement behind them.
+Android sends these in the L2CAP configuration and Windows honours them,
+polling the phone every 5 ms for a security key that sends nothing while
+idle. FIDO now uses the keyboard's 11.25 ms latency with the peak
+bandwidth unspecified, and the CTAPHID keepalive runs at the 100 ms the
+spec names instead of 75 ms. Verified on the work PC (Windows 11, Intel
+adapter): earbuds play over A2DP with the phone connected in FIDO mode.
+
+Do not tighten these again. CTAP over HID has no latency requirement that
+a keyboard-class contract cannot meet, and the host pays for every
+microsecond on behalf of its other devices.
+
 ## Order of work, if picked up
 
 1. ~~Auto-approve preference.~~ Done, see Step 1.
 2. ~~Decouple the credential backend from the activity.~~ Done.
 3. ~~Option 3 key cache, then relax the answering gate in the service.~~ Done.
 4. ~~Automatic reconnect to the FIDO host.~~ Done, see Step 3.
+5. ~~Stop starving the PC's other Bluetooth devices.~~ Done, see Step 4.

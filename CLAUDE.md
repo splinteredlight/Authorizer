@@ -157,6 +157,12 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   with backoff, and at once on `ACTION_ACL_CONNECTED`; see
   `doc/FIDO_AUTOMATION.md` step 3. Keep the loop out of keyboard mode and
   out of any pairing or auto-type in flight, or it steals the link.
+- Bluetooth HID QoS: FIDO mode uses the keyboard's 11.25 ms latency and no
+  peak-bandwidth reservation. Windows honours the requested QoS, and the
+  old 5 ms / 2000 B/s request made it poll the phone so hard that A2DP
+  earbuds went silent and a Bluetooth keyboard stopped typing on the same
+  PC (fixed and verified 2026-10-02, `doc/FIDO_AUTOMATION.md` step 4). Do
+  not tighten it; CTAP has no latency requirement that needs it.
 - In `doc/magisk/service.sh`, call `/system/bin/stat` and `/system/bin/chcon`
   explicitly: Magisk's busybox `stat` has no `%C`.
 

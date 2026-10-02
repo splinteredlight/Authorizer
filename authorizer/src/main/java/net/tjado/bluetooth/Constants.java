@@ -109,10 +109,20 @@ public class Constants {
     private static final String SDP_NAME_FIDO = "Authorizer Security Key";
     private static final String SDP_DESCRIPTION_FIDO = "FIDO2/U2F Android OS Security Key";
     private static final String SDP_PROVIDER_FIDO = "github.com/tejado/Authorizer";
+    // The host receives these in the L2CAP interrupt-channel configuration
+    // and Windows honours them. Upstream asked for 5 ms latency and a
+    // 2000 B/s peak, which made Windows poll the phone every 5 ms and
+    // starved the other ACL links on the adapter: A2DP earbuds connected
+    // but stayed silent and a Bluetooth keyboard stopped typing while the
+    // phone was attached in FIDO mode (HFP audio, which runs on reserved
+    // eSCO slots, kept working). CTAP over HID has no latency requirement
+    // a keyboard-class contract cannot meet, so use the keyboard's latency
+    // and leave the peak bandwidth unspecified. One 64-byte report per
+    // token-rate second is plenty for the keepalive and CBOR fragments.
     private static final int QOS_TOKEN_RATE_FIDO = 1000;
     private static final int QOS_TOKEN_BUCKET_SIZE_FIDO = net.tjado.webauthn.fido.hid.Constants.HID_REPORT_SIZE + 1;
-    private static final int QOS_PEAK_BANDWIDTH_FIDO = 2000;
-    private static final int QOS_LATENCY_FIDO = 5000;
+    private static final int QOS_PEAK_BANDWIDTH_FIDO = 0;
+    private static final int QOS_LATENCY_FIDO = QOS_LATENCY_KEYBOARD;
 
     static final BluetoothHidDeviceAppSdpSettings SDP_RECORD_FIDO =
             new BluetoothHidDeviceAppSdpSettings(
