@@ -252,6 +252,74 @@ Do not tighten these again. CTAP over HID has no latency requirement that
 a keyboard-class contract cannot meet, and the host pays for every
 microsecond on behalf of its other devices.
 
+## Troubleshooting: the PC uses another key, or none
+
+Written up after a 2026-11-03 incident on the work PC: a plugged-in YubiKey
+kept winning the WebAuthn prompt and "Use a different key" did not help. By
+the time the phone's logs were pulled the login worked again with nothing
+changed, so the cause was never seen. What the session established is
+worth keeping.
+
+**How Windows chooses.** The WebAuthn dialog sends every request to every
+FIDO HID device it can see, USB and Bluetooth alike. It first sends silent
+"preflight" `getAssertion`s, one per credential in the site's allow list,
+with user presence off. A key that holds the credential answers; one that
+does not returns no-credentials and is dropped for that login. The real
+request then goes to the keys that answered, and the first to sign wins.
+With auto-approve on, the phone signs in about 200 ms, so a USB key only
+wins when the phone did not answer at all. "Use a different key" re-sends
+the request; it does not pick a device.
+
+A healthy login looks like this in logcat (the release build keeps these
+lines):
+
+```
+HidDeviceController: Internal profileListener - onInterruptData
+TransactionManager: GetInfo called
+TransactionManager: GetAssertion called
+WebauthnAuthenticator: getAssertion - User Presence: false        <- preflight
+WebauthnAuthenticator: getAssertion - Filtered credentials to 0   <- the YubiKey's id
+TransactionManager: GetAssertion called
+WebauthnAuthenticator: getAssertion - Filtered credentials to 1   <- ours
+WebauthnAuthenticator: getInternalAssertion: preFlight
+TransactionManager: GetAssertion called
+WebauthnAuthenticator: getAssertion - User Presence: true
+WebauthnAuthenticator: getInternalAssertion: real
+```
+
+No `onInterruptData` at all means the request never reached the phone: the
+HID link is down, or the phone is attached as a keyboard rather than a
+security key (one SDP record at a time, see above). `Filtered credentials
+to 0` for every preflight means the phone has no credential for that site
+and account, and the fallback to the other key is correct.
+
+**Capture before touching anything.** The log buffer on kodiak is 256 KiB
+and holds only a few minutes, so by the time the user reports a problem the
+app's lines are gone. Grow it first, then record while the user retries:
+
+```sh
+adb -s <addr> logcat -G 8M
+adb -s <addr> logcat -v time -b main,system,crash > live.log
+```
+
+Only then force-close and relaunch the app; the phone's own
+`HidDeviceService` logs `registerApp()` when the app re-registers, so the
+capture shows whether registration succeeded.
+
+**State readable without logs.** `adb shell dumpsys bluetooth_manager`
+lists bonded devices; `[ACL BR/EDR:Y]` on the PC's line means a classic link
+is up, which is the one HID needs (LE links are not it). Its "Bonding
+Events" list shows re-pairings. The `Profile: HidDeviceService` section is
+always empty, because AOSP's service has no dump override; it says nothing
+about whether the app is registered. The app's foreground service and its
+notification can be checked with
+`dumpsys activity services net.tjado.passwdsafe`.
+
+**Seen on 2026-11-03, unexplained.** The PC re-bonded the phone over LE
+seven times the previous morning and once more that day, and was dialing
+it over LE every ten seconds. That is a Windows cross-device feature, not
+the HID path, but if the fallback recurs, note whether it coincides.
+
 ## Order of work, if picked up
 
 1. ~~Auto-approve preference.~~ Done, see Step 1.
