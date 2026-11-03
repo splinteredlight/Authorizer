@@ -239,6 +239,12 @@ For a keystroke test without the app, build 8-byte reports on the PC,
 base64 them, and write with `dd bs=8` on the device (see `doc/HID_SETUP.md`);
 Android's `printf` has no `\x` and nested quoting mangles octal.
 
+Before asking the user to reproduce a Bluetooth or FIDO problem, grow the
+log buffer (`adb logcat -G 8M`) and start a capture: the default 256 KiB
+holds a few minutes on these phones and the app's lines are gone by the
+time a problem is reported. See the troubleshooting section of
+`doc/FIDO_AUTOMATION.md`.
+
 Launch the activity with the full launcher intent, or it finishes immediately:
 `am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n net.tjado.passwdsafe/.PasswdSafe`.
 
