@@ -315,10 +315,54 @@ about whether the app is registered. The app's foreground service and its
 notification can be checked with
 `dumpsys activity services net.tjado.passwdsafe`.
 
-**Seen on 2026-11-03, unexplained.** The PC re-bonded the phone over LE
+**Seen on 2026-11-03, now explained.** The PC re-bonded the phone over LE
 seven times the previous morning and once more that day, and was dialing
-it over LE every ten seconds. That is a Windows cross-device feature, not
-the HID path, but if the fallback recurs, note whether it coincides.
+it over LE every ten seconds. Those "BOND_BONDED" entries are LE
+re-encryption with the existing key (Windows cross-device features), not
+re-pairing, and they are unrelated to the HID path. The real cause of that
+fallback is almost certainly the one found on 2026-11-05, below.
+
+**Seen on 2026-11-05, explained: the PC refuses the phone's HID dial.**
+Same symptom, "50/50" logins, with the PC showing the phone as not
+connected. The phone's capture showed the redial loop running correctly
+and every dial failing the same way:
+
+```
+bt_stack: l2c_csm_w4_l2cap_connect_rsp: L2CAP connection rejected, result=2
+HidDeviceController: onConnectionStateChanged: 0
+```
+
+L2CAP result 2 is "PSM not supported": the PC's Bluetooth stack rejected
+the HID control channel (PSM 0x11) outright, so the link never reached
+Windows' HID driver. `PAGE_TIMEOUT(0x04)` on `OnConnectFail` is a different
+failure: the PC's radio was not in range or was off.
+
+The PC's System event log named the culprit: Nefarius BthPS3, a
+PlayStation 3 controller driver. Its filter rewrites every incoming L2CAP
+connect for PSM 0x11 to its own PSM, reads the remote name, logs
+"not identified or denied, dropping connection" for anything that is not a
+controller, then disables itself for about 10 s and re-enables. The phone's
+dial is accepted only if it lands in that window. The app's first redial
+is at 10 s, so the result was a coin flip, and the backoff after that made
+it worse. Toggling Bluetooth on the PC "fixed" it because Windows then
+dialed the phone itself, and host-initiated connects bypass the filter.
+
+Fix on the PC: in the BthPS3 Driver Configuration utility untick "PSM
+patching", or uninstall BthPS3 if the controller is used over USB. Nothing
+in the app or the phone was at fault: adapter power management and driver
+versions were checked first and were not the cause.
+
+How to tell this case apart on the PC: in Event Viewer, Windows Logs >
+System, filter on source `BthPS3` (or `BTHUSB` for radio restarts). Each
+refused dial leaves a BthPS3 entry within a second of the phone's
+`L2CAP connection rejected` line (the PC clock was ~5 s behind the phone).
+`BTHUSB` event 16, "mutual authentication failed" with the phone's own
+address, is a side effect of the same refusal, not a pairing problem.
+
+What the app could do about it, if another user hits a filter like this:
+retry a dial that was refused with result 2 after ~3 s instead of waiting
+the full backoff step. That has not been implemented; the PC-side fix is
+the right one and the redial loop otherwise behaves as designed.
 
 ## Order of work, if picked up
 
