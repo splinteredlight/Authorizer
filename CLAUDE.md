@@ -156,7 +156,11 @@ GPL-3.0. Keep both headers and the `assets/license-*.txt` files intact.
   `getFidoHostsByPreference()` (last connected first, no default needed)
   with backoff, and at once on `ACTION_ACL_CONNECTED`; see
   `doc/FIDO_AUTOMATION.md` step 3. Keep the loop out of keyboard mode and
-  out of any pairing or auto-type in flight, or it steals the link.
+  out of any pairing or auto-type in flight, or it steals the link. A dial
+  the PC answers with `L2CAP connection rejected, result=2` is the PC's
+  stack refusing PSM 0x11, not the app: a third-party L2CAP filter
+  (BthPS3) did this on the work PC on 2026-11-05, see the troubleshooting
+  section of that doc before touching the loop.
 - Bluetooth HID QoS: FIDO mode uses the keyboard's 11.25 ms latency and no
   peak-bandwidth reservation. Windows honours the requested QoS, and the
   old 5 ms / 2000 B/s request made it poll the phone so hard that A2DP
